@@ -5,6 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import asyncio
 import json
 from unitree_webrtc_connect import UnitreeWebRTCConnection, WebRTCConnectionMethod
+from unitree_webrtc_connect.constants import SPORT_CMD, RTC_TOPIC
 from config.config import ROBOT_IP
 
 
@@ -22,46 +23,48 @@ async def main():
     await conn.connect()
     print("[SUCCESS] Conectado")
 
-    # ✅ Canal correcto
-    channel = conn.datachannel
+    pub_sub = conn.datachannel.pub_sub
 
     print("[INFO] Esperando estabilidad...")
     await asyncio.sleep(2)
 
-    # ✅ Función para enviar comandos (IMPORTANTE)
-    def send_cmd(cmd):
-        channel.send(json.dumps(cmd))
-
-    # 🧠 Stand
+    # Stand
     print("[ACTION] Stand")
-    send_cmd({"cmd": "stand"})
+    await pub_sub.publish_request_new(
+        RTC_TOPIC["SPORT_MOD"],
+        {"api_id": SPORT_CMD["BalanceStand"]}
+    )
     await asyncio.sleep(3)
 
-    # 🧠 Avanzar
+    # Avanzar
     print("[ACTION] Avanzar")
-    send_cmd({
-        "cmd": "move",
-        "vx": 0.2,
-        "vy": 0.0,
-        "vyaw": 0.0
-    })
+    await pub_sub.publish_request_new(
+        RTC_TOPIC["SPORT_MOD"],
+        {
+            "api_id": SPORT_CMD["Move"],
+            "parameter": {"x": 0.2, "y": 0.0, "z": 0.0}
+        }
+    )
     await asyncio.sleep(2)
 
-    # 🧠 Stop
+    # Stop
     print("[ACTION] Stop")
-    send_cmd({
-        "cmd": "move",
-        "vx": 0.0,
-        "vy": 0.0,
-        "vyaw": 0.0
-    })
+    await pub_sub.publish_request_new(
+        RTC_TOPIC["SPORT_MOD"],
+        {"api_id": SPORT_CMD["StopMove"]}
+    )
     await asyncio.sleep(1)
 
-    # 🧠 Sit
+    # Sit
     print("[ACTION] Sit")
-    send_cmd({"cmd": "sit"})
+    await pub_sub.publish_request_new(
+        RTC_TOPIC["SPORT_MOD"],
+        {"api_id": SPORT_CMD["StandDown"]}
+    )
 
     print("[DONE] Prueba finalizada")
+
+    await conn.disconnect()
 
 
 if __name__ == "__main__":
