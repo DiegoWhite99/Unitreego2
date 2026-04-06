@@ -42,7 +42,7 @@ async def main():
         RTC_TOPIC["SPORT_MOD"],
         {
             "api_id": SPORT_CMD["Move"],
-            "parameter": {"x": 0.2, "y": 0.0, "z": 0.0}
+            "parameter": {"x": 0.3, "y": 0.0, "z": 0.0}
         }
     )
     await asyncio.sleep(2)
