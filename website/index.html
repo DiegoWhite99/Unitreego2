@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daiver Control CUN - WebRTC</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+    <!-- Header / Navbar -->
+    <header class="navbar">
+        <div class="navbar-brand">
+            <h1>Daiver Control CUN</h1>
+            <span class="badge">WebRTC Control</span>
+        </div>
+        <nav class="navbar-links">
+            <a href="#dashboard" class="nav-link active">Dashboard</a>
+            <a href="#control" class="nav-link">Control</a>
+            <a href="#actions" class="nav-link">Acciones</a>
+            <a href="#routines" class="nav-link">Rutinas</a>
+            <a href="#logs" class="nav-link">Logs</a>
+        </nav>
+        <div class="navbar-status">
+            <span id="connection-status" class="status-indicator disconnected">Desconectado</span>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="section">
+            <h2 class="section-title">Dashboard</h2>
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Estado de Conexion</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="info-row">
+                            <span>IP Robot:</span>
+                            <span id="robot-ip">--</span>
+                        </div>
+                        <div class="info-row">
+                            <span>Metodo:</span>
+                            <span id="connection-method">LocalSTA (WebRTC)</span>
+                        </div>
+                        <div class="info-row">
+                            <span>Estado:</span>
+                            <span id="webrtc-state">Sin conexion</span>
+                        </div>
+                        <div class="info-row">
+                            <span>Servidor Flask:</span>
+                            <span id="flask-status">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Telemetria</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="info-row">
+                            <span>Bateria:</span>
+                            <span id="battery-level">--%</span>
+                        </div>
+                        <div class="info-row">
+                            <span>Velocidad:</span>
+                            <span id="speed">-- m/s</span>
+                        </div>
+                        <div class="info-row">
+                            <span>Modo:</span>
+                            <span id="robot-mode">--</span>
+                        </div>
+                        <div class="info-row">
+                            <span>Rutina:</span>
+                            <span id="routine-status">Ninguna</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Acciones Rapidas</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="connect-form">
+                            <label for="ip-input">IP del Robot:</label>
+                            <input type="text" id="ip-input" class="input-field" placeholder="10.3.16.11">
+                        </div>
+                        <div class="action-buttons">
+                            <button id="btn-connect" class="btn btn-primary">Conectar</button>
+                            <button id="btn-disconnect" class="btn btn-danger" disabled>Desconectar</button>
+                        </div>
+                        <button id="btn-emergency" class="btn btn-warning btn-full">PARADA DE EMERGENCIA</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Control Section -->
+        <section id="control" class="section">
+            <h2 class="section-title">Control de Movimiento</h2>
+            <div class="control-layout">
+                <!-- Movement D-Pad -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Movimiento (WASD / Flechas)</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="dpad">
+                            <button class="dpad-btn dpad-up" data-command="forward">&#9650;</button>
+                            <button class="dpad-btn dpad-left" data-command="left">&#9664;</button>
+                            <button class="dpad-btn dpad-center" data-command="stop">STOP</button>
+                            <button class="dpad-btn dpad-right" data-command="right">&#9654;</button>
+                            <button class="dpad-btn dpad-down" data-command="backward">&#9660;</button>
+                        </div>
+                        <div class="speed-control">
+                            <label for="speed-slider">Velocidad:</label>
+                            <input type="range" id="speed-slider" min="10" max="100" value="50">
+                            <span id="speed-value">50%</span>
+                        </div>
+                        <div class="rotation-controls">
+                            <button class="btn btn-secondary" id="btn-rotate-left">Girar Izq</button>
+                            <button class="btn btn-secondary" id="btn-rotate-right">Girar Der</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Posture Controls -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Posturas</h3>
+                    </div>
+                    <div class="card-body actions-grid">
+                        <button class="btn btn-secondary" data-action="stand">De Pie</button>
+                        <button class="btn btn-secondary" data-action="sit">Sentarse</button>
+                        <button class="btn btn-secondary" data-action="rise">Levantarse</button>
+                        <button class="btn btn-secondary" data-action="recovery">Recuperarse</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Actions Section -->
+        <section id="actions" class="section">
+            <h2 class="section-title">Acciones y Trucos</h2>
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Saludos y Gestos</h3>
+                    </div>
+                    <div class="card-body actions-grid">
+                        <button class="btn btn-secondary" data-action="hello">Saludar</button>
+                        <button class="btn btn-secondary" data-action="stretch">Estirarse</button>
+                        <button class="btn btn-secondary" data-action="heart">Corazon</button>
+                        <button class="btn btn-secondary" data-action="wiggle">Meneo</button>
+                        <button class="btn btn-secondary" data-action="scrape">Raspar</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Baile</h3>
+                    </div>
+                    <div class="card-body actions-grid">
+                        <button class="btn btn-accent" data-action="dance1">Baile 1</button>
+                        <button class="btn btn-accent" data-action="dance2">Baile 2</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Acrobacias</h3>
+                    </div>
+                    <div class="card-body actions-grid">
+                        <button class="btn btn-warning" data-action="frontjump">Salto Frontal</button>
+                        <button class="btn btn-warning" data-action="frontflip">Voltereta</button>
+                        <button class="btn btn-warning" data-action="frontpounce">Salto Agresivo</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Routines Section -->
+        <section id="routines" class="section">
+            <h2 class="section-title">Rutinas Automaticas</h2>
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Patrullaje</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-desc">Ruta de patrullaje en zigzag: 5.5m, giro, 5m, giro, 3.75m, giro, 4.8m retorno.</p>
+                        <button class="btn btn-accent" data-routine="patrol">Iniciar Patrullaje</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Rutina de Salto</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-desc">Avanza, salta, recupera equilibrio, gira y regresa con saltos.</p>
+                        <button class="btn btn-accent" data-routine="jump">Iniciar Salto</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Exploracion</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-desc">Avanza 3m en cada direccion cardinal, formando un cuadrado.</p>
+                        <button class="btn btn-accent" data-routine="explore">Iniciar Exploracion</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Control de Rutina</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-desc">Detiene la rutina en ejecucion de forma segura.</p>
+                        <button id="btn-stop-routine" class="btn btn-danger btn-full">Detener Rutina</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Logs Section -->
+        <section id="logs" class="section">
+            <h2 class="section-title">Logs del Sistema</h2>
+            <div class="card">
+                <div class="card-header">
+                    <h3>Registro de Eventos</h3>
+                    <button id="btn-clear-logs" class="btn btn-small">Limpiar</button>
+                </div>
+                <div class="card-body">
+                    <div id="log-container" class="log-container">
+                        <div class="log-entry log-info">[INFO] Sistema iniciado - Esperando conexion al servidor Flask...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>Daiver Control CUN - Unitree Go2 Air WebRTC | Laboratorio 2</p>
+    </footer>
+
+    <!-- Socket.IO (local) -->
+    <script src="js/socket.io.min.js"></script>
+
+    <!-- App Scripts -->
+    <script src="js/app.js"></script>
+    <script src="js/connection.js"></script>
+    <script src="js/controls.js"></script>
+</body>
+</html>

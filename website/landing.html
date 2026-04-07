@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daiver - Tu Perro Robot</title>
+    <link rel="stylesheet" href="css/landing.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <span class="logo-emoji">🐕</span>
+                <div>
+                    <h1>Daiver</h1>
+                    <p class="subtitle">Tu Perro Robot Interactivo</p>
+                </div>
+            </div>
+            <div class="header-controls">
+                <div class="connection-box">
+                    <input type="text" id="ip-input" class="ip-input" placeholder="IP del robot" value="10.3.16.11">
+                    <button id="btn-connect" class="btn-connect">Conectar</button>
+                    <button id="btn-disconnect" class="btn-disconnect" disabled>Desconectar</button>
+                </div>
+                <div id="status-badge" class="status-badge offline">
+                    <span class="status-dot"></span>
+                    <span id="status-text">Sin conexion</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Voice Section -->
+    <section class="voice-section">
+        <div class="voice-container">
+            <span class="voice-icon">🔊</span>
+            <input type="text" id="voice-input" class="voice-input" placeholder="Escribe un mensaje para que Daiver hable..." maxlength="200">
+            <button id="btn-speak" class="btn-speak">Hablar</button>
+        </div>
+        <div class="voice-options">
+            <label>Voz:</label>
+            <select id="voice-select" class="voice-select"></select>
+            <label>Velocidad:</label>
+            <input type="range" id="voice-rate" min="0.5" max="2" step="0.1" value="1">
+            <span id="voice-rate-value">1.0x</span>
+        </div>
+        <div class="quick-phrases">
+            <button class="phrase-btn" data-phrase="Hola! Soy Daiver, tu perro robot favorito!">👋 Hola!</button>
+            <button class="phrase-btn" data-phrase="Me encanta jugar contigo!">🎉 Jugar!</button>
+            <button class="phrase-btn" data-phrase="Mira lo que puedo hacer!">✨ Mira!</button>
+            <button class="phrase-btn" data-phrase="Estoy muy feliz de verte!">😊 Feliz!</button>
+            <button class="phrase-btn" data-phrase="Soy un robot muy inteligente, estudio en la CUN!">🎓 CUN!</button>
+            <button class="phrase-btn" data-phrase="Quieres ver mi baile? Mirame!">💃 Baile!</button>
+            <button class="phrase-btn" data-phrase="Gracias por visitarnos! Vuelve pronto!">🙏 Gracias!</button>
+            <button class="phrase-btn" data-phrase="Te quiero mucho! Mira mi corazon!">💖 Te quiero!</button>
+        </div>
+    </section>
+
+    <!-- Main Actions -->
+    <main class="actions-main">
+        <h2 class="actions-title">¿Que quieres que haga Daiver?</h2>
+
+        <!-- Posturas Basicas -->
+        <div class="action-category">
+            <h3 class="category-title">🦴 Posturas</h3>
+            <div class="action-grid">
+                <button class="action-btn" data-action="stand" data-voice="Estoy de pie y listo para jugar!">
+                    <span class="action-emoji">🧍</span>
+                    <span class="action-label">De Pie</span>
+                </button>
+
+                <button class="action-btn" data-action="sit" data-voice="Me siento como un buen perrito!">
+                    <span class="action-emoji">🪑</span>
+                    <span class="action-label">Sentarse</span>
+                </button>
+
+                <button class="action-btn" data-action="rise" data-voice="Me levanto! Vamos a jugar!">
+                    <span class="action-emoji">⬆️</span>
+                    <span class="action-label">Levantarse</span>
+                </button>
+
+                <button class="action-btn" data-action="recovery" data-voice="Me recupero! Estoy bien!">
+                    <span class="action-emoji">💪</span>
+                    <span class="action-label">Recuperarse</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Saludos y Gestos -->
+        <div class="action-category">
+            <h3 class="category-title">👋 Saludos y Gestos</h3>
+            <div class="action-grid">
+                <button class="action-btn action-featured" data-action="hello" data-voice="Hola! Mucho gusto! Soy Daiver!">
+                    <span class="action-emoji">🐾</span>
+                    <span class="action-label">Dar la Pata</span>
+                </button>
+
+                <button class="action-btn action-featured" data-action="heart" data-voice="Te quiero mucho! Mira mi corazoncito!">
+                    <span class="action-emoji">💖</span>
+                    <span class="action-label">Corazon</span>
+                </button>
+
+                <button class="action-btn" data-action="stretch" data-voice="Me estiro un poquito! Que rico!">
+                    <span class="action-emoji">🤸</span>
+                    <span class="action-label">Estirarse</span>
+                </button>
+
+                <button class="action-btn" data-action="wiggle" data-voice="Mira como muevo las caderas! Jaja!">
+                    <span class="action-emoji">🍑</span>
+                    <span class="action-label">Meneo</span>
+                </button>
+
+                <button class="action-btn" data-action="scrape" data-voice="Mira, estoy rascando el suelo como un perrito de verdad!">
+                    <span class="action-emoji">🐕</span>
+                    <span class="action-label">Raspar</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Bailes -->
+        <div class="action-category">
+            <h3 class="category-title">💃 Bailes</h3>
+            <div class="action-grid">
+                <button class="action-btn action-dance" data-action="dance1" data-voice="A bailar se dijo! Mira mis mejores pasos!">
+                    <span class="action-emoji">🕺</span>
+                    <span class="action-label">Baile 1</span>
+                </button>
+
+                <button class="action-btn action-dance" data-action="dance2" data-voice="Este es mi baile favorito! Dale!">
+                    <span class="action-emoji">💃</span>
+                    <span class="action-label">Baile 2</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Emergencia -->
+        <div class="action-category">
+            <div class="emergency-zone">
+                <button id="btn-emergency" class="btn-emergency" data-voice="Parada de emergencia activada. Me detengo.">
+                    🛑 PARADA DE EMERGENCIA
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>🐕 Daiver — Unitree Go2 Air | CUN - Laboratorio 2</p>
+    </footer>
+
+    <!-- Socket.IO (local) -->
+    <script src="js/socket.io.min.js"></script>
+
+    <!-- Landing Scripts -->
+    <script src="js/landing.js"></script>
+</body>
+</html>
