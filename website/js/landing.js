@@ -17,6 +17,7 @@ const Landing = {
         this.setupVoice();
         this.setupConnection();
         this.setupActions();
+        this.setupRoutines();
         this.setupEmergency();
         this.setupSocketIO();
         this.loadConfig();
@@ -110,6 +111,17 @@ const Landing = {
         this.setStatus('connecting');
         this.showToast('🔄 Conectando a ' + ip + '...');
 
+        // Guardar IP en config.py
+        try {
+            await fetch(`${API_BASE}/api/config/ip`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ip })
+            });
+        } catch {
+            // No bloquear conexion si falla guardar config
+        }
+
         try {
             const res = await fetch(`${API_BASE}/api/connect`, {
                 method: 'POST',
@@ -187,6 +199,64 @@ const Landing = {
                 }
             } catch (err) {
                 this.showToast('❌ Error enviando comando');
+            }
+        } else {
+            this.showToast('🔊 Solo voz — robot no conectado');
+        }
+    },
+
+    // ════════════════════════════════════════
+    //  ROUTINES
+    // ════════════════════════════════════════
+
+    setupRoutines() {
+        document.querySelectorAll('.action-routine').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const routine = btn.dataset.routine;
+                const voice = btn.dataset.voice;
+                this.executeRoutine(routine, voice, btn);
+            });
+        });
+
+        document.getElementById('btn-routine-stop')?.addEventListener('click', async () => {
+            this.speak('Deteniendo la rutina.');
+            if (this.robotConnected) {
+                try {
+                    await fetch(`${API_BASE}/api/routine/stop`, { method: 'POST' });
+                    this.showToast('⏹️ Rutina detenida');
+                } catch {
+                    this.showToast('❌ Error deteniendo rutina');
+                }
+            }
+        });
+    },
+
+    async executeRoutine(routine, voiceText, btnElement) {
+        if (btnElement) {
+            btnElement.classList.add('executing');
+            setTimeout(() => btnElement.classList.remove('executing'), 800);
+        }
+
+        if (voiceText) {
+            this.speak(voiceText);
+        }
+
+        if (this.robotConnected) {
+            try {
+                const res = await fetch(`${API_BASE}/api/routine`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ routine })
+                });
+                const data = await res.json();
+
+                if (data.status === 'ok') {
+                    this.showToast('▶️ Rutina ' + routine + ' iniciada');
+                } else {
+                    this.showToast('❌ ' + (data.message || 'Error'));
+                }
+            } catch (err) {
+                this.showToast('❌ Error iniciando rutina');
             }
         } else {
             this.showToast('🔊 Solo voz — robot no conectado');

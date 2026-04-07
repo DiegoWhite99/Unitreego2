@@ -13,13 +13,13 @@
             <div class="logo">
                 <span class="logo-emoji">🐕</span>
                 <div>
-                    <h1>Daiver</h1>
+                    <h1>Diver</h1>
                     <p class="subtitle">Tu Perro Robot Interactivo</p>
                 </div>
             </div>
             <div class="header-controls">
                 <div class="connection-box">
-                    <input type="text" id="ip-input" class="ip-input" placeholder="IP del robot" value="10.3.16.11">
+                    <input type="text" id="ip-input" class="ip-input" placeholder="IP del robot">
                     <button id="btn-connect" class="btn-connect">Conectar</button>
                     <button id="btn-disconnect" class="btn-disconnect" disabled>Desconectar</button>
                 </div>
@@ -130,6 +130,32 @@
                 <button class="action-btn action-dance" data-action="dance2" data-voice="Este es mi baile favorito! Dale!">
                     <span class="action-emoji">💃</span>
                     <span class="action-label">Baile 2</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Rutinas -->
+        <div class="action-category">
+            <h3 class="category-title">🗺️ Rutinas</h3>
+            <div class="action-grid">
+                <button class="action-btn action-routine" data-routine="patrol" data-voice="Iniciando rutina de patrullaje! Voy a recorrer el area!">
+                    <span class="action-emoji">🚶</span>
+                    <span class="action-label">Patrullaje</span>
+                </button>
+
+                <button class="action-btn action-routine" data-routine="jump" data-voice="Preparense! Voy a mostrarles mis saltos!">
+                    <span class="action-emoji">🦘</span>
+                    <span class="action-label">Salto</span>
+                </button>
+
+                <button class="action-btn action-routine" data-routine="explore" data-voice="Modo exploracion activado! Voy a explorar todo!">
+                    <span class="action-emoji">🔍</span>
+                    <span class="action-label">Exploracion</span>
+                </button>
+
+                <button class="action-btn action-routine-stop" id="btn-routine-stop" data-voice="Deteniendo la rutina.">
+                    <span class="action-emoji">⏹️</span>
+                    <span class="action-label">Detener Rutina</span>
                 </button>
             </div>
         </div>

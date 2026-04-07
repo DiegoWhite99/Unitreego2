@@ -615,10 +615,42 @@ def api_routine_stop():
 #  API REST — CONFIGURACION
 # ════════════════════════════════════════════════════════
 
+@app.route('/api/config/ip', methods=['POST'])
+def api_update_ip():
+    """Actualiza la IP del robot en config.py."""
+    data = request.get_json() or {}
+    new_ip = data.get('ip', '').strip()
+
+    if not new_ip:
+        return jsonify({"status": "error", "message": "IP vacia"}), 400
+
+    config_path = os.path.join(os.path.dirname(__file__), 'config', 'config.py')
+    try:
+        with open(config_path, 'w') as f:
+            f.write(f'ROBOT_IP = "{new_ip}"\n')
+        robot_state["ip"] = new_ip
+        emit_log('info', f'IP actualizada en config.py: {new_ip}')
+        return jsonify({"status": "ok", "ip": new_ip})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @app.route('/api/config', methods=['GET'])
 def api_config():
+    config_path = os.path.join(os.path.dirname(__file__), 'config', 'config.py')
+    current_ip = ROBOT_IP
+    try:
+        with open(config_path, 'r') as f:
+            content = f.read()
+            import re
+            match = re.search(r'ROBOT_IP\s*=\s*"([^"]+)"', content)
+            if match:
+                current_ip = match.group(1)
+    except Exception:
+        pass
+
     return jsonify({
-        "robot_ip": ROBOT_IP,
+        "robot_ip": current_ip,
         "commands": [
             "Damp", "BalanceStand", "StopMove", "Move",
             "SwitchGait", "BodyHeight", "Hello", "Stretch",

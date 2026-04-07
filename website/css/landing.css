@@ -468,6 +468,27 @@ body {
     50% { transform: translateY(-6px); }
 }
 
+/* Routine actions */
+.action-routine {
+    border-color: var(--success-dark);
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(0, 184, 148, 0.08) 100%);
+}
+
+.action-routine:hover {
+    border-color: var(--success);
+    box-shadow: 0 0 30px rgba(0, 206, 201, 0.3);
+}
+
+.action-routine-stop {
+    border-color: var(--warning);
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(253, 203, 110, 0.08) 100%);
+}
+
+.action-routine-stop:hover {
+    border-color: var(--warning);
+    box-shadow: 0 0 30px rgba(253, 203, 110, 0.3);
+}
+
 /* ========================================
    Emergency
    ======================================== */
