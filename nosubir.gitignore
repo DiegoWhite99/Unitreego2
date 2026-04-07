@@ -1,1 +1,5 @@
-/config/_Pycache/config.py
+__pycache__/
+*.pyc
+logs/
+.env
+.vscode/
