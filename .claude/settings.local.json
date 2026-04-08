@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(pip index:*)"
+      "Bash(pip index:*)",
+      "Bash(python -m pytest tests/test_integracion.py -v)",
+      "Bash(python -m unittest tests.test_integracion -v)",
+      "Bash(python -c \"from flask import Flask; from flask_socketio import SocketIO; print\\('OK: flask y flask-socketio instalados'\\)\")",
+      "Bash(timeout 5 python app.py)",
+      "Bash(grep -E \"\\\\.py$\")"
     ]
   }
 }
