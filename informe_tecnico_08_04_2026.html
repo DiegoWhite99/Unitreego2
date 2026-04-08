@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informe Tecnico - Daiver Control CUN - 08/04/2026</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm 2.5cm;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 11pt;
+            line-height: 1.6;
+            color: #1a1a1a;
+            background: #fff;
+            padding: 2cm 2.5cm;
+        }
+
+        /* ─── PORTADA ─── */
+        .cover {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 90vh;
+            text-align: center;
+            page-break-after: always;
+        }
+
+        .cover-logo {
+            font-size: 64pt;
+            margin-bottom: 10px;
+        }
+
+        .cover h1 {
+            font-size: 28pt;
+            color: #1a237e;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+
+        .cover h2 {
+            font-size: 16pt;
+            color: #5c6bc0;
+            font-weight: 400;
+            margin-bottom: 40px;
+        }
+
+        .cover-info {
+            border-top: 3px solid #1a237e;
+            padding-top: 20px;
+            font-size: 12pt;
+            color: #444;
+            line-height: 2;
+        }
+
+        .cover-info strong {
+            color: #1a237e;
+        }
+
+        /* ─── CONTENIDO ─── */
+        h1 {
+            font-size: 18pt;
+            color: #1a237e;
+            border-bottom: 2px solid #1a237e;
+            padding-bottom: 6px;
+            margin: 30px 0 15px 0;
+            page-break-after: avoid;
+        }
+
+        h2 {
+            font-size: 14pt;
+            color: #303f9f;
+            margin: 20px 0 10px 0;
+            page-break-after: avoid;
+        }
+
+        h3 {
+            font-size: 12pt;
+            color: #3949ab;
+            margin: 15px 0 8px 0;
+        }
+
+        p {
+            margin-bottom: 10px;
+            text-align: justify;
+        }
+
+        ul, ol {
+            margin: 8px 0 15px 25px;
+        }
+
+        li {
+            margin-bottom: 5px;
+        }
+
+        code {
+            background: #f0f0f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 10pt;
+            color: #d32f2f;
+        }
+
+        pre {
+            background: #1e1e2e;
+            color: #cdd6f4;
+            padding: 15px 18px;
+            border-radius: 6px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 9.5pt;
+            line-height: 1.5;
+            overflow-x: auto;
+            margin: 10px 0 18px 0;
+            page-break-inside: avoid;
+        }
+
+        pre .comment { color: #6c7086; }
+        pre .keyword { color: #cba6f7; }
+        pre .string { color: #a6e3a1; }
+        pre .cmd { color: #89b4fa; }
+        pre .flag { color: #f9e2af; }
+        pre .url { color: #89dceb; }
+        pre .prompt { color: #a6adc8; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0 18px 0;
+            font-size: 10pt;
+            page-break-inside: avoid;
+        }
+
+        th {
+            background: #1a237e;
+            color: white;
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        tr:nth-child(even) {
+            background: #f5f5fa;
+        }
+
+        .note {
+            background: #e8eaf6;
+            border-left: 4px solid #1a237e;
+            padding: 12px 16px;
+            border-radius: 0 6px 6px 0;
+            margin: 12px 0;
+            font-size: 10pt;
+        }
+
+        .note strong {
+            color: #1a237e;
+        }
+
+        .warning {
+            background: #fff3e0;
+            border-left: 4px solid #e65100;
+            padding: 12px 16px;
+            border-radius: 0 6px 6px 0;
+            margin: 12px 0;
+            font-size: 10pt;
+        }
+
+        .warning strong {
+            color: #e65100;
+        }
+
+        .success {
+            background: #e8f5e9;
+            border-left: 4px solid #2e7d32;
+            padding: 12px 16px;
+            border-radius: 0 6px 6px 0;
+            margin: 12px 0;
+            font-size: 10pt;
+        }
+
+        .architecture-box {
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            text-align: center;
+            font-family: 'Consolas', monospace;
+            font-size: 10pt;
+            line-height: 1.8;
+            page-break-inside: avoid;
+        }
+
+        .architecture-box .layer {
+            background: #e8eaf6;
+            border: 1px solid #9fa8da;
+            border-radius: 6px;
+            padding: 8px 16px;
+            margin: 5px auto;
+            max-width: 500px;
+        }
+
+        .architecture-box .arrow {
+            color: #1a237e;
+            font-size: 16pt;
+            margin: 2px 0;
+        }
+
+        .toc {
+            background: #f8f9ff;
+            border: 1px solid #c5cae9;
+            border-radius: 8px;
+            padding: 20px 30px;
+            margin: 20px 0;
+        }
+
+        .toc h2 {
+            margin-top: 0;
+            text-align: center;
+        }
+
+        .toc ol {
+            margin-left: 20px;
+        }
+
+        .toc li {
+            margin-bottom: 6px;
+            color: #303f9f;
+        }
+
+        .step-number {
+            display: inline-block;
+            background: #1a237e;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 28px;
+            font-weight: bold;
+            font-size: 12pt;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 9pt;
+            color: #888;
+            margin-top: 40px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
+
+        @media print {
+            body { padding: 0; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════ PORTADA ═══════════════════════════════════════ -->
+<div class="cover">
+    <div class="cover-logo">&#129502;</div>
+    <h1>INFORME TECNICO</h1>
+    <h2>Daiver Control CUN &mdash; Unitree Go2 Air</h2>
+    <p style="font-size: 13pt; color: #666; margin-bottom: 30px;">
+        Sistema de Control Remoto via WebRTC<br>
+        Interfaz Web para Robot Cuadrupedo
+    </p>
+    <div class="cover-info">
+        <strong>Proyecto:</strong> unitreeWebRTC &mdash; Laboratorio 2<br>
+        <strong>Institucion:</strong> CUN &mdash; Corporacion Unificada Nacional<br>
+        <strong>Fecha:</strong> 8 de Abril de 2026<br>
+        <strong>Tecnologias:</strong> Python (Flask) + JavaScript + WebRTC + Socket.IO<br>
+        <strong>Robot:</strong> Unitree Go2 Air
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════ TABLA DE CONTENIDOS ═══════════════════════════════════════ -->
+<div class="toc">
+    <h2>Tabla de Contenidos</h2>
+    <ol>
+        <li>Descripcion General del Proyecto</li>
+        <li>Arquitectura del Sistema</li>
+        <li>Estructura de Archivos</li>
+        <li>Backend &mdash; Servidor Flask (app.py)</li>
+        <li>Frontend &mdash; Interfaces Web</li>
+        <li>Sistema de Comunicacion en Tiempo Real</li>
+        <li>Comandos y Acciones del Robot</li>
+        <li>Rutinas Autonomas</li>
+        <li>Guia de Instalacion Paso a Paso</li>
+        <li>Guia de Uso de la Aplicacion</li>
+        <li>Pruebas e Integracion</li>
+        <li>Historial de Desarrollo</li>
+        <li>Soluciones a Problemas Comunes</li>
+    </ol>
+</div>
+
+<!-- ═══════════════════════════════════════ 1. DESCRIPCION GENERAL ═══════════════════════════════════════ -->
+<h1>1. Descripcion General del Proyecto</h1>
+
+<p>
+    <strong>Daiver Control CUN</strong> es una aplicacion web completa para el control remoto del robot cuadrupedo
+    <strong>Unitree Go2 Air</strong> a traves del protocolo WebRTC. El sistema permite a los usuarios interactuar
+    con el robot desde cualquier navegador web moderno, proporcionando control de movimiento en tiempo real,
+    ejecucion de poses y trucos, y rutinas autonomas preprogramadas.
+</p>
+
+<p>El proyecto ofrece dos interfaces diferenciadas:</p>
+
+<table>
+    <tr>
+        <th>Interfaz</th>
+        <th>URL</th>
+        <th>Usuarios Objetivo</th>
+        <th>Caracteristicas Principales</th>
+    </tr>
+    <tr>
+        <td><strong>Dashboard</strong></td>
+        <td><code>/</code></td>
+        <td>Operadores tecnicos</td>
+        <td>Control preciso de movimiento, telemetria, logs en tiempo real</td>
+    </tr>
+    <tr>
+        <td><strong>Landing (Daiver)</strong></td>
+        <td><code>/landing</code></td>
+        <td>Publico general</td>
+        <td>Interfaz amigable, sintesis de voz, botones de acciones con feedback</td>
+    </tr>
+</table>
+
+<!-- ═══════════════════════════════════════ 2. ARQUITECTURA ═══════════════════════════════════════ -->
+<h1>2. Arquitectura del Sistema</h1>
+
+<p>El sistema sigue una arquitectura cliente-servidor con comunicacion bidireccional en tiempo real:</p>
+
+<div class="architecture-box">
+    <div class="layer" style="background: #c5cae9;">
+        <strong>NAVEGADOR WEB</strong> (Chrome / Edge / Firefox)<br>
+        Dashboard (index.html) &nbsp;|&nbsp; Landing Page (landing.html)
+    </div>
+    <div class="arrow">&darr; HTTP + Socket.IO &darr;</div>
+    <div class="layer" style="background: #bbdefb;">
+        <strong>SERVIDOR FLASK</strong> (app.py &mdash; Puerto 5000)<br>
+        API REST + Socket.IO + Archivos Estaticos
+    </div>
+    <div class="arrow">&darr; WebRTC (aiortc) &darr;</div>
+    <div class="layer" style="background: #b2dfdb;">
+        <strong>UNITREE Go2 AIR</strong> (IP: 192.168.1.36)<br>
+        Sport Mode Commands via WebRTC PubSub
+    </div>
+</div>
+
+<h2>2.1 Flujo de Comunicacion</h2>
+<ol>
+    <li>El usuario interactua con la interfaz web (botones, teclado, D-Pad).</li>
+    <li>Las acciones se envian al servidor Flask mediante <strong>HTTP REST</strong> (acciones puntuales) o <strong>Socket.IO</strong> (movimiento continuo).</li>
+    <li>El servidor Flask traduce las peticiones a comandos <code>SPORT_CMD</code> del robot.</li>
+    <li>Los comandos se envian al Go2 Air via <strong>WebRTC</strong> usando la libreria <code>unitree_webrtc_connect</code>.</li>
+    <li>El robot ejecuta el comando y el servidor actualiza el estado global.</li>
+    <li>El estado actualizado se propaga a todos los clientes conectados via Socket.IO.</li>
+</ol>
+
+<h2>2.2 Modelo de Concurrencia</h2>
+<p>
+    El servidor utiliza un <strong>hilo dedicado con un event loop asyncio</strong> para las operaciones WebRTC,
+    separado del hilo principal de Flask. Esto permite que las rutinas autonomas (que pueden durar varios minutos)
+    se ejecuten sin bloquear las peticiones HTTP del servidor.
+</p>
+<pre><span class="comment"># Modelo de hilos</span>
+<span class="keyword">Hilo Principal</span>  &rarr; Flask + Socket.IO (peticiones HTTP, eventos WebSocket)
+<span class="keyword">Hilo Asyncio</span>   &rarr; Event loop dedicado (WebRTC, rutinas autonomas, movimiento)</pre>
+
+<!-- ═══════════════════════════════════════ 3. ESTRUCTURA DE ARCHIVOS ═══════════════════════════════════════ -->
+<h1>3. Estructura de Archivos del Proyecto</h1>
+
+<pre>unitreeWebRTC/
+├── <span class="cmd">app.py</span>                        <span class="comment"># Servidor Flask principal (~723 lineas)</span>
+├── <span class="cmd">requirements.txt</span>              <span class="comment"># Dependencias Python</span>
+├── config/
+│   ├── __init__.py
+│   └── <span class="cmd">config.py</span>                 <span class="comment"># IP del robot (192.168.1.36)</span>
+├── scripts/                        <span class="comment"># Scripts de prueba y rutinas individuales</span>
+│   ├── <span class="cmd">00_reference.py</span>            <span class="comment"># Referencia completa de comandos</span>
+│   ├── <span class="cmd">01_test_connection.py</span>      <span class="comment"># Test de conexion basico</span>
+│   ├── <span class="cmd">02_basic_motion.py</span>         <span class="comment"># Pruebas de movimiento</span>
+│   ├── <span class="cmd">03_walk1.py</span>                <span class="comment"># Patron de caminata 1</span>
+│   ├── <span class="cmd">04_walkandgirar.py</span>         <span class="comment"># Caminata + rotacion</span>
+│   ├── <span class="cmd">05_rutina1.py</span>              <span class="comment"># Rutina de patrullaje</span>
+│   ├── <span class="cmd">06_rutinaLoop.py</span>           <span class="comment"># Rutina en bucle</span>
+│   ├── <span class="cmd">07_rutinaSalto.py</span>          <span class="comment"># Rutina de salto</span>
+│   ├── <span class="cmd">test_funciones.py</span>          <span class="comment"># Tests de funciones (437 lineas)</span>
+│   └── saludo.py, pata.py, ...    <span class="comment"># Acciones individuales</span>
+├── tests/
+│   └── <span class="cmd">test_integracion.py</span>       <span class="comment"># Tests de integracion</span>
+├── website/                        <span class="comment"># Aplicacion frontend</span>
+│   ├── <span class="cmd">index.html</span>                <span class="comment"># Dashboard tecnico</span>
+│   ├── <span class="cmd">landing.html</span>              <span class="comment"># Pagina Daiver (publica)</span>
+│   ├── css/
+│   │   ├── styles.css              <span class="comment"># Estilos del dashboard</span>
+│   │   ├── components.css          <span class="comment"># Componentes (D-Pad, controles)</span>
+│   │   └── landing.css             <span class="comment"># Estilos del landing</span>
+│   ├── js/
+│   │   ├── app.js                  <span class="comment"># Controlador principal</span>
+│   │   ├── connection.js           <span class="comment"># Gestion de conexion</span>
+│   │   ├── controls.js             <span class="comment"># Controles de movimiento</span>
+│   │   ├── landing.js              <span class="comment"># Logica del landing</span>
+│   │   └── socket.io.min.js        <span class="comment"># Cliente Socket.IO</span>
+│   └── assets/
+│       └── images/                 <span class="comment"># Imagenes del robot</span>
+│           ├── diver.png, pie.png, sentado.png, ...
+└── logs/                           <span class="comment"># Directorio de logs en ejecucion</span></pre>
+
+<!-- ═══════════════════════════════════════ 4. BACKEND ═══════════════════════════════════════ -->
+<h1>4. Backend &mdash; Servidor Flask (app.py)</h1>
+
+<h2>4.1 Dependencias</h2>
+<pre><span class="comment"># requirements.txt</span>
+<span class="string">flask>=3.0</span>
+<span class="string">flask-socketio>=5.3</span>
+
+<span class="comment"># Dependencias adicionales (instalacion manual)</span>
+<span class="string">unitree_webrtc_connect</span>    <span class="comment"># SDK WebRTC de Unitree</span>
+<span class="string">aiortc</span>                    <span class="comment"># Implementacion WebRTC</span>
+<span class="string">aioice</span>                    <span class="comment"># STUN/TURN para WebRTC</span>
+<span class="string">numpy</span>                     <span class="comment"># Computo numerico</span></pre>
+
+<h2>4.2 Estado Global del Robot</h2>
+<p>El servidor mantiene un diccionario global <code>robot_state</code> que sincroniza el estado entre todos los clientes:</p>
+<pre><span class="keyword">robot_state</span> = {
+    <span class="string">"connected"</span>: False,          <span class="comment"># Estado de conexion WebRTC</span>
+    <span class="string">"ip"</span>: <span class="string">"192.168.1.36"</span>,        <span class="comment"># IP del robot</span>
+    <span class="string">"battery"</span>: 0,                <span class="comment"># Nivel de bateria (%)</span>
+    <span class="string">"speed"</span>: 0.64,               <span class="comment"># Velocidad actual (m/s)</span>
+    <span class="string">"mode"</span>: <span class="string">"idle"</span>,              <span class="comment"># Modo actual</span>
+    <span class="string">"current_routine"</span>: None      <span class="comment"># Rutina en ejecucion</span>
+}</pre>
+
+<h2>4.3 Endpoints de la API REST</h2>
+
+<table>
+    <tr>
+        <th>Metodo</th>
+        <th>Endpoint</th>
+        <th>Descripcion</th>
+    </tr>
+    <tr>
+        <td><code>POST</code></td>
+        <td><code>/api/connect</code></td>
+        <td>Establece conexion WebRTC con el robot</td>
+    </tr>
+    <tr>
+        <td><code>POST</code></td>
+        <td><code>/api/disconnect</code></td>
+        <td>Desconecta del robot de forma segura</td>
+    </tr>
+    <tr>
+        <td><code>GET</code></td>
+        <td><code>/api/status</code></td>
+        <td>Retorna estado actual del robot</td>
+    </tr>
+    <tr>
+        <td><code>POST</code></td>
+        <td><code>/api/command</code></td>
+        <td>Envia comando SPORT_CMD directo</td>
+    </tr>
+    <tr>
+        <td><code>POST</code></td>
+        <td><code>/api/move</code></td>
+        <td>Movimiento continuo (velocidades x, y, z)</td>
+    </tr>
+    <tr>
+        <td><code>POST</code></td>
+        <td><code>/api/stop</code></td>
+        <td>Detiene todo movimiento</td>
+    </tr>
+    <tr>
+        <td><code>POST</code></td>
+        <td><code>/api/emergency</code></td>
+        <td>Parada de emergencia (Damp)</td>
+    </tr>
+    <tr>
+        <td><code>POST</code></td>
+        <td><code>/api/action</code></td>
+        <td>Ejecuta accion predefinida (saludar, bailar, etc.)</td>
+    </tr>
+    <tr>
+        <td><code>POST</code></td>
+        <td><code>/api/routine</code></td>
+        <td>Inicia rutina autonoma</td>
+    </tr>
+    <tr>
+        <td><code>POST</code></td>
+        <td><code>/api/routine/stop</code></td>
+        <td>Detiene rutina en ejecucion</td>
+    </tr>
+    <tr>
+        <td><code>POST</code></td>
+        <td><code>/api/config/ip</code></td>
+        <td>Actualiza IP del robot</td>
+    </tr>
+    <tr>
+        <td><code>GET</code></td>
+        <td><code>/api/config</code></td>
+        <td>Retorna configuracion de comandos disponibles</td>
+    </tr>
+</table>
+
+<h2>4.4 Funcion de Movimiento</h2>
+<p>
+    El robot Unitree Go2 requiere comandos de movimiento <strong>continuos</strong> (cada 200ms) para mantener el desplazamiento.
+    Un solo comando no genera movimiento sostenido.
+</p>
+<pre><span class="keyword">async def</span> robot_mover(x, y, z, duracion):
+    <span class="string">"""Envia comandos de movimiento cada 0.2s durante la duracion indicada."""</span>
+    pasos = int(duracion / 0.2)
+    <span class="keyword">for</span> _ <span class="keyword">in</span> range(pasos):
+        <span class="keyword">if</span> stop_routine_flag:
+            <span class="keyword">break</span>
+        robot_pub_sub.publish(<span class="string">"rt/api/sport/request"</span>, {
+            <span class="string">"header"</span>: {<span class="string">"identity"</span>: {<span class="string">"api_id"</span>: 1008}},
+            <span class="string">"parameter"</span>: json.dumps({<span class="string">"x"</span>: x, <span class="string">"y"</span>: y, <span class="string">"z"</span>: z})
+        })
+        <span class="keyword">await</span> asyncio.sleep(0.2)</pre>
+
+<!-- ═══════════════════════════════════════ 5. FRONTEND ═══════════════════════════════════════ -->
+<h1>5. Frontend &mdash; Interfaces Web</h1>
+
+<h2>5.1 Dashboard Tecnico (index.html)</h2>
+<p>Interfaz profesional de control con las siguientes secciones:</p>
+
+<ul>
+    <li><strong>Panel de Conexion:</strong> Formulario de IP, boton de conexion/desconexion, indicador de estado.</li>
+    <li><strong>Telemetria:</strong> Bateria, velocidad, modo actual, rutina activa.</li>
+    <li><strong>Control de Movimiento (D-Pad):</strong> Cuadricula 3x3 con botones direccionales + boton STOP central.</li>
+    <li><strong>Control por Teclado:</strong> WASD (movimiento), Q/E (rotacion), Espacio (parar), Flechas (alternativa).</li>
+    <li><strong>Slider de Velocidad:</strong> Ajuste de 10% a 100% de la velocidad maxima.</li>
+    <li><strong>Posturas:</strong> Pararse, sentarse, levantarse, recuperarse.</li>
+    <li><strong>Trucos:</strong> Saludar, estirarse, corazon, bailar, salto, voltereta.</li>
+    <li><strong>Rutinas Autonomas:</strong> Patrullaje, salto, exploracion.</li>
+    <li><strong>Logs:</strong> Registro en tiempo real de eventos con filtrado por tipo.</li>
+</ul>
+
+<h3>Controles de Movimiento - Mapeo de Velocidades</h3>
+<table>
+    <tr>
+        <th>Tecla / Boton</th>
+        <th>Velocidad X (m/s)</th>
+        <th>Velocidad Y (m/s)</th>
+        <th>Velocidad Z (rad/s)</th>
+        <th>Accion</th>
+    </tr>
+    <tr><td>W / Arriba</td><td>+0.64</td><td>0</td><td>0</td><td>Avanzar</td></tr>
+    <tr><td>S / Abajo</td><td>-0.64</td><td>0</td><td>0</td><td>Retroceder</td></tr>
+    <tr><td>A / Izquierda</td><td>0</td><td>+0.384</td><td>0</td><td>Desplazar izquierda</td></tr>
+    <tr><td>D / Derecha</td><td>0</td><td>-0.384</td><td>0</td><td>Desplazar derecha</td></tr>
+    <tr><td>Q / Rotar Izq</td><td>0</td><td>0</td><td>+1.0</td><td>Girar izquierda</td></tr>
+    <tr><td>E / Rotar Der</td><td>0</td><td>0</td><td>-1.0</td><td>Girar derecha</td></tr>
+    <tr><td>Espacio / STOP</td><td>0</td><td>0</td><td>0</td><td>Detener movimiento</td></tr>
+</table>
+
+<h2>5.2 Landing Page &mdash; Daiver (landing.html)</h2>
+<p>Interfaz amigable con personalidad propia, disenada para publico general:</p>
+
+<ul>
+    <li><strong>Indicador de Estado:</strong> Badge visual (online/offline/conectando) con animaciones.</li>
+    <li><strong>Sistema de Voz:</strong> Sintesis de voz usando la Web Speech API del navegador.</li>
+    <li><strong>Frases Rapidas:</strong> Botones con mensajes predefinidos que el robot "dice" en voz alta.</li>
+    <li><strong>Velocidad de Voz:</strong> Control deslizante de 0.5x a 2.0x.</li>
+    <li><strong>Botones de Accion:</strong> Cada accion ejecuta la pose del robot + feedback de voz.</li>
+    <li><strong>Rutinas:</strong> Patrullaje, salto y exploracion con un solo clic.</li>
+    <li><strong>Boton de Emergencia:</strong> Parada inmediata con feedback visual y auditivo.</li>
+    <li><strong>Notificaciones Toast:</strong> Mensajes emergentes de estado.</li>
+</ul>
+
+<div class="note">
+    <strong>Nota:</strong> El sistema de voz del landing funciona incluso sin conexion al robot. Esto permite
+    demostrar la interfaz sin necesidad de tener el robot disponible.
+</div>
+
+<h2>5.3 Sistema de Estilos</h2>
+
+<table>
+    <tr>
+        <th>Propiedad</th>
+        <th>Dashboard</th>
+        <th>Landing</th>
+    </tr>
+    <tr><td>Fondo</td><td><code>#0f1923</code> (azul oscuro)</td><td><code>#0a0a1a</code> (negro profundo)</td></tr>
+    <tr><td>Color primario</td><td><code>#1a73e8</code> (azul)</td><td><code>#6c5ce7</code> (purpura)</td></tr>
+    <tr><td>Color acento</td><td><code>#00c853</code> (verde)</td><td><code>#fd79a8</code> (rosa)</td></tr>
+    <tr><td>Color peligro</td><td><code>#d93025</code> (rojo)</td><td><code>#d63031</code> (rojo)</td></tr>
+    <tr><td>Border radius</td><td>8px</td><td>16px (mas redondeado)</td></tr>
+    <tr><td>Tema</td><td>Profesional / tecnico</td><td>Amigable / futurista</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════ 6. SOCKET.IO ═══════════════════════════════════════ -->
+<h1>6. Sistema de Comunicacion en Tiempo Real</h1>
+
+<p>
+    La comunicacion en tiempo real se implementa con <strong>Socket.IO</strong>, lo que permite enviar y recibir
+    eventos de forma bidireccional entre el navegador y el servidor Flask.
+</p>
+
+<h2>6.1 Eventos del Cliente al Servidor</h2>
+<table>
+    <tr><th>Evento</th><th>Datos</th><th>Descripcion</th></tr>
+    <tr><td><code>move_command</code></td><td><code>{x, y, z}</code></td><td>Comando de movimiento continuo</td></tr>
+    <tr><td><code>stop_command</code></td><td>&mdash;</td><td>Detener todo movimiento</td></tr>
+</table>
+
+<h2>6.2 Eventos del Servidor al Cliente</h2>
+<table>
+    <tr><th>Evento</th><th>Datos</th><th>Descripcion</th></tr>
+    <tr><td><code>state_update</code></td><td><code>robot_state</code></td><td>Actualizacion de estado completo</td></tr>
+    <tr><td><code>log</code></td><td><code>{type, message, timestamp}</code></td><td>Evento de log en tiempo real</td></tr>
+    <tr><td><code>routine_step</code></td><td><code>{step, total, description}</code></td><td>Progreso de rutina</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════ 7. COMANDOS ═══════════════════════════════════════ -->
+<h1>7. Comandos y Acciones del Robot</h1>
+
+<h2>7.1 Comandos SPORT_CMD Disponibles</h2>
+<table>
+    <tr><th>Categoria</th><th>Comando</th><th>Descripcion</th></tr>
+    <tr><td rowspan="3">Basicos</td><td><code>Damp</code></td><td>Parada de emergencia (modo suave)</td></tr>
+    <tr><td><code>BalanceStand</code></td><td>Posicion de pie equilibrada</td></tr>
+    <tr><td><code>StopMove</code></td><td>Detener movimiento</td></tr>
+    <tr><td rowspan="2">Postura</td><td><code>SitDown</code></td><td>Sentarse</td></tr>
+    <tr><td><code>RiseSit</code></td><td>Levantarse desde sentado</td></tr>
+    <tr><td rowspan="4">Gestos</td><td><code>Hello</code></td><td>Saludo con pata</td></tr>
+    <tr><td><code>Stretch</code></td><td>Estirarse</td></tr>
+    <tr><td><code>FingerHeart</code></td><td>Gesto de corazon</td></tr>
+    <tr><td><code>WiggleHips</code></td><td>Mover caderas</td></tr>
+    <tr><td rowspan="2">Baile</td><td><code>Dance1</code></td><td>Rutina de baile 1</td></tr>
+    <tr><td><code>Dance2</code></td><td>Rutina de baile 2</td></tr>
+    <tr><td rowspan="3">Acrobacias</td><td><code>FrontJump</code></td><td>Salto frontal</td></tr>
+    <tr><td><code>FrontFlip</code></td><td>Voltereta frontal</td></tr>
+    <tr><td><code>FrontPounce</code></td><td>Abalanzarse</td></tr>
+</table>
+
+<h2>7.2 Limites de Velocidad</h2>
+<table>
+    <tr><th>Eje</th><th>Parametro</th><th>Rango</th><th>Descripcion</th></tr>
+    <tr><td>X</td><td>Adelante/Atras</td><td>-0.8 a +0.8 m/s</td><td>Velocidad longitudinal</td></tr>
+    <tr><td>Y</td><td>Izquierda/Derecha</td><td>-0.5 a +0.5 m/s</td><td>Velocidad lateral</td></tr>
+    <tr><td>Z</td><td>Rotacion</td><td>-1.5 a +1.5 rad/s</td><td>Velocidad angular</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════ 8. RUTINAS ═══════════════════════════════════════ -->
+<h1>8. Rutinas Autonomas</h1>
+
+<h2>8.1 Patrullaje (Patrol)</h2>
+<p>Recorrido en zigzag de 8 pasos que cubre un area rectangular:</p>
+<ol>
+    <li>Avanzar 5.5 metros hacia adelante</li>
+    <li>Girar 180 grados</li>
+    <li>Avanzar 5 metros</li>
+    <li>Girar 180 grados</li>
+    <li>Avanzar 3.75 metros</li>
+    <li>Girar 180 grados</li>
+    <li>Avanzar 4.8 metros (retorno)</li>
+    <li>Girar 180 grados (posicion original)</li>
+</ol>
+
+<h2>8.2 Salto (Jump)</h2>
+<p>Secuencia de 11 pasos combinando avance y saltos:</p>
+<ol>
+    <li>BalanceStand (estabilizar)</li>
+    <li>Avanzar 2 metros</li>
+    <li>FrontJump</li>
+    <li>BalanceStand</li>
+    <li>Avanzar 2 metros</li>
+    <li>FrontJump</li>
+    <li>BalanceStand</li>
+    <li>Girar 180 grados</li>
+    <li>Avanzar 4 metros (retorno)</li>
+    <li>FrontJump final</li>
+    <li>BalanceStand</li>
+</ol>
+
+<h2>8.3 Exploracion (Explore)</h2>
+<p>Recorrido perimetral en forma de cuadrado:</p>
+<ol>
+    <li>Avanzar 3 metros &rarr; Girar 90 grados derecha</li>
+    <li>Avanzar 3 metros &rarr; Girar 90 grados derecha</li>
+    <li>Avanzar 3 metros &rarr; Girar 90 grados derecha</li>
+    <li>Avanzar 3 metros &rarr; Girar 90 grados derecha (retorno)</li>
+</ol>
+
+<div class="warning">
+    <strong>Importante:</strong> Todas las rutinas verifican la bandera <code>stop_routine_flag</code> entre cada paso.
+    Si se presiona el boton de parada de emergencia, la rutina se interrumpe inmediatamente de forma segura.
+</div>
+
+<!-- ═══════════════════════════════════════ 9. GUIA DE INSTALACION ═══════════════════════════════════════ -->
+<h1>9. Guia de Instalacion Paso a Paso</h1>
+
+<h2>9.1 Requisitos Previos</h2>
+<table>
+    <tr><th>Software</th><th>Version Minima</th><th>Proposito</th></tr>
+    <tr><td>Python</td><td>3.8+</td><td>Ejecutar el backend Flask</td></tr>
+    <tr><td>pip</td><td>Incluido con Python</td><td>Gestor de paquetes</td></tr>
+    <tr><td>Git</td><td>2.x</td><td>Control de versiones</td></tr>
+    <tr><td>Navegador Web</td><td>Chrome 90+ / Edge 90+</td><td>Acceder a la interfaz</td></tr>
+    <tr><td>Red WiFi</td><td>&mdash;</td><td>Conexion al robot Go2 Air</td></tr>
+</table>
+
+<h2>9.2 Instalacion</h2>
+
+<p><span class="step-number">1</span> <strong>Clonar el repositorio</strong></p>
+<pre><span class="prompt">$</span> <span class="cmd">git clone</span> <span class="url">&lt;url-del-repositorio&gt;</span>
+<span class="prompt">$</span> <span class="cmd">cd</span> unitreeWebRTC</pre>
+
+<p><span class="step-number">2</span> <strong>Crear un entorno virtual (recomendado)</strong></p>
+<pre><span class="prompt">$</span> <span class="cmd">python -m venv</span> venv
+
+<span class="comment"># Activar en Windows:</span>
+<span class="prompt">$</span> <span class="cmd">venv\Scripts\activate</span>
+
+<span class="comment"># Activar en Linux/Mac:</span>
+<span class="prompt">$</span> <span class="cmd">source</span> venv/bin/activate</pre>
+
+<p><span class="step-number">3</span> <strong>Instalar dependencias de Python</strong></p>
+<pre><span class="prompt">$</span> <span class="cmd">pip install</span> <span class="flag">-r</span> requirements.txt</pre>
+
+<p><span class="step-number">4</span> <strong>Instalar el SDK de Unitree WebRTC</strong></p>
+<pre><span class="comment"># Instalar la libreria de comunicacion WebRTC de Unitree</span>
+<span class="prompt">$</span> <span class="cmd">pip install</span> unitree_webrtc_connect
+
+<span class="comment"># Dependencias adicionales que puede requerir:</span>
+<span class="prompt">$</span> <span class="cmd">pip install</span> aiortc aioice numpy</pre>
+
+<p><span class="step-number">5</span> <strong>Configurar la IP del robot</strong></p>
+<p>Editar el archivo <code>config/config.py</code> con la IP del robot Go2 Air:</p>
+<pre><span class="comment"># config/config.py</span>
+<span class="keyword">ROBOT_IP</span> = <span class="string">"192.168.1.36"</span>   <span class="comment"># Cambiar si la IP es diferente</span></pre>
+
+<div class="note">
+    <strong>Nota:</strong> La IP tambien puede cambiarse desde la interfaz web en el Dashboard, usando el
+    formulario de conexion o el endpoint <code>POST /api/config/ip</code>.
+</div>
+
+<p><span class="step-number">6</span> <strong>Conectar a la red WiFi del robot</strong></p>
+<ul>
+    <li>Encender el Unitree Go2 Air.</li>
+    <li>Esperar a que el robot emita su red WiFi.</li>
+    <li>Conectar el computador a la red WiFi del Go2 Air.</li>
+    <li>Verificar conectividad: <code>ping 192.168.1.36</code></li>
+</ul>
+
+<h2>9.3 Iniciar la Aplicacion</h2>
+
+<p><span class="step-number">7</span> <strong>Ejecutar el servidor Flask</strong></p>
+<pre><span class="prompt">$</span> <span class="cmd">python</span> app.py</pre>
+
+<p>El servidor mostrara el siguiente mensaje al iniciar correctamente:</p>
+<pre><span class="string">==================================================
+  Daiver Control CUN — Flask Backend
+  Robot IP: 192.168.1.36
+  Server:   http://localhost:5000
+==================================================</span></pre>
+
+<p><span class="step-number">8</span> <strong>Acceder a la interfaz web</strong></p>
+<p>Abrir el navegador y visitar una de las siguientes URLs:</p>
+
+<table>
+    <tr><th>Interfaz</th><th>URL</th><th>Uso</th></tr>
+    <tr>
+        <td>Dashboard (Control Tecnico)</td>
+        <td><code>http://localhost:5000/</code></td>
+        <td>Control completo del robot</td>
+    </tr>
+    <tr>
+        <td>Landing (Daiver)</td>
+        <td><code>http://localhost:5000/landing</code></td>
+        <td>Interfaz publica con voz</td>
+    </tr>
+    <tr>
+        <td>Estado de la API</td>
+        <td><code>http://localhost:5000/api/status</code></td>
+        <td>Verificar estado del servidor</td>
+    </tr>
+</table>
+
+<p><span class="step-number">9</span> <strong>Conectar al robot desde la interfaz</strong></p>
+<ol>
+    <li>En el Dashboard, verificar que la IP mostrada es correcta.</li>
+    <li>Hacer clic en el boton <strong>"Conectar"</strong>.</li>
+    <li>Esperar a que el indicador de estado cambie a <strong style="color: green;">CONECTADO</strong>.</li>
+    <li>El robot ejecutara automaticamente un <code>BalanceStand</code> al conectarse.</li>
+</ol>
+
+<div class="success">
+    <strong>Listo!</strong> El robot esta conectado y puedes empezar a controlarlo desde la interfaz web.
+    Usa el D-Pad, teclado (WASD), o los botones de acciones y rutinas.
+</div>
+
+<!-- ═══════════════════════════════════════ 10. GUIA DE USO ═══════════════════════════════════════ -->
+<h1>10. Guia de Uso de la Aplicacion</h1>
+
+<h2>10.1 Controlar Movimiento (Dashboard)</h2>
+<ol>
+    <li>Asegurar que el robot esta conectado (indicador verde).</li>
+    <li><strong>Con D-Pad:</strong> Hacer clic o mantener presionados los botones direccionales.</li>
+    <li><strong>Con Teclado:</strong> Usar las teclas WASD para moverse, Q/E para girar, Espacio para detener.</li>
+    <li><strong>Velocidad:</strong> Ajustar el slider de velocidad (10% - 100%).</li>
+    <li><strong>Parar:</strong> Hacer clic en STOP o presionar Espacio.</li>
+</ol>
+
+<h2>10.2 Ejecutar Acciones</h2>
+<ol>
+    <li>Navegar a la seccion de <strong>"Acciones"</strong> o <strong>"Trucos"</strong>.</li>
+    <li>Hacer clic en el boton deseado (Saludar, Bailar, Saltar, etc.).</li>
+    <li>El robot ejecutara la accion y el log mostrara el resultado.</li>
+</ol>
+
+<h2>10.3 Iniciar una Rutina</h2>
+<ol>
+    <li>Asegurar que el area esta despejada (el robot se movera de forma autonoma).</li>
+    <li>Seleccionar la rutina deseada (Patrullaje, Salto o Exploracion).</li>
+    <li>Monitorear el progreso en los logs en tiempo real.</li>
+    <li>Para detener la rutina: presionar <strong>"Detener Rutina"</strong> o el boton de emergencia.</li>
+</ol>
+
+<h2>10.4 Usar el Landing Page (Daiver)</h2>
+<ol>
+    <li>Acceder a <code>http://localhost:5000/landing</code>.</li>
+    <li>El sistema de voz se inicializa automaticamente.</li>
+    <li>Probar las frases rapidas para escuchar a Daiver hablar.</li>
+    <li>Ejecutar acciones con los botones (cada accion incluye voz).</li>
+    <li>Ajustar la velocidad de la voz con el control deslizante.</li>
+</ol>
+
+<h2>10.5 Parada de Emergencia</h2>
+<div class="warning">
+    <strong>IMPORTANTE:</strong> En cualquier momento, presionar el boton rojo de <strong>EMERGENCIA</strong>
+    detendra inmediatamente el robot enviando el comando <code>Damp</code>. Este comando desactiva los motores
+    de forma suave. La parada de emergencia funciona incluso durante la ejecucion de rutinas.
+</div>
+
+<!-- ═══════════════════════════════════════ 11. PRUEBAS ═══════════════════════════════════════ -->
+<h1>11. Pruebas e Integracion</h1>
+
+<h2>11.1 Ejecutar Tests de Integracion</h2>
+<pre><span class="prompt">$</span> <span class="cmd">python -m pytest</span> tests/test_integracion.py <span class="flag">-v</span></pre>
+
+<h2>11.2 Tests Disponibles</h2>
+<table>
+    <tr><th>Test</th><th>Que Verifica</th></tr>
+    <tr><td>Landing page carga</td><td>El HTML del landing se sirve correctamente en <code>/landing</code></td></tr>
+    <tr><td>API endpoints responden</td><td>Todos los endpoints retornan JSON valido</td></tr>
+    <tr><td>Mapeo de acciones</td><td>Cada boton del landing tiene un comando valido en el backend</td></tr>
+    <tr><td>Error sin conexion</td><td>Los endpoints rechazan comandos si no hay conexion al robot</td></tr>
+    <tr><td>Acciones invalidas</td><td>Acciones inexistentes retornan error 400</td></tr>
+    <tr><td>Parada de emergencia</td><td>El endpoint de emergencia responde incluso sin conexion</td></tr>
+</table>
+
+<h2>11.3 Scripts de Prueba Individuales</h2>
+<p>En la carpeta <code>scripts/</code> se encuentran scripts para probar funcionalidades especificas:</p>
+<pre><span class="comment"># Probar conexion basica</span>
+<span class="prompt">$</span> <span class="cmd">python</span> scripts/01_test_connection.py
+
+<span class="comment"># Probar movimiento basico</span>
+<span class="prompt">$</span> <span class="cmd">python</span> scripts/02_basic_motion.py
+
+<span class="comment"># Ejecutar rutina de patrullaje</span>
+<span class="prompt">$</span> <span class="cmd">python</span> scripts/05_rutina1.py
+
+<span class="comment"># Ejecutar rutina de salto</span>
+<span class="prompt">$</span> <span class="cmd">python</span> scripts/07_rutinaSalto.py
+
+<span class="comment"># Referencia completa de comandos</span>
+<span class="prompt">$</span> <span class="cmd">python</span> scripts/00_reference.py</pre>
+
+<!-- ═══════════════════════════════════════ 12. HISTORIAL ═══════════════════════════════════════ -->
+<h1>12. Historial de Desarrollo</h1>
+
+<p>El proyecto se desarrollo en las siguientes fases:</p>
+
+<table>
+    <tr><th>Fase</th><th>Descripcion</th><th>Commits Clave</th></tr>
+    <tr>
+        <td><strong>1. Conexion Base</strong></td>
+        <td>Establecimiento de comunicacion WebRTC con el Go2 Air</td>
+        <td>Configuracion inicial, test de conexion</td>
+    </tr>
+    <tr>
+        <td><strong>2. Movimiento</strong></td>
+        <td>Implementacion de comandos de movimiento y pruebas de caminata</td>
+        <td>basic_motion, walk1, walkandgirar</td>
+    </tr>
+    <tr>
+        <td><strong>3. Rutinas</strong></td>
+        <td>Desarrollo de rutinas autonomas (patrullaje, salto, exploracion)</td>
+        <td>rutina1, rutinaSalto, rutinaLoop</td>
+    </tr>
+    <tr>
+        <td><strong>4. Referencia</strong></td>
+        <td>Documentacion completa de todos los comandos SPORT_CMD</td>
+        <td>00_reference.py, test_funciones.py</td>
+    </tr>
+    <tr>
+        <td><strong>5. Web - Backend</strong></td>
+        <td>Creacion del servidor Flask con API REST y Socket.IO</td>
+        <td>app.py, primera integracion web</td>
+    </tr>
+    <tr>
+        <td><strong>6. Web - Dashboard</strong></td>
+        <td>Interfaz de control tecnico con D-Pad, teclado y logs</td>
+        <td>integracion de botones, index.html</td>
+    </tr>
+    <tr>
+        <td><strong>7. Web - Landing</strong></td>
+        <td>Pagina Daiver con sintesis de voz y UX amigable</td>
+        <td>mejora visibilidad landing, revision web</td>
+    </tr>
+    <tr>
+        <td><strong>8. Integracion Final</strong></td>
+        <td>Conexion completa frontend-backend, tests de integracion</td>
+        <td>integracion con la web index.html</td>
+    </tr>
+</table>
+
+<!-- ═══════════════════════════════════════ 13. PROBLEMAS COMUNES ═══════════════════════════════════════ -->
+<h1>13. Soluciones a Problemas Comunes</h1>
+
+<table>
+    <tr><th>Problema</th><th>Causa Probable</th><th>Solucion</th></tr>
+    <tr>
+        <td>No se puede conectar al robot</td>
+        <td>No esta en la red WiFi del Go2</td>
+        <td>Conectarse a la WiFi del robot y verificar con <code>ping 192.168.1.36</code></td>
+    </tr>
+    <tr>
+        <td>El robot no se mueve</td>
+        <td>No esta en BalanceStand</td>
+        <td>Enviar comando <code>BalanceStand</code> antes de mover</td>
+    </tr>
+    <tr>
+        <td>La voz no funciona</td>
+        <td>Navegador sin soporte Speech API</td>
+        <td>Usar Chrome o Edge. Verificar permisos de audio</td>
+    </tr>
+    <tr>
+        <td>Socket.IO no conecta</td>
+        <td>Puerto 5000 bloqueado</td>
+        <td>Verificar firewall y que el servidor esta corriendo</td>
+    </tr>
+    <tr>
+        <td>Error al instalar dependencias</td>
+        <td>Versiones incompatibles</td>
+        <td>Usar Python 3.8+ y crear entorno virtual limpio</td>
+    </tr>
+    <tr>
+        <td>El robot cae o pierde equilibrio</td>
+        <td>Superficie irregular</td>
+        <td>Operar en superficie plana. Usar <code>RecoveryStand</code> para levantarse</td>
+    </tr>
+    <tr>
+        <td>La rutina no se detiene</td>
+        <td>Boton incorrecto</td>
+        <td>Usar el boton de Emergencia (rojo) que envia <code>Damp</code></td>
+    </tr>
+</table>
+
+<!-- ═══════════════════════════════════════ FOOTER ═══════════════════════════════════════ -->
+<div class="footer">
+    <p>
+        <strong>Daiver Control CUN</strong> &mdash; Informe Tecnico &mdash; 8 de Abril de 2026<br>
+        Laboratorio 2 &mdash; Corporacion Unificada Nacional (CUN)<br>
+        Proyecto unitreeWebRTC &mdash; Control remoto de Unitree Go2 Air via WebRTC
+    </p>
+</div>
+
+</body>
+</html>
