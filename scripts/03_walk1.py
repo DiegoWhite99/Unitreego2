@@ -17,7 +17,7 @@ async def caminar_continuo(pub_sub):
                 RTC_TOPIC["SPORT_MOD"],
                 {
                     "api_id": SPORT_CMD["Move"],
-                    "parameter": {"x": 0.0, "y": 0.0, "z": 0.0}
+                    "parameter": {"x": 0.5, "y": 0.0, "z": 0.0}
                 }
             )
             await asyncio.sleep(0.7)  # frecuencia de envío

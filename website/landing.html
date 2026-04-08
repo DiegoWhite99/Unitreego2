@@ -21,6 +21,20 @@
         </div>
     </header>
 
+    <!-- Connection Section -->
+    <section class="connection-section">
+        <div class="connection-card">
+            <h3>Conectar a Daiver</h3>
+            <div class="connection-controls">
+                <input type="text" id="ip-input" placeholder="IP del robot (ej: 192.168.1.36)" />
+                <div class="connection-buttons">
+                    <button id="btn-connect" class="btn-connect">Conectar</button>
+                    <button id="btn-disconnect" class="btn-disconnect" disabled>Desconectar</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Hero / Imagen Unitree -->
     <section class="hero-section">
         <div class="hero-container">
@@ -34,15 +48,29 @@
 
     <!-- Voice Section -->
     <section class="voice-section">
+        <div class="voice-config">
+            <div class="voice-input-group">
+                <input type="text" id="voice-input" placeholder="Escribe un mensaje para que Daiver hable..." />
+                <button id="btn-speak" class="btn-speak">Hablar</button>
+            </div>
+            <div class="voice-settings">
+                <select id="voice-select" title="Seleccionar voz"></select>
+                <div class="voice-rate-control">
+                    <label for="voice-rate">Velocidad:</label>
+                    <input type="range" id="voice-rate" min="0.5" max="2.0" step="0.1" value="1.0" />
+                    <span id="voice-rate-value">1.0x</span>
+                </div>
+            </div>
+        </div>
         <div class="quick-phrases">
-            <button class="phrase-btn" data-phrase="Hola! Soy Daiver, tu perro robot favorito!">👋 Hola!</button>
-            <button class="phrase-btn" data-phrase="Me encanta jugar contigo!">🎉 Jugar!</button>
-            <button class="phrase-btn" data-phrase="Mira lo que puedo hacer!">✨ Mira!</button>
-            <button class="phrase-btn" data-phrase="Estoy muy feliz de verte!">😊 Feliz!</button>
-            <button class="phrase-btn" data-phrase="Soy un robot muy inteligente, estudio en la CUN!">🎓 CUN!</button>
-            <button class="phrase-btn" data-phrase="Quieres ver mi baile? Mirame!">💃 Baile!</button>
-            <button class="phrase-btn" data-phrase="Gracias por visitarnos! Vuelve pronto!">🙏 Gracias!</button>
-            <button class="phrase-btn" data-phrase="Te quiero mucho! Mira mi corazon!">💖 Te quiero!</button>
+            <button class="phrase-btn" data-phrase="Hola! Soy Daiver, tu perro robot favorito!">Hola!</button>
+            <button class="phrase-btn" data-phrase="Me encanta jugar contigo!">Jugar!</button>
+            <button class="phrase-btn" data-phrase="Mira lo que puedo hacer!">Mira!</button>
+            <button class="phrase-btn" data-phrase="Estoy muy feliz de verte!">Feliz!</button>
+            <button class="phrase-btn" data-phrase="Soy un robot muy inteligente, estudio en la CUN!">CUN!</button>
+            <button class="phrase-btn" data-phrase="Quieres ver mi baile? Mirame!">Baile!</button>
+            <button class="phrase-btn" data-phrase="Gracias por visitarnos! Vuelve pronto!">Gracias!</button>
+            <button class="phrase-btn" data-phrase="Te quiero mucho! Mira mi corazon!">Te quiero!</button>
         </div>
     </section>
 
