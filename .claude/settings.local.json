@@ -7,7 +7,8 @@
       "Bash(python -c \"from flask import Flask; from flask_socketio import SocketIO; print\\('OK: flask y flask-socketio instalados'\\)\")",
       "Bash(timeout 5 python app.py)",
       "Bash(grep -E \"\\\\.py$\")",
-      "Bash(wc -l /d/Documentos/Unitree_lab2/unitreeWebRTC/scripts/*.py)"
+      "Bash(wc -l /d/Documentos/Unitree_lab2/unitreeWebRTC/scripts/*.py)",
+      "Bash(pip list:*)"
     ]
   }
 }
