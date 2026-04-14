@@ -14,7 +14,7 @@
             <h1>Daiver Control CUN</h1>
             <span class="badge">WebRTC Control</span>
         </div>
-        <nav class="navbar-links">
+        <nav lass="navbar-links">
             <a href="#dashboard" class="nav-link active">Dashboard</a>
             <a href="#control" class="nav-link">Control</a>
             <a href="#actions" class="nav-link">Acciones</a>
@@ -55,34 +55,10 @@
                         </div>
                     </div>
                 </div>
-
+       <!-- Estado de conecccion-->     
                 <div class="card">
                     <div class="card-header">
-                        <h3>Telemetria</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="info-row">
-                            <span>Bateria:</span>
-                            <span id="battery-level">--%</span>
-                        </div>
-                        <div class="info-row">
-                            <span>Velocidad:</span>
-                            <span id="speed">-- m/s</span>
-                        </div>
-                        <div class="info-row">
-                            <span>Modo:</span>
-                            <span id="robot-mode">--</span>
-                        </div>
-                        <div class="info-row">
-                            <span>Rutina:</span>
-                            <span id="routine-status">Ninguna</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Acciones Rapidas</h3>
+                        <h3>Conexión</h3>
                     </div>
                     <div class="card-body">
                         <div class="connect-form">
@@ -103,31 +79,7 @@
         <section id="control" class="section">
             <h2 class="section-title">Control de Movimiento</h2>
             <div class="control-layout">
-                <!-- Movement D-Pad -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Movimiento (WASD / Flechas)</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="dpad">
-                            <button class="dpad-btn dpad-up" data-command="forward">&#9650;</button>
-                            <button class="dpad-btn dpad-left" data-command="left">&#9664;</button>
-                            <button class="dpad-btn dpad-center" data-command="stop">STOP</button>
-                            <button class="dpad-btn dpad-right" data-command="right">&#9654;</button>
-                            <button class="dpad-btn dpad-down" data-command="backward">&#9660;</button>
-                        </div>
-                        <div class="speed-control">
-                            <label for="speed-slider">Velocidad:</label>
-                            <input type="range" id="speed-slider" min="10" max="100" value="50">
-                            <span id="speed-value">50%</span>
-                        </div>
-                        <div class="rotation-controls">
-                            <button class="btn btn-secondary" id="btn-rotate-left">Girar Izq</button>
-                            <button class="btn btn-secondary" id="btn-rotate-right">Girar Der</button>
-                        </div>
-                    </div>
-                </div>
-
+                
                 <!-- Posture Controls -->
                 <div class="card">
                     <div class="card-header">
@@ -181,53 +133,6 @@
                 </div>
             </div>
         </section>
-
-        <!-- Routines Section -->
-        <section id="routines" class="section">
-            <h2 class="section-title">Rutinas Automaticas</h2>
-            <div class="cards-grid">
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Patrullaje</h3>
-                    </div>
-                    <div class="card-body">
-                        <p class="card-desc">Ruta de patrullaje en zigzag: 5.5m, giro, 5m, giro, 3.75m, giro, 4.8m retorno.</p>
-                        <button class="btn btn-accent" data-routine="patrol">Iniciar Patrullaje</button>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Rutina de Salto</h3>
-                    </div>
-                    <div class="card-body">
-                        <p class="card-desc">Avanza, salta, recupera equilibrio, gira y regresa con saltos.</p>
-                        <button class="btn btn-accent" data-routine="jump">Iniciar Salto</button>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Exploracion</h3>
-                    </div>
-                    <div class="card-body">
-                        <p class="card-desc">Avanza 3m en cada direccion cardinal, formando un cuadrado.</p>
-                        <button class="btn btn-accent" data-routine="explore">Iniciar Exploracion</button>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Control de Rutina</h3>
-                    </div>
-                    <div class="card-body">
-                        <p class="card-desc">Detiene la rutina en ejecucion de forma segura.</p>
-                        <button id="btn-stop-routine" class="btn btn-danger btn-full">Detener Rutina</button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
         <!-- Logs Section -->
         <section id="logs" class="section">
             <h2 class="section-title">Logs del Sistema</h2>
