@@ -42,6 +42,15 @@ loop_thread = None
 routine_task = None
 stop_routine_flag = False
 
+# Compatibilidad entre nombres de comando usados en el proyecto
+# y nombres disponibles en distintas versiones del SDK.
+SPORT_CMD_COMPAT_ALIASES = {
+    "SitDown": ("SitDown", "Sit", "StandDown"),
+    "RiseSit": ("RiseSit", "StandUp", "Standup", "StandOut"),
+    "RecoveryStand": ("RecoveryStand",),
+    "StandDown": ("StandDown", "SitDown", "Sit"),
+}
+
 
 # ════════════════════════════════════════════════════════
 #  ASYNCIO EVENT LOOP EN THREAD SEPARADO
@@ -87,6 +96,18 @@ def emit_log(log_type, message):
 def emit_state_update():
     """Emite el estado actual al frontend."""
     socketio.emit('state_update', robot_state)
+
+
+def resolve_sport_cmd_key(requested_key, sport_cmd_dict):
+    """Resuelve aliases de comando para soportar diferentes versiones de SDK."""
+    if requested_key in sport_cmd_dict:
+        return requested_key
+
+    for alias in SPORT_CMD_COMPAT_ALIASES.get(requested_key, ()):
+        if alias in sport_cmd_dict:
+            return alias
+
+    return None
 
 
 async def robot_connect(ip):
@@ -145,7 +166,15 @@ async def robot_send_command(api_cmd, parameter=None):
 
     from unitree_webrtc_connect.constants import SPORT_CMD, RTC_TOPIC
 
-    payload = {"api_id": SPORT_CMD[api_cmd]}
+    resolved_cmd = resolve_sport_cmd_key(api_cmd, SPORT_CMD)
+    if not resolved_cmd:
+        emit_log('error', f"Comando no soportado por el SDK actual: {api_cmd}")
+        return False
+
+    if resolved_cmd != api_cmd:
+        emit_log('warning', f"Compatibilidad SDK: '{api_cmd}' -> '{resolved_cmd}'")
+
+    payload = {"api_id": SPORT_CMD[resolved_cmd]}
     if parameter:
         payload["parameter"] = parameter
 
@@ -181,6 +210,133 @@ async def robot_stop():
     """Detiene el movimiento."""
     await robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": 0.0})
     await asyncio.sleep(1)
+
+
+async def robot_scrape_safe():
+    """Ejecuta Scrape real con pre/post estabilizacion para reducir golpes."""
+    if not robot_pub_sub:
+        emit_log('error', 'No hay conexion activa')
+        return False
+
+    # Frena cualquier deriva antes de iniciar el gesto.
+    await robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": 0.0})
+    await asyncio.sleep(0.4)
+
+    # Asegura postura estable antes de raspar.
+    await robot_send_command("BalanceStand")
+    await asyncio.sleep(1.0)
+
+    # Raspar real.
+    await robot_send_command("Scrape")
+    await asyncio.sleep(2.8)
+
+    # Recuperacion de equilibrio.
+    await robot_send_command("BalanceStand")
+    await asyncio.sleep(1.2)
+
+    return True
+
+
+async def robot_sit_safe():
+    """Sentarse con secuencia estable y compatibilidad de comando."""
+    if not robot_pub_sub:
+        emit_log('error', 'No hay conexion activa')
+        return False
+
+    await robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": 0.0})
+    await asyncio.sleep(0.3)
+    await robot_send_command("BalanceStand")
+    await asyncio.sleep(0.8)
+
+    ok = await robot_send_command("SitDown")
+    if not ok:
+        return False
+
+    await asyncio.sleep(2.2)
+    return True
+
+
+async def robot_rise_safe():
+    """Levantarse desde sentado con estabilizacion posterior."""
+    if not robot_pub_sub:
+        emit_log('error', 'No hay conexion activa')
+        return False
+
+    await robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": 0.0})
+    await asyncio.sleep(0.3)
+
+    ok = await robot_send_command("RiseSit")
+    if not ok:
+        return False
+
+    await asyncio.sleep(2.2)
+    await robot_send_command("BalanceStand")
+    await asyncio.sleep(1.0)
+    return True
+
+
+async def robot_recovery_safe():
+    """Recuperarse con comando dedicado y cierre en equilibrio."""
+    if not robot_pub_sub:
+        emit_log('error', 'No hay conexion activa')
+        return False
+
+    await robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": 0.0})
+    await asyncio.sleep(0.3)
+
+    ok = await robot_send_command("RecoveryStand")
+    if not ok:
+        return False
+
+    await asyncio.sleep(2.6)
+    await robot_send_command("BalanceStand")
+    await asyncio.sleep(1.0)
+    return True
+
+
+async def robot_lie_safe():
+    """Acostarse con secuencia estable y compatibilidad entre versiones SDK."""
+    if not robot_pub_sub:
+        emit_log('error', 'No hay conexion activa')
+        return False
+
+    await robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": 0.0})
+    await asyncio.sleep(0.3)
+    await robot_send_command("BalanceStand")
+    await asyncio.sleep(0.8)
+
+    ok = await robot_send_command("StandDown")
+    if not ok:
+        return False
+
+    await asyncio.sleep(2.4)
+    return True
+
+
+async def robot_wiggle_safe():
+    """Meneo estable por oscilaciones cortas de yaw (fallback robusto)."""
+    if not robot_pub_sub:
+        emit_log('error', 'No hay conexion activa')
+        return False
+
+    # Postura inicial estable.
+    await robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": 0.0})
+    await asyncio.sleep(0.3)
+    await robot_send_command("BalanceStand")
+    await asyncio.sleep(0.8)
+
+    # Oscilacion corta izquierda/derecha para simular meneo.
+    pattern = [0.75, -0.75, 0.75, -0.75, 0.6, -0.6]
+    for z in pattern:
+        await robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": z})
+        await asyncio.sleep(0.18)
+
+    # Frenado y retorno a equilibrio.
+    await robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": 0.0})
+    await asyncio.sleep(0.3)
+    await robot_send_command("BalanceStand")
+    await asyncio.sleep(0.8)
+    return True
 
 
 # ════════════════════════════════════════════════════════
@@ -453,7 +609,7 @@ def api_command():
         "Damp", "BalanceStand", "StopMove", "Move",
         "SwitchGait", "BodyHeight", "FootRaiseHeight", "SpeedLevel",
         "Hello", "Stretch", "RecoveryStand", "Euler",
-        "SitDown", "RiseSit", "Pose", "Scrape",
+        "SitDown", "StandDown", "RiseSit", "Pose", "Scrape",
         "FrontFlip", "FrontJump", "FrontPounce",
         "WiggleHips", "GetState", "EconomicGait",
         "Dance1", "Dance2", "FingerHeart"
@@ -540,9 +696,83 @@ def api_action():
     data = request.get_json()
     action = data.get('action')
 
+    if action == "sit":
+        try:
+            ok = run_async(robot_sit_safe())
+            if not ok:
+                return jsonify({"status": "error", "message": "No se pudo ejecutar sentado"}), 500
+            robot_state["mode"] = "SitDown"
+            emit_log('info', 'Accion ejecutada: sit (sentado estabilizado)')
+            emit_state_update()
+            return jsonify({"status": "ok", "action": action, "command": "SitDown"})
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+    if action == "rise":
+        try:
+            ok = run_async(robot_rise_safe())
+            if not ok:
+                return jsonify({"status": "error", "message": "No se pudo ejecutar levantarse"}), 500
+            robot_state["mode"] = "RiseSit"
+            emit_log('info', 'Accion ejecutada: rise (levantarse estabilizado)')
+            emit_state_update()
+            return jsonify({"status": "ok", "action": action, "command": "RiseSit"})
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+    if action == "recovery":
+        try:
+            ok = run_async(robot_recovery_safe())
+            if not ok:
+                return jsonify({"status": "error", "message": "No se pudo ejecutar recuperarse"}), 500
+            robot_state["mode"] = "RecoveryStand"
+            emit_log('info', 'Accion ejecutada: recovery (recuperacion estabilizada)')
+            emit_state_update()
+            return jsonify({"status": "ok", "action": action, "command": "RecoveryStand"})
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+    if action == "lie":
+        try:
+            ok = run_async(robot_lie_safe())
+            if not ok:
+                return jsonify({"status": "error", "message": "No se pudo ejecutar acostarse"}), 500
+            robot_state["mode"] = "StandDown"
+            emit_log('info', 'Accion ejecutada: lie (acostarse estabilizado)')
+            emit_state_update()
+            return jsonify({"status": "ok", "action": action, "command": "StandDown"})
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+    # Scrape real con secuencia de estabilizacion para minimizar golpes.
+    if action == "scrape":
+        try:
+            ok = run_async(robot_scrape_safe())
+            if not ok:
+                return jsonify({"status": "error", "message": "No se pudo ejecutar scrape"}), 500
+            robot_state["mode"] = "Scrape"
+            emit_log('info', 'Accion ejecutada: scrape (Scrape real estabilizado)')
+            emit_state_update()
+            return jsonify({"status": "ok", "action": action, "command": "Scrape"})
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+    if action == "wiggle":
+        try:
+            ok = run_async(robot_wiggle_safe())
+            if not ok:
+                return jsonify({"status": "error", "message": "No se pudo ejecutar meneo"}), 500
+            robot_state["mode"] = "WiggleHips"
+            emit_log('info', 'Accion ejecutada: wiggle (meneo estabilizado)')
+            emit_state_update()
+            return jsonify({"status": "ok", "action": action, "command": "WiggleHips"})
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+
     action_map = {
         "stand": "BalanceStand",
         "sit": "SitDown",
+        "lie": "StandDown",
         "rise": "RiseSit",
         "recovery": "RecoveryStand",
         "hello": "Hello",
@@ -562,7 +792,9 @@ def api_action():
         return jsonify({"status": "error", "message": f"Accion invalida: {action}"}), 400
 
     try:
-        run_async(robot_send_command(cmd))
+        ok = run_async(robot_send_command(cmd))
+        if not ok:
+            return jsonify({"status": "error", "message": f"No se pudo ejecutar comando: {cmd}"}), 500
         robot_state["mode"] = cmd
         emit_log('info', f'Accion ejecutada: {action} ({cmd})')
         emit_state_update()
@@ -654,13 +886,13 @@ def api_config():
         "commands": [
             "Damp", "BalanceStand", "StopMove", "Move",
             "SwitchGait", "BodyHeight", "Hello", "Stretch",
-            "RecoveryStand", "Euler", "SitDown", "RiseSit",
+            "RecoveryStand", "Euler", "SitDown", "StandDown", "RiseSit",
             "Scrape", "FrontFlip", "FrontJump", "FrontPounce",
             "WiggleHips", "GetState", "EconomicGait",
             "Dance1", "Dance2", "FingerHeart"
         ],
         "actions": [
-            "stand", "sit", "rise", "recovery", "hello", "stretch",
+            "stand", "sit", "lie", "rise", "recovery", "hello", "stretch",
             "dance1", "dance2", "wiggle", "scrape", "heart",
             "frontflip", "frontjump", "frontpounce"
         ],

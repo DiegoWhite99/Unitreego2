@@ -62,7 +62,7 @@ const Connection = {
 
     async executeAction(action) {
         const actionNames = {
-            stand: 'De Pie', sit: 'Sentarse', rise: 'Levantarse',
+            stand: 'De Pie', sit: 'Sentarse', lie: 'Acostarse', rise: 'Levantarse',
             recovery: 'Recuperarse', hello: 'Saludar', stretch: 'Estirarse',
             dance1: 'Baile 1', dance2: 'Baile 2', wiggle: 'Meneo',
             scrape: 'Raspar', heart: 'Corazon',
