@@ -14,12 +14,13 @@
             <h1>Daiver Control CUN</h1>
             <span class="badge">WebRTC Control</span>
         </div>
-        <nav lass="navbar-links">
+        <nav class="navbar-links">
             <a href="#dashboard" class="nav-link active">Dashboard</a>
             <a href="#control" class="nav-link">Control</a>
             <a href="#actions" class="nav-link">Acciones</a>
             <a href="#routines" class="nav-link">Rutinas</a>
             <a href="#logs" class="nav-link">Logs</a>
+            <a href="/user-end" class="nav-link">User End</a>
         </nav>
         <div class="navbar-status">
             <span id="connection-status" class="status-indicator disconnected">Desconectado</span>
@@ -28,37 +29,11 @@
 
     <!-- Main Content -->
     <main class="container">
-        <!-- Dashboard Section -->
-        <section id="dashboard" class="section">
-            <h2 class="section-title">Dashboard</h2>
-            <div class="cards-grid">
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Estado de Conexion</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="info-row">
-                            <span>IP Robot:</span>
-                            <span id="robot-ip">--</span>
-                        </div>
-                        <div class="info-row">
-                            <span>Metodo:</span>
-                            <span id="connection-method">LocalSTA (WebRTC)</span>
-                        </div>
-                        <div class="info-row">
-                            <span>Estado:</span>
-                            <span id="webrtc-state">Sin conexion</span>
-                        </div>
-                        <div class="info-row">
-                            <span>Servidor Flask:</span>
-                            <span id="flask-status">--</span>
-                        </div>
-                    </div>
-                </div>
+      
        <!-- Estado de conecccion-->     
                 <div class="card">
                     <div class="card-header">
-                        <h3>Conexión</h3>
+                        <h3>Estado de Conexión</h3>
                     </div>
                     <div class="card-body">
                         <div class="connect-form">
@@ -84,6 +59,7 @@
                 <div class="card">
                     <div class="card-header">
                         <h3>Posturas</h3>
+                        <img src="/website/img/" alt="">
                     </div>
                     <div class="card-body actions-grid">
                         <button class="btn btn-secondary" data-action="stand">De Pie</button>

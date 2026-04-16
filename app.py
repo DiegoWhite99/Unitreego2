@@ -212,27 +212,94 @@ async def robot_stop():
     await asyncio.sleep(1)
 
 
+async def robot_soft_brake(cycles=4, step_delay=0.12):
+    """
+    Frena de forma progresiva enviando varios comandos Move=0.
+    Reduce tirones cuando se entra/sale de acciones cinematicas.
+    """
+    if not robot_pub_sub:
+        emit_log('error', 'No hay conexion activa')
+        return False
+
+    cycles = max(1, int(cycles))
+    for _ in range(cycles):
+        ok = await robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": 0.0})
+        if not ok:
+            return False
+        await asyncio.sleep(step_delay)
+
+    return True
+
+
+async def robot_prepare_stable_action(balance_wait=1.1):
+    """Secuencia comun para iniciar acciones de forma mas suave."""
+    if not await robot_soft_brake(cycles=4, step_delay=0.12):
+        return False
+
+    ok = await robot_send_command("BalanceStand")
+    if not ok:
+        return False
+
+    await asyncio.sleep(balance_wait)
+    return True
+
+
 async def robot_scrape_safe():
     """Ejecuta Scrape real con pre/post estabilizacion para reducir golpes."""
     if not robot_pub_sub:
         emit_log('error', 'No hay conexion activa')
         return False
 
-    # Frena cualquier deriva antes de iniciar el gesto.
-    await robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": 0.0})
-    await asyncio.sleep(0.4)
-
-    # Asegura postura estable antes de raspar.
-    await robot_send_command("BalanceStand")
-    await asyncio.sleep(1.0)
+    # Entrada suave con frenado progresivo + equilibrio.
+    ok = await robot_prepare_stable_action(balance_wait=1.35)
+    if not ok:
+        return False
 
     # Raspar real.
-    await robot_send_command("Scrape")
-    await asyncio.sleep(2.8)
+    ok = await robot_send_command("Scrape")
+    if not ok:
+        return False
+    await asyncio.sleep(3.2)
 
-    # Recuperacion de equilibrio.
-    await robot_send_command("BalanceStand")
-    await asyncio.sleep(1.2)
+    # Salida suave y recuperacion de equilibrio.
+    ok = await robot_soft_brake(cycles=5, step_delay=0.12)
+    if not ok:
+        return False
+
+    ok = await robot_send_command("BalanceStand")
+    if not ok:
+        return False
+    await asyncio.sleep(1.6)
+
+    return True
+
+
+async def robot_heart_safe():
+    """Ejecuta FingerHeart con transicion suave para evitar movimientos bruscos."""
+    if not robot_pub_sub:
+        emit_log('error', 'No hay conexion activa')
+        return False
+
+    # Entrada suave antes del gesto.
+    ok = await robot_prepare_stable_action(balance_wait=1.25)
+    if not ok:
+        return False
+
+    # Corazon real.
+    ok = await robot_send_command("FingerHeart")
+    if not ok:
+        return False
+    await asyncio.sleep(3.8)
+
+    # Salida suave para evitar rebote de postura.
+    ok = await robot_soft_brake(cycles=4, step_delay=0.12)
+    if not ok:
+        return False
+
+    ok = await robot_send_command("BalanceStand")
+    if not ok:
+        return False
+    await asyncio.sleep(1.3)
 
     return True
 
@@ -536,6 +603,12 @@ def landing():
     return send_from_directory('website', 'landing.html')
 
 
+@app.route('/user-end')
+@app.route('/user_end.hmtl')
+def user_end():
+    return send_from_directory('website', 'user_end.html')
+
+
 @app.route('/css/<path:filename>')
 def serve_css(filename):
     return send_from_directory('website/css', filename)
@@ -766,6 +839,18 @@ def api_action():
             emit_log('info', 'Accion ejecutada: wiggle (meneo estabilizado)')
             emit_state_update()
             return jsonify({"status": "ok", "action": action, "command": "WiggleHips"})
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+    if action == "heart":
+        try:
+            ok = run_async(robot_heart_safe())
+            if not ok:
+                return jsonify({"status": "error", "message": "No se pudo ejecutar corazon"}), 500
+            robot_state["mode"] = "FingerHeart"
+            emit_log('info', 'Accion ejecutada: heart (FingerHeart suavizado)')
+            emit_state_update()
+            return jsonify({"status": "ok", "action": action, "command": "FingerHeart"})
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 500
 

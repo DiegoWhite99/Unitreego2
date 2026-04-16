@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daiver User End - Landing de Acciones</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/user_end.css">
+</head>
+<body>
+    <header class="navbar user-navbar">
+        <div class="navbar-brand">
+            <img class="brand-logo" src="/assets/images/diver.png" alt="Logo Daiver">
+            <div class="brand-copy">
+                <h1>Daiver User End</h1>
+                <span class="badge">Landing Interactiva</span>
+            </div>
+        </div>
+
+        <nav class="navbar-links user-nav-links">
+            <a href="#hero" class="nav-link active">Inicio</a>
+            <a href="#connection" class="nav-link">Conexion</a>
+            <a href="#actions" class="nav-link">Acciones</a>
+            <a href="#system-logs" class="nav-link">Comunicacion</a>
+            <a href="/" class="nav-link nav-external">Dashboard</a>
+        </nav>
+
+        <div class="navbar-status status-group">
+            <span id="server-status" class="status-indicator disconnected">Servidor Offline</span>
+            <span id="connection-status" class="status-indicator disconnected">Robot Desconectado</span>
+        </div>
+    </header>
+
+    <main class="container user-container">
+        <section id="hero" class="section hero-section">
+            <div class="hero-card">
+                <div class="hero-copy">
+                    <h2>Control rapido para acciones de Daiver</h2>
+                    <p>Conecta el robot, ejecuta gestos y monitorea la comunicacion en tiempo real desde una sola interfaz.</p>
+                    <a href="#connection" class="btn btn-primary">Iniciar conexion</a>
+                </div>
+                <img src="/assets/images/pie.png" alt="Daiver de pie" class="hero-image">
+            </div>
+        </section>
+
+        <section id="connection" class="section">
+            <h2 class="section-title">Conectividad</h2>
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Canal Robot</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="connect-form">
+                            <label for="ip-input">IP del Robot:</label>
+                            <input type="text" id="ip-input" class="input-field" placeholder="10.3.16.11">
+                        </div>
+                        <div class="action-buttons">
+                            <button id="btn-connect" class="btn btn-primary">Conectar</button>
+                            <button id="btn-disconnect" class="btn btn-danger" disabled>Desconectar</button>
+                        </div>
+                        <button id="btn-emergency" class="btn btn-warning btn-full">PARADA DE EMERGENCIA</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="actions" class="section">
+            <h2 class="section-title">Acciones y Trucos</h2>
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Saludos y Gestos</h3>
+                    </div>
+                    <div class="card-body actions-grid user-actions-grid">
+                        <button class="btn btn-secondary action-item" data-action="hello">
+                            <img src="/assets/images/patica.png" alt="Saludar">
+                            <span>Saludar</span>
+                        </button>
+                        <button class="btn btn-secondary action-item" data-action="stretch">
+                            <img src="/assets/images/pie.png" alt="Estirarse">
+                            <span>Estirarse</span>
+                        </button>
+                        <button class="btn btn-secondary action-item" data-action="heart">
+                            <img src="/assets/images/corazon.png" alt="Corazon">
+                            <span>Corazon</span>
+                        </button>
+                        <button class="btn btn-secondary action-item" data-action="wiggle">
+                            <img src="/assets/images/diver.png" alt="Meneo">
+                            <span>Meneo</span>
+                        </button>
+                        <button class="btn btn-secondary action-item" data-action="scrape">
+                            <img src="/assets/images/patica.png" alt="Raspar">
+                            <span>Raspar</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Posturas</h3>
+                    </div>
+                    <div class="card-body actions-grid user-actions-grid">
+                        <button class="btn btn-secondary action-item" data-action="stand">
+                            <img src="/assets/images/pie.png" alt="De pie">
+                            <span>De Pie</span>
+                        </button>
+                        <button class="btn btn-secondary action-item" data-action="sit">
+                            <img src="/assets/images/sentado.png" alt="Sentarse">
+                            <span>Sentarse</span>
+                        </button>
+                        <button class="btn btn-secondary action-item" data-action="rise">
+                            <img src="/assets/images/levantarse.png" alt="Levantarse">
+                            <span>Levantarse</span>
+                        </button>
+                        <button class="btn btn-secondary action-item" data-action="recovery">
+                            <img src="/assets/images/recuperarse.png" alt="Recuperarse">
+                            <span>Recuperarse</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Ritmo y Acrobacias</h3>
+                    </div>
+                    <div class="card-body actions-grid user-actions-grid">
+                        <button class="btn btn-accent action-item" data-action="dance1">Baile 1</button>
+                        <button class="btn btn-accent action-item" data-action="dance2">Baile 2</button>
+                        <button class="btn btn-warning action-item" data-action="frontjump">Salto Frontal</button>
+                        <button class="btn btn-warning action-item" data-action="frontpounce">Salto Agresivo</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="system-logs" class="section">
+            <h2 class="section-title">Comunicacion</h2>
+            <div class="card">
+                <div class="card-header">
+                    <h3>Canal Backend y Robot</h3>
+                    <button id="btn-clear-logs" class="btn btn-small">Limpiar</button>
+                </div>
+                <div class="card-body">
+                    <div id="log-container" class="log-container">
+                        <div class="log-entry log-info">[INFO] Landing user_end lista. Esperando conexion...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>Daiver User End - Unitree Go2 Air WebRTC | CUN Laboratorio 2</p>
+    </footer>
+
+    <script src="js/socket.io.min.js"></script>
+    <script src="js/user_end.js"></script>
+</body>
+</html>

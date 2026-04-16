@@ -1,0 +1,149 @@
+/* ========================================
+   User End Landing - Extra Styles
+   ======================================== */
+
+body {
+    background:
+        radial-gradient(circle at 10% 10%, rgba(26, 115, 232, 0.2), transparent 40%),
+        radial-gradient(circle at 90% 0%, rgba(0, 200, 83, 0.15), transparent 42%),
+        var(--color-bg);
+}
+
+.user-navbar {
+    gap: 1rem;
+}
+
+.brand-logo {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+}
+
+.brand-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.brand-copy .badge {
+    width: fit-content;
+}
+
+.user-nav-links {
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.nav-external {
+    border: 1px solid var(--color-border);
+}
+
+.status-group {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+}
+
+.user-container {
+    max-width: 1240px;
+}
+
+.hero-card {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 1.25rem;
+    align-items: center;
+    background: linear-gradient(135deg, rgba(26, 115, 232, 0.14), rgba(0, 200, 83, 0.08));
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    padding: 1.4rem;
+}
+
+.hero-copy h2 {
+    font-size: 1.8rem;
+    line-height: 1.15;
+    margin-bottom: 0.75rem;
+}
+
+.hero-copy p {
+    color: var(--color-text-secondary);
+    margin-bottom: 0.9rem;
+    max-width: 54ch;
+}
+
+.hero-image {
+    width: 100%;
+    max-width: 300px;
+    justify-self: center;
+    filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.35));
+}
+
+.user-actions-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.65rem;
+}
+
+.action-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 118px;
+    justify-content: center;
+}
+
+.action-item img {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+}
+
+.action-item span {
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.action-item.executing {
+    animation: action-pulse 0.45s ease;
+}
+
+@keyframes action-pulse {
+    0% { transform: scale(1); }
+    35% { transform: scale(0.94); }
+    100% { transform: scale(1); }
+}
+
+@media (max-width: 1024px) {
+    .user-navbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .navbar-brand {
+        justify-content: center;
+    }
+
+    .hero-card {
+        grid-template-columns: 1fr;
+        text-align: center;
+    }
+
+    .hero-copy p {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .status-group {
+        grid-template-columns: repeat(2, minmax(170px, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .status-group {
+        grid-template-columns: 1fr;
+    }
+
+    .user-actions-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
