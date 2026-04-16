@@ -335,6 +335,7 @@ const UserEnd = {
     formatActionName(action) {
         const names = {
             stand: 'De Pie',
+            lie: 'Acostarse',
             sit: 'Sentarse',
             rise: 'Levantarse',
             recovery: 'Recuperarse',
