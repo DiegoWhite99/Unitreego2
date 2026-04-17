@@ -1,0 +1,22 @@
+# Virtual environments
+unitree_env/
+venv/
+env/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# YOLO model weights (large binary)
+*.pt
+*.onnx
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

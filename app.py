@@ -12,10 +12,11 @@ import time
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
-from flask import Flask, render_template, jsonify, request, send_from_directory
+from flask import Flask, render_template, jsonify, request, send_from_directory, Response
 from flask_socketio import SocketIO, emit
 
 from config.config import ROBOT_IP
+from yolo_detector import detector as yolo_detector
 
 app = Flask(__name__, static_folder='website', template_folder='website')
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
@@ -110,8 +111,29 @@ def resolve_sport_cmd_key(requested_key, sport_cmd_dict):
     return None
 
 
+async def _go2_video_callback(track):
+    """Callback WebRTC: lee frames del Go2 y los pasa al detector YOLO.
+
+    aiortc entrega la track; este loop hace track.recv() hasta que se cierre.
+    Los frames se convierten a BGR y se empujan a la cola del detector.
+    Si el detector no esta corriendo, push_frame() es no-op.
+    """
+    emit_log('info', 'Canal de video del Go2 abierto, recibiendo frames...')
+    try:
+        while True:
+            frame = await track.recv()
+            try:
+                bgr = frame.to_ndarray(format="bgr24")
+            except Exception as exc:
+                emit_log('warning', f'Frame del Go2 invalido: {exc}')
+                continue
+            yolo_detector.push_frame(bgr)
+    except Exception as exc:
+        emit_log('warning', f'Canal de video del Go2 cerrado: {exc}')
+
+
 async def robot_connect(ip):
-    """Conecta al robot via WebRTC."""
+    """Conecta al robot via WebRTC y habilita canal de video para YOLO."""
     global robot_connection, robot_pub_sub
 
     from unitree_webrtc_connect import UnitreeWebRTCConnection, WebRTCConnectionMethod
@@ -127,6 +149,15 @@ async def robot_connect(ip):
     robot_pub_sub = robot_connection.datachannel.pub_sub
 
     await asyncio.sleep(2)
+
+    # Habilita canal de video del Go2 y registra callback para YOLO.
+    try:
+        if hasattr(robot_connection, "video") and robot_connection.video is not None:
+            robot_connection.video.add_track_callback(_go2_video_callback)
+            robot_connection.video.switchVideoChannel(True)
+            emit_log('success', 'Canal de video del Go2 habilitado')
+    except Exception as exc:
+        emit_log('warning', f'No se pudo habilitar video del Go2: {exc}')
 
     # Balance Stand inicial
     from unitree_webrtc_connect.constants import SPORT_CMD, RTC_TOPIC
@@ -144,10 +175,19 @@ async def robot_connect(ip):
 
 
 async def robot_disconnect():
-    """Desconecta del robot."""
+    """Desconecta del robot. Apaga video y detiene YOLO si usaba la camara del robot."""
     global robot_connection, robot_pub_sub
 
+    if yolo_detector.is_running() and yolo_detector.status().get("source") == "robot":
+        yolo_detector.stop()
+        emit_log('info', 'YOLO detenido (robot desconectando)')
+
     if robot_connection:
+        try:
+            if hasattr(robot_connection, "video") and robot_connection.video is not None:
+                robot_connection.video.switchVideoChannel(False)
+        except Exception:
+            pass
         await robot_connection.disconnect()
         robot_connection = None
         robot_pub_sub = None
@@ -983,6 +1023,73 @@ def api_config():
         ],
         "routines": ["patrol", "jump", "explore"]
     })
+
+
+# ════════════════════════════════════════════════════════
+#  API REST — YOLO (Vision por Computadora / Waypoints)
+# ════════════════════════════════════════════════════════
+
+@app.route('/api/yolo/status', methods=['GET'])
+def api_yolo_status():
+    """Devuelve estado del detector YOLO (corriendo, FPS, modelo, etc)."""
+    return jsonify(yolo_detector.status())
+
+
+@app.route('/api/yolo/start', methods=['POST'])
+def api_yolo_start():
+    """Inicia inferencia YOLO. Source por defecto: 'robot' (camara del Go2).
+
+    Cuerpo: { "source": "robot"|"webcam", "camera_index": N, "model": ..., "conf": ... }
+    """
+    data = request.get_json() or {}
+    source = data.get('source', 'robot')
+    camera_index = int(data.get('camera_index', 0))
+    model_name = data.get('model', 'yolov8n.pt')
+    conf = float(data.get('conf', 0.35))
+
+    if source == 'robot' and not robot_state["connected"]:
+        msg = "Conecta primero el robot para usar su camara."
+        emit_log('error', msg)
+        return jsonify({"status": "error", "message": msg}), 400
+
+    result = yolo_detector.start(source=source,
+                                 camera_index=camera_index,
+                                 model_name=model_name,
+                                 conf=conf)
+    if result.get("ok"):
+        emit_log('success', result.get("message", "YOLO iniciado"))
+        return jsonify({"status": "ok", "message": result["message"]})
+    emit_log('error', result.get("message", "Error YOLO"))
+    return jsonify({"status": "error", "message": result.get("message")}), 500
+
+
+@app.route('/api/yolo/stop', methods=['POST'])
+def api_yolo_stop():
+    """Detiene el detector YOLO."""
+    result = yolo_detector.stop()
+    emit_log('info', result.get("message", "YOLO detenido"))
+    return jsonify({"status": "ok", "message": result.get("message")})
+
+
+@app.route('/api/yolo/detections', methods=['GET'])
+def api_yolo_detections():
+    """Lista de detecciones actuales (waypoints candidatos)."""
+    return jsonify({
+        "status": "ok",
+        "running": yolo_detector.is_running(),
+        "detections": yolo_detector.get_detections(),
+    })
+
+
+@app.route('/api/yolo/stream')
+def api_yolo_stream():
+    """Stream MJPEG con frames anotados en tiempo real."""
+    if not yolo_detector.is_running():
+        return jsonify({"status": "error", "message": "YOLO no esta corriendo"}), 409
+    return Response(
+        yolo_detector.mjpeg_generator(),
+        mimetype='multipart/x-mixed-replace; boundary=frame'
+    )
 
 
 # ════════════════════════════════════════════════════════

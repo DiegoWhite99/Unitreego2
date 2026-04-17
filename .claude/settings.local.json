@@ -8,7 +8,23 @@
       "Bash(timeout 5 python app.py)",
       "Bash(grep -E \"\\\\.py$\")",
       "Bash(wc -l /d/Documentos/Unitree_lab2/unitreeWebRTC/scripts/*.py)",
-      "Bash(pip list:*)"
+      "Bash(pip list:*)",
+      "Bash(grep -E \"\\\\.\\(html|js|css\\)$\")",
+      "Bash(unitree_env/Scripts/python.exe -c \"import cv2; print\\('cv2 OK', cv2.__version__\\)\")",
+      "Bash(unitree_env/Scripts/python.exe -c \"import ultralytics; print\\('ultralytics OK', ultralytics.__version__\\)\")",
+      "Bash(unitree_env/Scripts/python.exe -m pip install ultralytics)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(curl -s \"https://api.github.com/repos/legion1581/go2_webrtc_connect/contents/example/video\")",
+      "Bash(curl -s \"https://api.github.com/repos/legion1581/go2_webrtc_connect/contents/examples/go2/video/camera_stream\")",
+      "Bash(curl -s \"https://api.github.com/repos/Unitree-Go2-Robot/go2_navigation/git/trees/main?recursive=1\")",
+      "Bash(curl -sL \"https://api.github.com/repositories/840533680/contents/example/video\")",
+      "Bash(curl -sL \"https://api.github.com/repos/Unitree-Go2-Robot/go2_navigation\")",
+      "Bash(curl -sL \"https://api.github.com/search/repositories?q=go2_navigation+unitree\")",
+      "Bash(curl -sL \"https://api.github.com/repos/Unitree-Go2-Robot/go2_navigation/git/trees/HEAD?recursive=1\")",
+      "Bash(curl -sL \"https://api.github.com/repositories/906304464/contents/\")",
+      "Bash(curl -sL \"https://api.github.com/repositories/840533680/git/trees/HEAD?recursive=1\")",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/legion1581/go2_webrtc_connect/master/examples/go2/video/camera_stream/display_video_channel.py\")"
     ]
   }
 }
