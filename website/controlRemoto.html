@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Daiver Control Remoto - Vista Operador</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/controlRemoto.css">
+</head>
+<body class="control-remoto-body">
+
+    <!-- Top Bar -->
+    <header class="cr-topbar">
+        <div class="cr-brand">
+            <a class="cr-back" href="/">&larr;</a>
+            <h1>Daiver Remote</h1>
+            <span class="badge">Operador</span>
+        </div>
+
+        <div class="cr-connect-inline">
+            <input type="text" id="cr-ip" placeholder="10.3.16.11">
+            <button id="cr-connect" class="cr-btn">Conectar</button>
+            <button id="cr-disconnect" class="cr-btn ghost" disabled>Off</button>
+            <button id="cr-yolo-start" class="cr-btn">YOLO</button>
+            <button id="cr-yolo-stop" class="cr-btn ghost" disabled>Stop</button>
+            <button id="cr-emergency" class="cr-btn danger" disabled>PARADA</button>
+        </div>
+
+        <div class="cr-status-group">
+            <span id="cr-status-server" class="cr-pill disconnected">
+                <span class="dot"></span><span class="txt">Offline</span>
+            </span>
+            <span id="cr-status-robot" class="cr-pill disconnected">
+                <span class="dot"></span><span class="txt">Sin robot</span>
+            </span>
+            <span id="cr-status-yolo" class="cr-pill disconnected">
+                <span class="dot"></span><span class="txt">YOLO OFF</span>
+            </span>
+            <button id="cr-side-toggle" class="cr-side-toggle">Panel</button>
+        </div>
+    </header>
+
+    <!-- Main stage: video + side panel -->
+    <main class="cr-stage">
+
+        <!-- Video area with HUD and gamepad overlays -->
+        <div class="cr-video-wrap">
+            <img id="cr-video" class="cr-video" alt="Stream camara Go2" style="display:none;">
+            <div id="cr-video-placeholder" class="cr-video-placeholder">
+                <h3>Camara del robot sin iniciar</h3>
+                <p>Conecta el robot y presiona <strong>YOLO</strong> para ver la camara con deteccion en vivo.</p>
+            </div>
+
+            <!-- HUD badges over video -->
+            <div class="cr-hud">
+                <span class="cr-pill"><span class="dot"></span><span>FPS: <strong id="cr-m-fps">--</strong></span></span>
+                <span class="cr-pill"><span class="dot"></span><span>Modo: <strong id="cr-m-mode">--</strong></span></span>
+                <span class="cr-pill"><span class="dot"></span><span>Bat: <strong id="cr-m-battery">--%</strong></span></span>
+            </div>
+
+            <!-- Desktop hints (WASD + IJKL) -->
+            <div class="cr-desktop-hints">
+                <div class="cr-hint-group">
+                    Mover:
+                    <span class="cr-keycap">W</span>
+                    <span class="cr-keycap">A</span>
+                    <span class="cr-keycap">S</span>
+                    <span class="cr-keycap">D</span>
+                </div>
+                <div class="cr-hint-group">
+                    Girar:
+                    <span class="cr-keycap">Q</span>
+                    <span class="cr-keycap">E</span>
+                </div>
+                <div class="cr-hint-group">
+                    Acciones:
+                    <span class="cr-keycap">I</span>
+                    <span class="cr-keycap">J</span>
+                    <span class="cr-keycap">K</span>
+                    <span class="cr-keycap">L</span>
+                </div>
+            </div>
+
+            <!-- Mobile-only: floating green connection indicator (replaces nav) -->
+            <div id="cr-mobile-status" class="cr-mobile-status" aria-label="Estado de conexion">
+                <span class="cr-mobile-dot"></span>
+            </div>
+
+            <!-- Mobile gamepad overlays: dual joysticks (move + turn) -->
+            <div class="cr-gamepad">
+                <div id="cr-joy-move" class="cr-joystick joy-move" aria-label="Joystick de movimiento">
+                    <div class="cr-joy-knob"></div>
+                    <div class="cr-joy-label">Mover</div>
+                </div>
+
+                <div id="cr-joy-rotate" class="cr-joystick joy-rotate" aria-label="Joystick de giros">
+                    <div class="cr-joy-knob"></div>
+                    <div class="cr-joy-label">Girar</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Side panel: sensors & 3D trace -->
+        <aside id="cr-side" class="cr-side" aria-label="Panel de sensores">
+
+            <section class="cr-panel">
+                <h4>Sensores</h4>
+                <div class="cr-metrics">
+                    <div class="cr-metric">
+                        <span class="label">Bateria</span>
+                        <span class="value" id="cr-m-battery-2">--%</span>
+                    </div>
+                    <div class="cr-metric accent">
+                        <span class="label">Modo</span>
+                        <span class="value" id="cr-m-mode-2">--</span>
+                    </div>
+                    <div class="cr-metric ok">
+                        <span class="label">Velocidad</span>
+                        <span class="value" id="cr-m-speed">0.0 m/s</span>
+                    </div>
+                    <div class="cr-metric warn">
+                        <span class="label">YOLO FPS</span>
+                        <span class="value" id="cr-m-fps-2">--</span>
+                    </div>
+                </div>
+                <div class="cr-sensor-bar">
+                    <span>Carga</span>
+                    <div class="bar"><span id="cr-battery-bar"></span></div>
+                </div>
+            </section>
+
+            <section class="cr-panel">
+                <h4>Trazado 3D del entorno</h4>
+                <div class="cr-trace-wrap">
+                    <canvas id="cr-trace-canvas"></canvas>
+                </div>
+                <div class="cr-trace-legend">
+                    <span>Punto azul: robot</span>
+                    <span>Linea verde: trayectoria</span>
+                </div>
+            </section>
+
+            <section class="cr-panel">
+                <h4>Detecciones YOLO <span id="cr-det-count" class="cr-pill"><span class="dot"></span><span>--</span></span></h4>
+                <div id="cr-detections" class="cr-detections">
+                    <div class="cr-det-empty">Sin detecciones</div>
+                </div>
+            </section>
+
+            <section class="cr-panel">
+                <h4>Controles</h4>
+                <div style="display:flex;flex-direction:column;gap:0.4rem;font-size:0.75rem;color:#cfd2d6;line-height:1.4;">
+                    <div><strong>Web:</strong> W·A·S·D mover &nbsp; Q·E girar &nbsp; I·J·K·L acciones</div>
+                    <div><strong>Movil:</strong> Joystick izquierdo mueve &nbsp; Cruceta derecha ejecuta A·B·X·Y</div>
+                </div>
+            </section>
+
+        </aside>
+    </main>
+
+    <!-- Portrait warning on mobile -->
+    <div class="cr-orientation-hint">
+        <div>
+            <p style="font-size:1.2rem;margin-bottom:0.5rem;">Gira tu dispositivo</p>
+            <p style="color:#aaa;">Para una mejor experiencia de control remoto, usa el modo horizontal.</p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/socket.io.min.js"></script>
+    <script src="js/controlRemoto.js"></script>
+
+    <!-- Mirror the metric values into the two places where they're shown (HUD + side panel) -->
+    <script>
+        // Keep the side-panel duplicates in sync with the HUD ones
+        const hook = (src, dst) => {
+            if (!src || !dst) return;
+            new MutationObserver(() => dst.textContent = src.textContent).observe(src, { childList: true, characterData: true, subtree: true });
+        };
+        window.addEventListener('DOMContentLoaded', () => {
+            hook(document.getElementById('cr-m-battery'), document.getElementById('cr-m-battery-2'));
+            hook(document.getElementById('cr-m-mode'),    document.getElementById('cr-m-mode-2'));
+            hook(document.getElementById('cr-m-fps'),     document.getElementById('cr-m-fps-2'));
+        });
+    </script>
+</body>
+</html>

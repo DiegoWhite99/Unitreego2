@@ -1,0 +1,560 @@
+/* ========================================
+   Daiver Control Remoto - Landscape Gamepad
+   ======================================== */
+
+:root {
+    --cr-radius: 14px;
+    --cr-bg-overlay: rgba(15, 25, 35, 0.62);
+    --cr-border: rgba(255, 255, 255, 0.08);
+    --cr-accent: #1a73e8;
+    --cr-accent-soft: rgba(26, 115, 232, 0.15);
+    --cr-ok: #00c853;
+    --cr-warn: #f9ab00;
+    --cr-danger: #d93025;
+}
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+    background: #05070b;
+}
+
+body.control-remoto-body {
+    color: var(--color-text);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ====== Top Bar ====== */
+.cr-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.45rem 1rem;
+    background: rgba(10, 16, 24, 0.85);
+    border-bottom: 1px solid var(--cr-border);
+    z-index: 20;
+}
+
+.cr-topbar .cr-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.cr-topbar .cr-brand h1 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.cr-topbar .cr-brand .badge {
+    background: var(--cr-accent);
+    color: white;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.cr-topbar .cr-status-group {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.cr-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--cr-border);
+    font-size: 0.72rem;
+    color: #cfd2d6;
+}
+
+.cr-pill .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #777;
+}
+
+.cr-pill.connected .dot { background: var(--cr-ok); box-shadow: 0 0 6px var(--cr-ok); }
+.cr-pill.disconnected .dot { background: var(--cr-danger); }
+.cr-pill.connecting .dot { background: var(--cr-warn); animation: crBlink 0.9s infinite; }
+
+@keyframes crBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+.cr-topbar a.cr-back {
+    color: #cfd2d6;
+    text-decoration: none;
+    font-size: 0.8rem;
+    padding: 0.25rem 0.6rem;
+    border: 1px solid var(--cr-border);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.cr-topbar a.cr-back:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* ====== Connect inline ====== */
+.cr-connect-inline {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.cr-connect-inline input {
+    width: 140px;
+    padding: 0.3rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid var(--cr-border);
+    background: rgba(0, 0, 0, 0.35);
+    color: var(--color-text);
+    font-size: 0.8rem;
+}
+
+.cr-btn {
+    background: var(--cr-accent);
+    color: white;
+    border: none;
+    padding: 0.35rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.12s, background 0.18s;
+}
+
+.cr-btn:hover { background: #2a83f2; }
+.cr-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.cr-btn.danger { background: var(--cr-danger); }
+.cr-btn.warn { background: var(--cr-warn); color: #1a1a1a; }
+.cr-btn.ghost { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--cr-border); }
+
+/* ====== Main stage ====== */
+.cr-stage {
+    position: relative;
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 0;
+    min-height: 0;
+}
+
+.cr-video-wrap {
+    position: relative;
+    background: #000;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cr-video-wrap .cr-video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    background: #000;
+}
+
+.cr-video-wrap .cr-video-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    color: #bbb;
+    text-align: center;
+    padding: 1rem;
+}
+
+.cr-video-wrap .cr-video-placeholder h3 { font-size: 1rem; font-weight: 600; }
+.cr-video-wrap .cr-video-placeholder p { font-size: 0.82rem; color: #999; }
+
+.cr-hud {
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    pointer-events: none;
+}
+
+.cr-hud .cr-pill {
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    pointer-events: auto;
+}
+
+.cr-emergency-float {
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    z-index: 5;
+}
+
+/* ====== Side panel ====== */
+.cr-side {
+    background: linear-gradient(180deg, rgba(18, 27, 38, 0.95), rgba(10, 16, 24, 0.95));
+    border-left: 1px solid var(--cr-border);
+    padding: 0.85rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.cr-panel {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--cr-border);
+    border-radius: var(--cr-radius);
+    padding: 0.7rem;
+}
+
+.cr-panel h4 {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #9aa0a6;
+    margin-bottom: 0.55rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.cr-metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.45rem;
+}
+
+.cr-metric {
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid var(--cr-border);
+    border-radius: 8px;
+    padding: 0.45rem 0.55rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.cr-metric .label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    color: #8c919a;
+    letter-spacing: 0.5px;
+}
+
+.cr-metric .value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #e8eaed;
+}
+
+.cr-metric.accent .value { color: var(--cr-accent); }
+.cr-metric.ok .value { color: var(--cr-ok); }
+.cr-metric.warn .value { color: var(--cr-warn); }
+
+.cr-sensor-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.7rem;
+    color: #bbb;
+    margin-top: 0.3rem;
+}
+
+.cr-sensor-bar .bar {
+    flex: 1;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.cr-sensor-bar .bar span {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, var(--cr-ok), var(--cr-accent));
+    width: 0%;
+    transition: width 0.25s ease;
+}
+
+/* ====== 3D Trace Canvas ====== */
+.cr-trace-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1.3 / 1;
+    background: radial-gradient(circle at center, rgba(26, 115, 232, 0.1), transparent 70%),
+                rgba(0, 0, 0, 0.35);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--cr-border);
+}
+
+.cr-trace-wrap canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.cr-trace-legend {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.65rem;
+    color: #8c919a;
+    margin-top: 0.3rem;
+    padding: 0 0.15rem;
+}
+
+/* ====== Detections mini list ====== */
+.cr-detections {
+    max-height: 140px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding-right: 0.1rem;
+}
+
+.cr-detections::-webkit-scrollbar { width: 6px; }
+.cr-detections::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 3px; }
+
+.cr-det-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+    padding: 0.3rem 0.45rem;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid var(--cr-border);
+    border-left: 3px solid var(--cr-accent);
+    border-radius: 6px;
+    font-size: 0.75rem;
+}
+
+.cr-det-item.dir-left { border-left-color: var(--cr-warn); }
+.cr-det-item.dir-right { border-left-color: var(--cr-ok); }
+.cr-det-item .conf {
+    font-size: 0.7rem;
+    color: #9aa0a6;
+}
+
+.cr-det-empty {
+    color: #6d737a;
+    font-size: 0.72rem;
+    text-align: center;
+    padding: 0.6rem 0;
+}
+
+/* ====== Gamepad overlays (mobile): dual joysticks ====== */
+.cr-gamepad {
+    position: absolute;
+    bottom: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0 4vw;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.cr-gamepad > * { pointer-events: auto; }
+
+.cr-joystick.joy-rotate {
+    background: radial-gradient(circle at center, rgba(249, 171, 0, 0.18), rgba(0, 0, 0, 0.55));
+    border-color: rgba(249, 171, 0, 0.35);
+}
+
+.cr-joystick.joy-rotate .cr-joy-knob {
+    background: radial-gradient(circle at 40% 35%, #f9c240, #a06b00);
+}
+
+.cr-joystick.joy-rotate.active .cr-joy-knob {
+    background: radial-gradient(circle at 40% 35%, #ffd572, #f9ab00);
+}
+
+/* Joystick */
+.cr-joystick {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background: radial-gradient(circle at center, rgba(26, 115, 232, 0.18), rgba(0, 0, 0, 0.55));
+    border: 2px solid rgba(255, 255, 255, 0.18);
+    touch-action: none;
+    user-select: none;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.cr-joystick .cr-joy-knob {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 62px;
+    height: 62px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, #4a90f0, #1557b0);
+    transform: translate(-50%, -50%);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.6);
+    transition: background 0.15s;
+}
+
+.cr-joystick.active .cr-joy-knob {
+    background: radial-gradient(circle at 40% 35%, #5aa8ff, #1a73e8);
+}
+
+.cr-joystick .cr-joy-label {
+    position: absolute;
+    bottom: -22px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 0.7rem;
+    color: #9aa0a6;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+/* Floating mobile-only connection indicator (replaces the topbar on mobile) */
+.cr-mobile-status {
+    display: none;
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    width: 18px;
+    height: 18px;
+    z-index: 20;
+    pointer-events: none;
+}
+
+.cr-mobile-status .cr-mobile-dot {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: #d93025;
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.4), 0 0 10px rgba(217, 48, 37, 0.6);
+    transition: background 0.3s, box-shadow 0.3s;
+}
+
+.cr-mobile-status.connected .cr-mobile-dot {
+    background: #00c853;
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.4), 0 0 12px rgba(0, 200, 83, 0.7);
+    animation: crDotPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes crDotPulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.4), 0 0 10px rgba(0, 200, 83, 0.6); }
+    50% { box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.4), 0 0 18px rgba(0, 200, 83, 0.95); }
+}
+
+/* On desktop: hide joystick, show keyboard hints instead */
+.cr-gamepad { display: none; }
+.cr-desktop-hints {
+    position: absolute;
+    left: 18px;
+    bottom: 18px;
+    display: flex;
+    gap: 0.4rem;
+    z-index: 8;
+    pointer-events: none;
+    flex-wrap: wrap;
+    max-width: calc(100% - 40px);
+}
+
+.cr-keycap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem 0.5rem;
+    min-width: 28px;
+    background: rgba(0, 0, 0, 0.55);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 5px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    font-family: 'Consolas', 'Courier New', monospace;
+    backdrop-filter: blur(3px);
+}
+
+.cr-hint-group {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 6px;
+    font-size: 0.7rem;
+    color: #cfd2d6;
+}
+
+/* Responsive behavior: mobile removes the topbar entirely and shows only
+   the green connection dot + dual joysticks over the video */
+@media (hover: none) and (pointer: coarse), (max-width: 900px) {
+    .cr-topbar { display: none; }
+    .cr-desktop-hints { display: none; }
+    .cr-gamepad { display: flex; }
+    .cr-mobile-status { display: block; }
+    .cr-side { display: none; }
+    .cr-hud { display: none; }  /* HUD lives in the side panel on mobile, keep the view clean */
+    .cr-stage { grid-template-columns: 1fr; }
+    html, body, .control-remoto-body { height: 100%; }
+}
+
+@media (hover: hover) and (pointer: fine) and (min-width: 901px) {
+    .cr-gamepad { display: none; }
+    .cr-desktop-hints { display: flex; }
+    .cr-mobile-status { display: none; }
+    .cr-side-toggle { display: none !important; }
+}
+
+/* Force orientation hint on portrait mobile */
+.cr-orientation-hint {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.92);
+    color: white;
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+    font-size: 1rem;
+}
+
+@media (orientation: portrait) and (max-width: 900px) {
+    .cr-orientation-hint { display: flex; }
+}
+
+/* Side panel toggle (mobile) */
+.cr-side-toggle {
+    display: none;
+    background: rgba(0, 0, 0, 0.55);
+    color: white;
+    border: 1px solid var(--cr-border);
+    padding: 0.3rem 0.55rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    cursor: pointer;
+}

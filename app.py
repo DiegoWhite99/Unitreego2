@@ -649,6 +649,12 @@ def user_end():
     return send_from_directory('website', 'user_end.html')
 
 
+@app.route('/control-remoto')
+@app.route('/controlRemoto.html')
+def control_remoto():
+    return send_from_directory('website', 'controlRemoto.html')
+
+
 @app.route('/css/<path:filename>')
 def serve_css(filename):
     return send_from_directory('website/css', filename)
