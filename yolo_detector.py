@@ -25,6 +25,41 @@ except Exception as exc:
     _ULTRALYTICS_IMPORT_ERROR = str(exc)
 
 
+# Traduccion de las 80 clases de COCO (modelo por defecto de YOLOv8).
+# Se usan caracteres ASCII para evitar problemas con cv2.putText (que no
+# soporta bien tildes/enhe con las fuentes Hershey por defecto).
+COCO_LABELS_ES = {
+    "person": "persona", "bicycle": "bicicleta", "car": "auto",
+    "motorcycle": "motocicleta", "airplane": "avion", "bus": "autobus",
+    "train": "tren", "truck": "camion", "boat": "bote",
+    "traffic light": "semaforo", "fire hydrant": "hidrante",
+    "stop sign": "senal de pare", "parking meter": "parquimetro",
+    "bench": "banca", "bird": "ave", "cat": "gato", "dog": "perro",
+    "horse": "caballo", "sheep": "oveja", "cow": "vaca",
+    "elephant": "elefante", "bear": "oso", "zebra": "cebra",
+    "giraffe": "jirafa", "backpack": "mochila", "umbrella": "paraguas",
+    "handbag": "bolso", "tie": "corbata", "suitcase": "maleta",
+    "frisbee": "disco", "skis": "esquis", "snowboard": "snowboard",
+    "sports ball": "pelota", "kite": "cometa", "baseball bat": "bate",
+    "baseball glove": "guante", "skateboard": "patineta",
+    "surfboard": "tabla de surf", "tennis racket": "raqueta",
+    "bottle": "botella", "wine glass": "copa", "cup": "taza",
+    "fork": "tenedor", "knife": "cuchillo", "spoon": "cuchara",
+    "bowl": "tazon", "banana": "platano", "apple": "manzana",
+    "sandwich": "sandwich", "orange": "naranja", "broccoli": "brocoli",
+    "carrot": "zanahoria", "hot dog": "hot dog", "pizza": "pizza",
+    "donut": "dona", "cake": "pastel", "chair": "silla", "couch": "sofa",
+    "potted plant": "maceta", "bed": "cama", "dining table": "mesa",
+    "toilet": "inodoro", "tv": "televisor", "laptop": "laptop",
+    "mouse": "raton", "remote": "control remoto", "keyboard": "teclado",
+    "cell phone": "celular", "microwave": "microondas", "oven": "horno",
+    "toaster": "tostadora", "sink": "lavabo", "refrigerator": "refrigerador",
+    "book": "libro", "clock": "reloj", "vase": "jarron", "scissors": "tijeras",
+    "teddy bear": "oso de peluche", "hair drier": "secadora",
+    "toothbrush": "cepillo de dientes",
+}
+
+
 class YoloDetector:
     """Detector YOLO con fuente de frames pluggable (robot WebRTC o webcam)."""
 
@@ -223,17 +258,33 @@ class YoloDetector:
                 r = results[0]
                 names = r.names if hasattr(r, "names") else {}
                 boxes = getattr(r, "boxes", None)
+                annotated = frame.copy()
                 if boxes is not None and len(boxes) > 0:
                     xyxy = boxes.xyxy.cpu().numpy()
                     confs = boxes.conf.cpu().numpy()
                     clss = boxes.cls.cpu().numpy().astype(int)
                     for (x1, y1, x2, y2), conf, cls_id in zip(xyxy, confs, clss):
-                        label = names.get(int(cls_id), str(int(cls_id)))
+                        raw_label = names.get(int(cls_id), str(int(cls_id)))
+                        label_es = COCO_LABELS_ES.get(raw_label, raw_label)
                         detections.append(self._build_detection(
-                            label, float(conf),
+                            label_es, float(conf),
                             float(x1), float(y1), float(x2), float(y2)
                         ))
-                annotated = r.plot() if hasattr(r, "plot") else frame
+                        xi1, yi1, xi2, yi2 = int(x1), int(y1), int(x2), int(y2)
+                        color = (0, 200, 0)
+                        cv2.rectangle(annotated, (xi1, yi1), (xi2, yi2), color, 2)
+                        text = f"{label_es} {conf:.2f}"
+                        (tw, th), _ = cv2.getTextSize(
+                            text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1
+                        )
+                        cv2.rectangle(
+                            annotated, (xi1, max(0, yi1 - th - 6)),
+                            (xi1 + tw + 4, yi1), color, -1
+                        )
+                        cv2.putText(
+                            annotated, text, (xi1 + 2, yi1 - 4),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA
+                        )
 
             ok_jpg, jpg = cv2.imencode(
                 ".jpg", annotated, [int(cv2.IMWRITE_JPEG_QUALITY), 80]

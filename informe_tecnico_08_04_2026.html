@@ -277,7 +277,6 @@
 
 <!-- ═══════════════════════════════════════ PORTADA ═══════════════════════════════════════ -->
 <div class="cover">
-    <div class="cover-logo">&#129502;</div>
     <h1>INFORME TECNICO</h1>
     <h2>Daiver Control CUN &mdash; Unitree Go2 Air</h2>
     <p style="font-size: 13pt; color: #666; margin-bottom: 30px;">
@@ -291,6 +290,336 @@
         <strong>Tecnologias:</strong> Python (Flask) + JavaScript + WebRTC + Socket.IO<br>
         <strong>Robot:</strong> Unitree Go2 Air
     </div>
+</div>
+
+<!-- ═══════════════════════════════════════ NUEVA INTEGRACION VIERNES 17 ═══════════════════════════════════════ -->
+<h1 style="background: #1a237e; color: white; padding: 12px 18px; border-radius: 6px; border-bottom: none;">
+    Nueva Integracion &mdash; Viernes 17 de Abril de 2026
+</h1>
+
+<div class="note">
+    <strong>Resumen ejecutivo.</strong> Esta actualizacion incorpora dos capacidades fundamentales al sistema:
+    (1) un modulo de <strong>vision por computadora basado en YOLO v8</strong> que consume el canal de video
+    WebRTC del Unitree Go2 Air, y (2) la base del <strong>SDK interno de navegacion</strong> &mdash; un conjunto
+    de primitivas de movimiento continuo que, combinadas con las detecciones de YOLO, habilitan el desarrollo
+    de navegacion reactiva y seguimiento de objetivos. Adicionalmente se sanea el repositorio retirando el
+    entorno virtual del control de versiones.
+</div>
+
+<h2>A. Alcance Tecnico de la Actualizacion</h2>
+<p>La actualizacion consolida siete cambios sobre el proyecto, agrupados en tres ejes:</p>
+<ol>
+    <li><strong>Vision por computadora (YOLO v8):</strong> nuevo modulo <code>yolo_detector.py</code> de 332 lineas,
+        con arquitectura multi-hilo, fuente de video intercambiable y salida estructurada en formato de
+        candidato a waypoint.</li>
+    <li><strong>SDK de navegacion:</strong> ampliacion de <code>app.py</code> con el enganche al canal de video
+        WebRTC del Go2 y consolidacion de las primitivas de movimiento (<code>robot_mover</code>, comandos
+        <code>SPORT_CMD</code> a 5 Hz) como base programatica para rutinas autonomas guiadas por vision.</li>
+    <li><strong>Frontend y saneamiento:</strong> nueva seccion <em>Vision YOLO</em> en la interfaz de usuario,
+        y limpieza del repositorio mediante <code>.gitignore</code> para excluir el virtualenv.</li>
+</ol>
+
+<h2>B. Archivos Modificados y Creados</h2>
+<table>
+    <tr><th>Archivo</th><th>Estado</th><th>Cambios</th></tr>
+    <tr><td><code>yolo_detector.py</code></td><td>Nuevo</td><td>332 lineas &mdash; clase <code>YoloDetector</code>, cola thread-safe, hilo de inferencia, generador MJPEG</td></tr>
+    <tr><td><code>app.py</code></td><td>Modificado</td><td>+113 lineas &mdash; callback de video WebRTC, 5 endpoints <code>/api/yolo/*</code>, enganche con ciclo de vida del robot</td></tr>
+    <tr><td><code>website/user_end.html</code></td><td>Modificado</td><td>+60 lineas &mdash; seccion Vision YOLO con video, badge FPS y lista de detecciones</td></tr>
+    <tr><td><code>website/js/user_end.js</code></td><td>Modificado</td><td>+189 lineas &mdash; <code>setupYoloControls()</code>, polling de estado y detecciones a 1 Hz</td></tr>
+    <tr><td><code>website/css/user_end.css</code></td><td>Modificado</td><td>+174 lineas &mdash; estilos <code>.yolo-grid</code>, <code>.yolo-video-wrap</code>, <code>.yolo-badge</code></td></tr>
+    <tr><td><code>requirements.txt</code></td><td>Modificado</td><td>+3 lineas &mdash; <code>ultralytics</code>, <code>opencv-python</code></td></tr>
+    <tr><td><code>.gitignore</code></td><td>Nuevo</td><td>Excluye <code>unitree_env/</code>, <code>__pycache__/</code>, <code>*.pt</code>, <code>*.onnx</code></td></tr>
+</table>
+
+<!-- ═════════════ SECCION YOLO ═════════════ -->
+<h2>C. Integracion de YOLO v8</h2>
+
+<h3>C.1 Arquitectura del Detector</h3>
+<p>
+    El modulo <code>yolo_detector.py</code> implementa un pipeline de inferencia desacoplado en tres
+    componentes independientes que se comunican mediante una cola thread-safe (<code>queue.Queue</code>)
+    con descarte de frames antiguos (<em>backpressure</em>). Esto desacopla la tasa de llegada de frames
+    (30 fps del Go2) de la tasa de inferencia del modelo, evitando bloqueos en el hilo asyncio que maneja
+    WebRTC.
+</p>
+
+<div class="architecture-box">
+    <div class="layer" style="background: #b2dfdb;">
+        <strong>CAPA 1 &mdash; FUENTE DE FRAMES</strong><br>
+        <code>SOURCE_ROBOT</code>: callback WebRTC aiortc, <code>push_frame(bgr)</code><br>
+        <code>SOURCE_WEBCAM</code>: hilo con <code>cv2.VideoCapture</code> (fallback, camara local)
+    </div>
+    <div style="color:#1a237e; font-size:16pt; margin:6px 0;">[ encola en Queue(maxsize=2) ]</div>
+    <div class="layer" style="background: #c5cae9;">
+        <strong>CAPA 2 &mdash; COLA CON DESCARTE</strong><br>
+        Si la cola esta llena, se descarta el frame mas antiguo antes de encolar el nuevo.<br>
+        Politica: priorizar latencia baja sobre completitud.
+    </div>
+    <div style="color:#1a237e; font-size:16pt; margin:6px 0;">[ consumido por hilo dedicado ]</div>
+    <div class="layer" style="background: #bbdefb;">
+        <strong>CAPA 3 &mdash; HILO DE INFERENCIA</strong><br>
+        <code>_inference_loop()</code>: <code>model.predict()</code> con umbral de confianza (<code>conf=0.35</code>),<br>
+        anotacion con <code>r.plot()</code>, medicion de FPS por ventana de 1 s.
+    </div>
+    <div style="color:#1a237e; font-size:16pt; margin:6px 0;">[ publica en estado compartido bajo lock ]</div>
+    <div class="layer" style="background: #fff3e0;">
+        <strong>CAPA 4 &mdash; SALIDA</strong><br>
+        <code>_latest_frame_jpeg</code> &rarr; stream MJPEG (multipart/x-mixed-replace)<br>
+        <code>_latest_detections</code> &rarr; JSON con candidatos a waypoint
+    </div>
+</div>
+
+<h3>C.2 Formato de las Detecciones (Candidato a Waypoint)</h3>
+<p>
+    Cada deteccion no solo reporta la clase y la caja delimitadora: el detector agrega metadatos derivados
+    que son directamente consumibles por una politica de navegacion. Este es el puente explicito entre
+    <strong>percepcion</strong> (vision) y <strong>accion</strong> (movimiento).
+</p>
+<pre>{
+    <span class="string">"label"</span>: <span class="string">"person"</span>,                <span class="comment"># Clase detectada por YOLO</span>
+    <span class="string">"confidence"</span>: 0.847,              <span class="comment"># Confianza [0, 1]</span>
+    <span class="string">"bbox"</span>: [312.4, 98.1, 501.7, 402.3],
+    <span class="string">"center"</span>: [407.0, 250.2],          <span class="comment"># Centroide en pixeles</span>
+    <span class="string">"norm_center"</span>: [0.636, 0.521],     <span class="comment"># Normalizado [0, 1] (independiente de resolucion)</span>
+    <span class="string">"area_ratio"</span>: 0.163,              <span class="comment"># Fraccion del frame ocupada (proxy de distancia)</span>
+    <span class="string">"direction"</span>: <span class="string">"right"</span>,             <span class="comment"># left | center | right (umbrales 0.35 / 0.65)</span>
+    <span class="string">"distance_hint"</span>: <span class="string">"mid"</span>            <span class="comment"># near (&gt;0.25) | mid (&gt;0.08) | far</span>
+}</pre>
+
+<div class="note">
+    <strong>Decision de diseno.</strong> Los campos <code>direction</code> y <code>distance_hint</code>
+    son buckets discretos en vez de valores continuos. Esto simplifica el mapeo a comandos de movimiento
+    (p. ej. <code>direction="left"</code> + <code>distance_hint="far"</code> &rarr; giro a la izquierda +
+    avance) y da robustez frente al ruido de deteccion cuadro a cuadro.
+</div>
+
+<h3>C.3 Endpoints REST del Modulo YOLO</h3>
+<table>
+    <tr><th>Metodo</th><th>Endpoint</th><th>Descripcion</th></tr>
+    <tr><td><code>GET</code></td><td><code>/api/yolo/status</code></td><td>Estado del detector: <code>running</code>, <code>source</code>, <code>fps</code>, <code>model</code>, <code>frame_size</code>, <code>last_error</code></td></tr>
+    <tr><td><code>POST</code></td><td><code>/api/yolo/start</code></td><td>Inicia inferencia. Parametros: <code>source</code> (<code>robot</code>/<code>webcam</code>), <code>camera_index</code>, <code>model</code>, <code>conf</code></td></tr>
+    <tr><td><code>POST</code></td><td><code>/api/yolo/stop</code></td><td>Detiene el hilo de inferencia y libera la webcam si estaba en uso</td></tr>
+    <tr><td><code>GET</code></td><td><code>/api/yolo/detections</code></td><td>JSON con la lista de detecciones del ultimo frame procesado (candidatos a waypoint)</td></tr>
+    <tr><td><code>GET</code></td><td><code>/api/yolo/stream</code></td><td>Stream MJPEG <code>multipart/x-mixed-replace</code> con frames anotados</td></tr>
+</table>
+
+<h3>C.4 Enganche con el Canal de Video WebRTC del Go2</h3>
+<p>
+    Durante <code>robot_connect()</code>, se registra un callback sobre la pista de video entregada por
+    aiortc y se activa explicitamente el canal de video del Go2. La desconexion apaga el canal y detiene
+    el detector si la fuente activa era el robot.
+</p>
+<pre><span class="keyword">async def</span> _go2_video_callback(track):
+    <span class="string">"""Lee frames del Go2 y los pasa al detector YOLO."""</span>
+    <span class="keyword">while True</span>:
+        frame = <span class="keyword">await</span> track.recv()
+        bgr = frame.to_ndarray(format=<span class="string">"bgr24"</span>)
+        yolo_detector.push_frame(bgr)
+
+<span class="comment"># En robot_connect():</span>
+robot_connection.video.add_track_callback(_go2_video_callback)
+robot_connection.video.switchVideoChannel(<span class="keyword">True</span>)
+
+<span class="comment"># En robot_disconnect():</span>
+<span class="keyword">if</span> yolo_detector.is_running() <span class="keyword">and</span> yolo_detector.status()[<span class="string">"source"</span>] == <span class="string">"robot"</span>:
+    yolo_detector.stop()
+robot_connection.video.switchVideoChannel(<span class="keyword">False</span>)</pre>
+
+<!-- ═════════════ SECCION SDK NAVEGACION ═════════════ -->
+<h2>D. SDK de Navegacion Go2</h2>
+
+<p>
+    El SDK de navegacion del Go2 en este proyecto no es una libreria externa sino un conjunto de
+    <strong>primitivas de movimiento</strong> construidas sobre el canal <code>rt/api/sport/request</code>
+    de la conexion WebRTC. Esta actualizacion consolida esas primitivas y agrega el enganche de vision
+    que las convierte en base para navegacion reactiva.
+</p>
+
+<h3>D.1 Primitivas de Movimiento</h3>
+<table>
+    <tr><th>Primitiva</th><th>Firma</th><th>Proposito</th></tr>
+    <tr>
+        <td><code>robot_mover</code></td>
+        <td><code>async (x, y, z, duracion)</code></td>
+        <td>Publica comandos <code>api_id=1008</code> cada 200 ms durante <code>duracion</code> segundos. Requerido porque el Go2 descarta velocidades si no se reiteran.</td>
+    </tr>
+    <tr>
+        <td><code>publish_request_new</code></td>
+        <td><code>async (topic, payload)</code></td>
+        <td>Envia un comando <code>SPORT_CMD</code> puntual (<code>BalanceStand</code>, <code>SitDown</code>, <code>Damp</code>, etc.)</td>
+    </tr>
+    <tr>
+        <td><code>stop_routine_flag</code></td>
+        <td>Flag global</td>
+        <td>Bandera de interrupcion cooperativa usada por todas las rutinas y por <code>robot_mover</code> para aborto seguro.</td>
+    </tr>
+</table>
+
+<h3>D.2 Modelo de Ejecucion</h3>
+<pre><span class="comment"># Dos hilos coordinados</span>
+<span class="keyword">Hilo principal</span>  &rarr; Flask + Socket.IO (HTTP, WebSocket)
+<span class="keyword">Hilo asyncio</span>   &rarr; <span class="cmd">event_loop</span> dedicado:
+                    - robot_connect / robot_disconnect
+                    - robot_mover (movimiento continuo a 5 Hz)
+                    - rutinas autonomas (patrol, jump, explore)
+                    - _go2_video_callback (entrega frames a YOLO)
+
+<span class="comment"># Las peticiones HTTP encolan tareas al event loop con:</span>
+asyncio.run_coroutine_threadsafe(coro, robot_event_loop)</pre>
+
+<h3>D.3 Puente Vision-Navegacion</h3>
+<p>
+    La actualizacion deja instalado el puente necesario para cerrar el lazo percepcion-accion. Los
+    candidatos a waypoint generados por YOLO (<code>direction</code>, <code>distance_hint</code>) pueden
+    mapearse directamente a llamadas <code>robot_mover</code> con una politica simple:
+</p>
+<table>
+    <tr><th>Deteccion</th><th>Comando sugerido</th><th>Interpretacion</th></tr>
+    <tr><td><code>direction="left"</code>, <code>distance="far"</code></td><td><code>robot_mover(0.3, 0, +0.8, t)</code></td><td>Avanzar girando a la izquierda</td></tr>
+    <tr><td><code>direction="center"</code>, <code>distance="far"</code></td><td><code>robot_mover(0.5, 0, 0, t)</code></td><td>Aproximarse en linea recta</td></tr>
+    <tr><td><code>direction="right"</code>, <code>distance="far"</code></td><td><code>robot_mover(0.3, 0, -0.8, t)</code></td><td>Avanzar girando a la derecha</td></tr>
+    <tr><td><code>direction="center"</code>, <code>distance="near"</code></td><td><code>StopMove</code> + <code>Hello</code></td><td>Objetivo alcanzado, interactuar</td></tr>
+    <tr><td>Sin detecciones</td><td><code>StopMove</code> o busqueda</td><td>Mantener quieto o rotar buscando</td></tr>
+</table>
+
+<div class="warning">
+    <strong>Estado.</strong> El mapeo anterior es la politica propuesta; NO esta implementada aun como
+    ciclo cerrado. El trabajo del viernes 17 dejo las dos mitades listas (detecciones estructuradas +
+    primitivas de movimiento), pero el <em>controlador</em> que consume las detecciones y ejecuta comandos
+    es la siguiente pieza a construir.
+</div>
+
+<h2>E. Frontend &mdash; Seccion Vision YOLO</h2>
+<p>
+    Se incorpora una nueva seccion en [website/user_end.html](website/user_end.html) accesible desde el menu
+    de navegacion con ancla <code>#yolo</code>. La seccion esta construida con los mismos componentes de
+    diseno que el resto del panel (cards, badges, grid).
+</p>
+<ul>
+    <li><strong>Stream en vivo:</strong> elemento <code>&lt;img&gt;</code> con <code>src="/api/yolo/stream"</code> (MJPEG).</li>
+    <li><strong>Placeholder:</strong> panel alternativo visible cuando el detector esta detenido.</li>
+    <li><strong>Badge de FPS:</strong> refrescado por polling a <code>/api/yolo/status</code> cada segundo.</li>
+    <li><strong>Selector de fuente:</strong> botones para alternar entre camara del robot y webcam local.</li>
+    <li><strong>Lista de detecciones:</strong> tabla dinamica con clase, confianza, direccion y distancia.</li>
+    <li><strong>Controles de ciclo de vida:</strong> botones <em>Iniciar YOLO</em> / <em>Detener YOLO</em>.</li>
+</ul>
+
+<p>
+    El codigo JavaScript (<code>setupYoloControls()</code> en [website/js/user_end.js](website/js/user_end.js))
+    gestiona dos timers: uno para refrescar el estado (FPS, fuente activa) y otro para refrescar la lista de
+    detecciones. Ambos se detienen automaticamente cuando el detector no esta corriendo para no generar
+    trafico innecesario.
+</p>
+
+<h2>F. Saneamiento del Repositorio</h2>
+<div class="warning">
+    <strong>Problema.</strong> Un commit previo incluyo por error la carpeta <code>unitree_env/</code>
+    (virtualenv de Python) que contenia binarios superiores al limite de 100 MB de GitHub:
+    <code>torch_cpu.dll</code> (253 MB) y <code>_polars_runtime.pyd</code> (157 MB). El push fue rechazado
+    por el <code>pre-receive hook</code> del servidor remoto.
+</div>
+<p>Procedimiento aplicado para corregir el historial local (el commit aun no se habia publicado):</p>
+<ol>
+    <li><code>git reset --soft HEAD~1</code> &mdash; deshace el commit manteniendo los cambios en el indice.</li>
+    <li>Creacion de [.gitignore](.gitignore) con reglas para virtualenv, caches de Python y pesos de modelos.</li>
+    <li><code>git rm --cached</code> recursivo sobre <code>unitree_env/</code>, <code>__pycache__/</code> y <code>yolov8n.pt</code>.</li>
+    <li>Nuevo commit limpio con 8 archivos y 906 inserciones (solo codigo fuente real).</li>
+    <li>Push exitoso: commit <code>70a587da</code> en <code>origin/aplicacion</code>.</li>
+</ol>
+
+<h2>G. Dependencias Nuevas</h2>
+<pre><span class="comment"># requirements.txt (lineas agregadas)</span>
+<span class="string">ultralytics</span>      <span class="comment"># Framework YOLO v8 (incluye descarga de pesos)</span>
+<span class="string">opencv-python</span>    <span class="comment"># Captura webcam, codificacion JPEG, anotacion</span></pre>
+
+<h2>H. Estado de los Componentes al Cierre</h2>
+<table>
+    <tr><th>Componente</th><th>Estado</th><th>Observacion</th></tr>
+    <tr><td>Modulo <code>yolo_detector.py</code></td><td>Implementado</td><td>Validado con webcam local</td></tr>
+    <tr><td>Endpoints REST <code>/api/yolo/*</code></td><td>Implementado</td><td>Responden correctamente</td></tr>
+    <tr><td>Stream MJPEG con anotaciones</td><td>Implementado</td><td>Latencia visible baja en red local</td></tr>
+    <tr><td>Seccion Vision YOLO en user_end</td><td>Implementado</td><td>Integrada al menu de navegacion</td></tr>
+    <tr><td>Callback de video WebRTC del Go2</td><td>Implementado</td><td>Pendiente prueba con robot fisico</td></tr>
+    <tr><td>Fallback webcam</td><td>Implementado</td><td>Operativo como alternativa de desarrollo</td></tr>
+    <tr><td>Puente detecciones &rarr; navegacion</td><td>Diseno definido</td><td>Politica propuesta, controlador no implementado</td></tr>
+    <tr><td>Commit publicado</td><td>Completado</td><td><code>70a587da</code> en <code>origin/aplicacion</code></td></tr>
+</table>
+
+<!-- ═════════════ RECOMENDACIONES ═════════════ -->
+<h1 style="background: #303f9f; color: white; padding: 12px 18px; border-radius: 6px; border-bottom: none;">
+    Recomendaciones de Desarrollo desde este Punto
+</h1>
+
+<p>
+    A partir del estado actual, se identifican cinco lineas de trabajo ordenadas por prioridad tecnica
+    y valor para el proyecto. Las primeras dos son requisitos para cerrar el ciclo percepcion-accion;
+    las tres restantes amplian el alcance.
+</p>
+
+<h2>Linea 1 &mdash; Controlador Vision-Navegacion (prioridad alta)</h2>
+<p>
+    Construir el componente que falta para cerrar el lazo: un modulo <code>go2_navegation.py</code>
+    que consuma el estado del detector y publique comandos de movimiento. Implementacion sugerida:
+</p>
+<ul>
+    <li>Hilo o <code>asyncio.Task</code> que lee <code>yolo_detector.get_detections()</code> a 5&ndash;10 Hz.</li>
+    <li>Maquina de estados: <em>IDLE</em>, <em>SEARCHING</em>, <em>APPROACHING</em>, <em>ARRIVED</em>, <em>ABORT</em>.</li>
+    <li>Selector de objetivo (por clase, p. ej. &ldquo;person&rdquo; o &ldquo;sports ball&rdquo;) configurable desde la UI.</li>
+    <li>Politica de control proporcional sobre <code>norm_center[0]</code> para giro y <code>area_ratio</code> para avance.</li>
+    <li>Detener ante perdida de deteccion durante mas de <em>N</em> frames consecutivos.</li>
+    <li>Nuevos endpoints: <code>POST /api/nav/follow</code>, <code>POST /api/nav/stop</code>, <code>GET /api/nav/status</code>.</li>
+</ul>
+
+<h2>Linea 2 &mdash; Robustez del Canal WebRTC-YOLO (prioridad alta)</h2>
+<ul>
+    <li>Reconexion automatica del callback de video si la pista se cae (actualmente se registra un warning y termina).</li>
+    <li>Metrica de <em>frames descartados por backpressure</em> en <code>/api/yolo/status</code> para medir saturacion.</li>
+    <li>Parametro configurable de resolucion de entrada: hacer <em>downscale</em> antes de <code>model.predict()</code> si la CPU no da el ancho de banda.</li>
+    <li>Soporte opcional de aceleracion GPU (<code>device=0</code> en Ultralytics) detectable en runtime.</li>
+</ul>
+
+<h2>Linea 3 &mdash; Rutinas Autonomas Guiadas por Vision (prioridad media)</h2>
+<p>
+    Reescribir las tres rutinas existentes (<em>Patrullaje</em>, <em>Salto</em>, <em>Exploracion</em>)
+    para que consulten las detecciones y se detengan o desvien ante obstaculos. Ejemplos:
+</p>
+<ul>
+    <li><strong>Patrullaje con evasion:</strong> interrumpir el avance si <code>direction="center"</code> y <code>distance="near"</code>.</li>
+    <li><strong>Exploracion con memoria:</strong> registrar clases detectadas por tramo para generar un reporte al finalizar.</li>
+    <li><strong>Rutina de seguimiento:</strong> nueva rutina dedicada que use el controlador de la Linea 1.</li>
+</ul>
+
+<h2>Linea 4 &mdash; Persistencia y Telemetria (prioridad media)</h2>
+<ul>
+    <li>Grabacion opcional del stream MJPEG en disco (<code>cv2.VideoWriter</code>) con timestamps.</li>
+    <li>Log estructurado (JSON Lines) de las detecciones para analisis posterior o entrenamiento.</li>
+    <li>Dashboard de telemetria historica: bateria, FPS promedio, comandos enviados por minuto.</li>
+    <li>Exportacion de sesion como paquete reproducible (video + CSV de detecciones + log de comandos).</li>
+</ul>
+
+<h2>Linea 5 &mdash; Modelo y Dominio (prioridad baja)</h2>
+<ul>
+    <li>Evaluar <code>yolov8s.pt</code> o <code>yolov8m.pt</code> si la CPU lo soporta: mejor precision para objetos pequenos.</li>
+    <li>Fine-tuning sobre un dataset propio del laboratorio para clases relevantes al caso de uso (p. ej. obstaculos especificos de la CUN).</li>
+    <li>Agregar segunda pasada con clasificador de pose (YOLO-Pose) para interaccion humano-robot.</li>
+    <li>Explorar estimacion de profundidad monocular (MiDaS, Depth-Anything) para mejorar <code>distance_hint</code>.</li>
+</ul>
+
+<h2>Consideraciones Transversales</h2>
+<div class="note">
+    <strong>Seguridad operativa:</strong> cualquier modulo que mueva el robot de forma autonoma debe respetar
+    la bandera <code>stop_routine_flag</code> y verificarla entre cada publicacion de comando. El boton de
+    emergencia (<code>Damp</code>) debe mantenerse como corte incondicional.
+</div>
+<div class="note">
+    <strong>Testing:</strong> la Linea 1 y 2 son candidatas naturales a cobertura de tests. Se recomienda
+    extender [tests/test_integracion.py](tests/test_integracion.py) con casos que simulen detecciones
+    sinteticas mediante <code>yolo_detector.push_frame()</code> con imagenes de referencia.
+</div>
+<div class="note">
+    <strong>Documentacion:</strong> a medida que el SDK de navegacion gane modulos (controlador, rutinas
+    guiadas), conviene extraerlo a un paquete <code>go2_navegation/</code> con su propio <code>__init__.py</code>
+    para mantener <code>app.py</code> como capa de transporte HTTP/WebSocket delgada.
 </div>
 
 <!-- ═══════════════════════════════════════ TABLA DE CONTENIDOS ═══════════════════════════════════════ -->
