@@ -35,6 +35,46 @@ robot_state = {
     "routine_name": None
 }
 
+# Proximity-sensor mode: when enabled we turn on the Go2 utlidar, subscribe
+# to its voxel_map_compressed topic, decode the point cloud (native decoder),
+# and compute the nearest forward-facing distance in meters. If anything is
+# under `stop_distance_m` we emit `proximity_alert` and slam Move=0.
+#
+# Lidar points come in the robot's local frame: +x forward, +y left, +z up.
+# We only look at points in a forward cone (x > 0, |y| < ~0.6, z near body)
+# so the system doesn't trip on the ground or the robot's own body.
+proximity_sensor = {
+    "enabled": False,
+    # Umbrales ajustados: solo paramos cuando algo está MUY cerca directamente
+    # al frente (30 cm) y el robot se está moviendo hacia allá.
+    # Cono estrecho (±15 cm) para que pase por pasillos sin pararse.
+    "stop_distance_m": 0.30,
+    "clear_distance_m": 0.55,       # libera histéresis si >55 cm
+    "forward_cone_y_m": 0.15,       # ±15 cm de ancho (pasa por pasillos ~30 cm)
+    "min_z_m": 0.12,                # ignora el suelo (y pies de sillas bajos)
+    "max_z_m": 0.60,                # ignora el techo
+    "min_forward_vel_mps": 0.05,    # solo alerta si va hacia adelante
+    "cmd_fresh_s": 0.7,             # cuán reciente debe ser el último Move
+    "_last_alert_ts": 0.0,
+    "_alert_active": False,         # en ON: ya alertamos, esperamos que salga
+    "_clear_since": 0.0,            # cuándo empezó a estar libre (para histéresis)
+    "_subscribed": False,
+    "_subscribed_topics": [],
+    "_last_distance": None,
+    "_last_source": None,
+    # Último comando de movimiento conocido.
+    "_last_cmd_x": 0.0,
+    "_last_cmd_ts": 0.0,
+    # Pose del robot en el frame del mapa del lidar.
+    "_pose_x": 0.0,
+    "_pose_y": 0.0,
+    "_pose_z": 0.0,
+    "_pose_yaw": 0.0,
+    "_pose_valid": False,
+    # Bookkeeping para enviar paredes al frontend (subsampled).
+    "_last_points_emit_ts": 0.0,
+}
+
 # Conexion y pub_sub globales
 robot_connection = None
 robot_pub_sub = None
@@ -1099,6 +1139,368 @@ def api_yolo_stream():
 
 
 # ════════════════════════════════════════════════════════
+#  SENSOR DE PROXIMIDAD (SportModeState.range_obstacle del Go2)
+# ════════════════════════════════════════════════════════
+#
+# El Go2 publica SportModeState en `rt/lf/sportmodestate` a ~50 Hz. El
+# mensaje incluye `range_obstacle`: [front, left, back, right] en metros,
+# calculado internamente por el robot a partir de su lidar. Es ligero
+# (JSON pequeño) y no interfiere con el video WebRTC — a diferencia del
+# voxel map comprimido.
+#
+# Flujo:
+#   ON  -> subscribimos a rt/lf/sportmodestate con un callback que lee
+#          range_obstacle, y si front < stop_distance_m emite
+#          `proximity_alert` + Move=0.
+#   OFF -> unsubscribe.
+
+
+def _robot_is_moving_forward():
+    """True solo si el último Move conocido es hacia adelante y reciente."""
+    now = time.time()
+    age = now - proximity_sensor["_last_cmd_ts"]
+    if age > proximity_sensor["cmd_fresh_s"]:
+        return False
+    return proximity_sensor["_last_cmd_x"] >= proximity_sensor["min_forward_vel_mps"]
+
+
+def _trigger_proximity_alert(distance_m, direction, source):
+    """Emite una ÚNICA alerta al entrar en zona peligrosa y frena el robot.
+    No vuelve a emitir hasta que salga de la zona (histéresis gestionada
+    por el callback del lidar)."""
+    if proximity_sensor["_alert_active"]:
+        return  # ya avisamos; esperamos que salga del peligro
+
+    proximity_sensor["_alert_active"] = True
+    proximity_sensor["_last_alert_ts"] = time.time()
+    proximity_sensor["_last_source"] = source
+
+    socketio.emit("proximity_alert", {
+        "distance_m": round(float(distance_m), 2),
+        "direction": direction,
+        "source": source,
+    })
+
+    if robot_state["connected"] and robot_pub_sub:
+        try:
+            run_async_no_wait(
+                robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": 0.0})
+            )
+        except Exception:
+            pass
+
+
+def _on_robot_pose_message(message):
+    """Actualiza la pose del robot desde `rt/utlidar/robot_pose`. Varios
+    firmwares anidan la pose de forma distinta; probamos los casos comunes."""
+    try:
+        data = (message or {}).get("data") or {}
+        pose = data.get("pose") or data
+        position = pose.get("position") if isinstance(pose, dict) else None
+        orientation = pose.get("orientation") if isinstance(pose, dict) else None
+
+        if not position:
+            return
+
+        proximity_sensor["_pose_x"] = float(position.get("x", 0.0))
+        proximity_sensor["_pose_y"] = float(position.get("y", 0.0))
+        proximity_sensor["_pose_z"] = float(position.get("z", 0.0))
+
+        if orientation:
+            qx = float(orientation.get("x", 0.0))
+            qy = float(orientation.get("y", 0.0))
+            qz = float(orientation.get("z", 0.0))
+            qw = float(orientation.get("w", 1.0))
+            siny = 2.0 * (qw * qz + qx * qy)
+            cosy = 1.0 - 2.0 * (qy * qy + qz * qz)
+            proximity_sensor["_pose_yaw"] = math.atan2(siny, cosy)
+
+        proximity_sensor["_pose_valid"] = True
+    except Exception:
+        pass
+
+
+def _on_lidar_points_message(message):
+    """Detecta obstáculos frontales a partir de la nube de puntos del lidar.
+    Los puntos vienen en el frame del mapa (world); los transformamos al frame
+    del robot usando la pose más reciente, filtramos un cono frontal y
+    calculamos la distancia mínima. Si es menor al umbral, alerta + Move=0.
+    """
+    if not proximity_sensor["enabled"]:
+        return
+    try:
+        data = (message or {}).get("data") or {}
+        decoded = data.get("data")
+        if not isinstance(decoded, dict):
+            return
+
+        import numpy as _np
+        pts = None
+        if "points" in decoded:
+            pts = _np.asarray(decoded["points"])
+        elif "positions" in decoded:
+            arr = _np.asarray(decoded["positions"], dtype=_np.float32)
+            if arr.ndim == 1 and arr.size % 3 == 0:
+                arr = arr.reshape(-1, 3)
+            pts = arr
+        if pts is None or pts.ndim != 2 or pts.shape[0] == 0 or pts.shape[1] < 3:
+            return
+
+        # Pose del robot: ROBOTODOM si disponible; si no, centro del grid
+        # (heurística: Go2 publica un voxel grid de ~128 celdas × 0.05 m
+        # aproximadamente centrado en el robot).
+        if proximity_sensor["_pose_valid"]:
+            rx = proximity_sensor["_pose_x"]
+            ry = proximity_sensor["_pose_y"]
+            rz = proximity_sensor["_pose_z"]
+            yaw = proximity_sensor["_pose_yaw"]
+        else:
+            origin = data.get("origin") or [0.0, 0.0, 0.0]
+            res = float(data.get("resolution") or 0.05)
+            half = 128 * res / 2.0
+            rx = float(origin[0]) + half
+            ry = float(origin[1]) + half
+            rz = float(origin[2]) if len(origin) >= 3 else 0.0
+            yaw = 0.0
+
+        dx = pts[:, 0] - rx
+        dy = pts[:, 1] - ry
+        dz = pts[:, 2] - rz
+
+        c, s = math.cos(-yaw), math.sin(-yaw)
+        lx = dx * c - dy * s
+        ly = dx * s + dy * c
+
+        cone_y = proximity_sensor["forward_cone_y_m"]
+        mask = (
+            (lx > 0.10) &
+            (_np.abs(ly) < cone_y) &
+            (dz > proximity_sensor["min_z_m"]) &
+            (dz < proximity_sensor["max_z_m"])
+        )
+
+        # Empuja los puntos al frontend para el heatmap (subsampled a ~5 Hz).
+        _maybe_emit_lidar_points(pts, rx, ry, yaw)
+
+        if not _np.any(mask):
+            # Sin nada al frente: contamos hacia la liberación de histéresis.
+            _maybe_clear_alert_state(float("inf"))
+            return
+
+        fwd_x = lx[mask]
+        fwd_y = ly[mask]
+        dists = _np.sqrt(fwd_x * fwd_x + fwd_y * fwd_y)
+        d = float(_np.min(dists))
+        proximity_sensor["_last_distance"] = d
+
+        # Histéresis: si el obstáculo se alejó bastante, liberamos el estado.
+        _maybe_clear_alert_state(d)
+
+        # Solo alertamos si 1) obstáculo muy cerca Y 2) el robot va hacia adelante.
+        if d >= proximity_sensor["stop_distance_m"]:
+            return
+        if not _robot_is_moving_forward():
+            # Quieto o retrocediendo: no spamear alerta (aunque haya una pared).
+            return
+
+        nearest = int(_np.argmin(dists))
+        ny = float(fwd_y[nearest])
+        direction = "center" if abs(ny) < 0.12 else ("left" if ny > 0 else "right")
+        _trigger_proximity_alert(d, direction, "lidar_points")
+    except Exception as exc:
+        emit_log('warning', f'Callback lidar points: {exc}')
+
+
+def _maybe_clear_alert_state(distance_m):
+    """Reset del flag de alerta cuando la zona está clara durante >0.8 s.
+    Así el usuario puede re-intentar avanzar y recibir otra alerta si toca."""
+    now = time.time()
+    clear_thr = proximity_sensor["clear_distance_m"]
+    if distance_m >= clear_thr:
+        if proximity_sensor["_clear_since"] == 0.0:
+            proximity_sensor["_clear_since"] = now
+        elif now - proximity_sensor["_clear_since"] >= 0.8:
+            proximity_sensor["_alert_active"] = False
+    else:
+        proximity_sensor["_clear_since"] = 0.0
+
+
+def _maybe_emit_lidar_points(pts, rx, ry, yaw):
+    """Publica una muestra de puntos del lidar al frontend a ~5 Hz.
+    Los puntos se envían en el frame del MAPA (world): el frontend los
+    acumula para pintar el heatmap de paredes + trayectoria."""
+    now = time.time()
+    if now - proximity_sensor["_last_points_emit_ts"] < 0.2:
+        return
+    proximity_sensor["_last_points_emit_ts"] = now
+    try:
+        import numpy as _np
+        n = pts.shape[0]
+        if n == 0:
+            return
+        # Filtra al suelo / techo para quedarnos con paredes / objetos.
+        zmask = (pts[:, 2] > proximity_sensor["min_z_m"]) & \
+                (pts[:, 2] < proximity_sensor["max_z_m"])
+        w_pts = pts[zmask]
+        if w_pts.shape[0] > 1500:
+            idx = _np.random.choice(w_pts.shape[0], 1500, replace=False)
+            w_pts = w_pts[idx]
+
+        xy = w_pts[:, :2].astype(float)
+        socketio.emit("lidar_points", {
+            "pose": {"x": rx, "y": ry, "yaw": yaw},
+            # xy aplanado para reducir peso JSON
+            "xy": xy.round(3).flatten().tolist(),
+            "count": int(xy.shape[0]),
+        })
+    except Exception:
+        pass
+
+
+
+
+async def _proximity_enable_async():
+    """
+    Activa el sensor de proximidad real:
+      1. Cambia decoder a 'native' para recibir ndarray de puntos.
+      2. Deshabilita traffic-saving (si no, el robot throttlea el lidar).
+      3. Prende el lidar L1 (el anillo empieza a girar).
+      4. Suscribe a ROBOTODOM (pose del robot en el mapa) y al voxel map
+         comprimido (nube de puntos). El callback del lidar transforma los
+         puntos al frame del robot, filtra cono frontal y alerta < 60 cm.
+    """
+    from unitree_webrtc_connect.constants import RTC_TOPIC, DATA_CHANNEL_TYPE
+
+    if not robot_connection or not robot_pub_sub:
+        return False
+
+    try:
+        robot_connection.datachannel.set_decoder(decoder_type='native')
+    except Exception as exc:
+        emit_log('warning', f'set_decoder native: {exc}')
+
+    try:
+        await robot_connection.datachannel.disableTrafficSaving(True)
+    except Exception as exc:
+        emit_log('warning', f'disableTrafficSaving: {exc}')
+
+    # Envía variantes de switch del lidar — en Go2 Air `"ON"` suele bastar.
+    for payload in ("ON", {"enable": 1}):
+        try:
+            robot_pub_sub.publish_without_callback(
+                RTC_TOPIC["ULIDAR_SWITCH"],
+                payload,
+                DATA_CHANNEL_TYPE["MSG"],
+            )
+        except Exception as exc:
+            emit_log('warning', f'ULIDAR_SWITCH {payload!r}: {exc}')
+    emit_log('info', 'Lidar L1 encendido (verifica que el anillo gire)')
+
+    subscribed = []
+    try:
+        robot_pub_sub.subscribe(RTC_TOPIC["ROBOTODOM"], _on_robot_pose_message)
+        subscribed.append(RTC_TOPIC["ROBOTODOM"])
+    except Exception as exc:
+        emit_log('warning', f'subscribe robot_pose: {exc}')
+
+    try:
+        robot_pub_sub.subscribe(RTC_TOPIC["ULIDAR_ARRAY"], _on_lidar_points_message)
+        subscribed.append(RTC_TOPIC["ULIDAR_ARRAY"])
+    except Exception as exc:
+        emit_log('error', f'subscribe lidar array: {exc}')
+
+    proximity_sensor["_subscribed"] = bool(subscribed)
+    proximity_sensor["_subscribed_topics"] = subscribed
+    proximity_sensor["_pose_valid"] = False
+
+    if subscribed:
+        emit_log('success',
+                 f'Sensor activo. Suscrito a {len(subscribed)} topics. '
+                 f'Parar si <{proximity_sensor["stop_distance_m"]*100:.0f} cm frontal.')
+    return bool(subscribed)
+
+
+async def _proximity_disable_async():
+    from unitree_webrtc_connect.constants import RTC_TOPIC, DATA_CHANNEL_TYPE
+
+    for t in proximity_sensor.get("_subscribed_topics") or []:
+        try:
+            robot_pub_sub and robot_pub_sub.unsubscribe(t)
+        except Exception:
+            pass
+
+    if robot_pub_sub:
+        for payload in ("OFF", {"enable": 0}):
+            try:
+                robot_pub_sub.publish_without_callback(
+                    RTC_TOPIC["ULIDAR_SWITCH"],
+                    payload,
+                    DATA_CHANNEL_TYPE["MSG"],
+                )
+            except Exception:
+                pass
+
+    proximity_sensor["_subscribed"] = False
+    proximity_sensor["_subscribed_topics"] = []
+    proximity_sensor["_last_distance"] = None
+    proximity_sensor["_pose_valid"] = False
+
+
+@app.route('/api/sensor/status', methods=['GET'])
+def api_sensor_status():
+    return jsonify({
+        "status": "ok",
+        "enabled": proximity_sensor["enabled"],
+        "stop_distance_m": proximity_sensor["stop_distance_m"],
+        "last_distance_m": proximity_sensor["_last_distance"],
+        "robot_connected": robot_state["connected"],
+    })
+
+
+@app.route('/api/sensor/toggle', methods=['POST'])
+def api_sensor_toggle():
+    """Activa/desactiva el sensor de proximidad del lidar del robot."""
+    data = request.get_json(silent=True) or {}
+    desired = data.get("enabled")
+    if desired is None:
+        desired = not proximity_sensor["enabled"]
+    desired = bool(desired)
+
+    if desired and not robot_state["connected"]:
+        return jsonify({
+            "status": "error",
+            "message": "El robot no esta conectado. Conecta primero para usar el sensor.",
+            "enabled": False,
+        }), 400
+
+    proximity_sensor["enabled"] = desired
+
+    try:
+        if desired:
+            ok = run_async(_proximity_enable_async())
+            if not ok:
+                proximity_sensor["enabled"] = False
+                return jsonify({
+                    "status": "error",
+                    "message": "No se pudo activar el sensor del robot.",
+                    "enabled": False,
+                }), 500
+            emit_log('info', 'Sensor de proximidad ACTIVADO (lidar Go2)')
+        else:
+            run_async(_proximity_disable_async())
+            emit_log('info', 'Sensor de proximidad desactivado')
+    except Exception as exc:
+        proximity_sensor["enabled"] = False
+        return jsonify({"status": "error", "message": str(exc), "enabled": False}), 500
+
+    return jsonify({
+        "status": "ok",
+        "enabled": proximity_sensor["enabled"],
+        "stop_distance_m": proximity_sensor["stop_distance_m"],
+    })
+
+
+# ════════════════════════════════════════════════════════
 #  SOCKETIO EVENTS
 # ════════════════════════════════════════════════════════
 
@@ -1121,6 +1523,30 @@ def handle_move_command(data):
     x = max(-0.8, min(0.8, x))
     y = max(-0.5, min(0.5, y))
     z = max(-1.5, min(1.5, z))
+
+    # Registramos el Move para que el sensor de proximidad sepa si el robot
+    # va hacia adelante (y solo alerte en ese caso).
+    proximity_sensor["_last_cmd_x"] = x
+    proximity_sensor["_last_cmd_ts"] = time.time()
+
+    # El frontend marca `force=true` tras un doble tap WASD: el operador
+    # insiste, así que saltamos el bloqueo aunque el sensor esté en alerta.
+    force = bool(data.get("force"))
+
+    # Si el sensor está activo y hay un obstáculo en alerta y el usuario
+    # empuja hacia adelante, bloqueamos — salvo que venga force.
+    if (not force
+            and proximity_sensor["enabled"]
+            and proximity_sensor["_alert_active"]
+            and x > 0):
+        run_async(robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": z}))
+        return
+
+    # Con force el operador acepta el riesgo: liberamos el estado de alerta
+    # para que pueda seguir hasta que el sensor vuelva a detectar peligro.
+    if force and proximity_sensor["_alert_active"]:
+        proximity_sensor["_alert_active"] = False
+        proximity_sensor["_clear_since"] = 0.0
 
     try:
         run_async(robot_send_command("Move", {"x": x, "y": y, "z": z}))

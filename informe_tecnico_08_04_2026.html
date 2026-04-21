@@ -1310,10 +1310,287 @@ asyncio.run_coroutine_threadsafe(coro, robot_event_loop)</pre>
     </tr>
 </table>
 
+<!-- ═══════════════════════════════════════ NUEVA INTEGRACION LUNES 20 ═══════════════════════════════════════ -->
+<h1 style="background: #1a237e; color: white; padding: 12px 18px; border-radius: 6px; border-bottom: none;">
+    Nueva Integracion &mdash; Lunes 20 de Abril de 2026
+</h1>
+
+<div class="note">
+    <strong>Resumen ejecutivo.</strong> Esta actualizacion entrega una <strong>interfaz de teleoperacion
+    dedicada</strong> (<code>/control-remoto</code>) pensada para uso de campo en modo horizontal: video YOLO
+    en vivo como vista principal, doble joystick virtual en movil, control por teclado en escritorio,
+    botones de accion tipo gamepad (A&middot;B&middot;X&middot;Y), panel lateral con sensores y trazado 2D del
+    recorrido por <em>dead reckoning</em>, y un <strong>dead-man&rsquo;s switch</strong> que detiene al robot de
+    inmediato cuando se liberan los controles o la pagina pierde el foco. Toda la funcionalidad fue
+    implementada y verificada contra el Go2 Air real.
+</div>
+
+<h2>A. Alcance de la Actualizacion</h2>
+<p>El trabajo se concentra en un nuevo frontend de teleoperacion desacoplado del dashboard tecnico,
+optimizado para el operador final (conduccion con video y joysticks). Se agrupa en cuatro ejes:</p>
+<ol>
+    <li><strong>Nueva vista <code>/control-remoto</code>:</strong> plantilla <code>controlRemoto.html</code>,
+        estilos dedicados <code>controlRemoto.css</code>, logica <code>controlRemoto.js</code> y rutas Flask
+        que sirven la pagina.</li>
+    <li><strong>Entradas multi-fuente:</strong> teclado (WASD + Q&middot;E + I&middot;J&middot;K&middot;L), doble joystick
+        virtual (mover + girar) y botones de accion, combinadas en un unico vector de velocidad enviado por
+        Socket.IO.</li>
+    <li><strong>Ciclo de seguridad:</strong> envio continuo a 5 Hz mientras haya entrada activa, y
+        <code>stop_command</code> inmediato cuando todas las fuentes regresan a cero, cuando se pierde la
+        conexion del robot o cuando la pestana pasa a segundo plano.</li>
+    <li><strong>Telemetria visual en operador:</strong> HUD sobre el video (FPS, modo, bateria), panel
+        lateral con sensores, detecciones YOLO ordenadas por confianza y canvas de trayectoria 2D generada
+        por integracion de velocidad (<em>dead reckoning</em>).</li>
+</ol>
+
+<h2>B. Archivos Modificados y Creados</h2>
+<table>
+    <tr><th>Archivo</th><th>Estado</th><th>Cambios</th></tr>
+    <tr><td><code>website/controlRemoto.html</code></td><td>Nuevo</td><td>189 lineas &mdash; plantilla operador horizontal: top bar, stage de video, HUD, joysticks, panel lateral, pista de orientacion portrait</td></tr>
+    <tr><td><code>website/css/controlRemoto.css</code></td><td>Nuevo</td><td>560 lineas &mdash; estilos del stage, pildoras de estado, joysticks, HUD, detecciones, panel lateral responsive</td></tr>
+    <tr><td><code>website/js/controlRemoto.js</code></td><td>Nuevo</td><td>722 lineas &mdash; objeto <code>ControlRemoto</code>, gestion de Socket.IO, movimiento, joysticks, acciones, YOLO y canvas de trazado</td></tr>
+    <tr><td><code>app.py</code></td><td>Modificado</td><td>+6 lineas &mdash; rutas <code>/control-remoto</code> y <code>/controlRemoto.html</code></td></tr>
+    <tr><td><code>website/index.html</code></td><td>Modificado</td><td>+1 linea &mdash; enlace &laquo;Control Remoto&raquo; en la barra de navegacion principal</td></tr>
+</table>
+
+<p>Total: <strong>5 archivos, 1478 lineas anadidas</strong> (commit <code>51ec6ce3</code>).</p>
+
+<!-- ═════════════ SECCION B.1 LAYOUT ═════════════ -->
+<h2>C. Layout de la Interfaz de Operador</h2>
+
+<p>
+    La pagina esta disenada como una cabina de pilotaje horizontal: el video ocupa la superficie central
+    (rol de ventana principal) y los elementos de control y telemetria se superponen como <em>HUD</em> o
+    se acomodan en un panel lateral colapsable. El diseno se adapta al dispositivo:
+</p>
+
+<div class="architecture-box">
+    <div class="layer" style="background: #b2dfdb;">
+        <strong>CAPA 1 &mdash; TOP BAR</strong><br>
+        IP del robot, botones <code>Conectar</code> / <code>Off</code> / <code>YOLO</code> / <code>Stop</code> / <code>PARADA</code>,<br>
+        pildoras de estado (servidor, robot, YOLO) y toggle del panel lateral.
+    </div>
+    <div style="color:#1a237e; font-size:16pt; margin:6px 0;">[ video ocupa el resto del viewport ]</div>
+    <div class="layer" style="background: #c5cae9;">
+        <strong>CAPA 2 &mdash; STAGE DE VIDEO</strong><br>
+        <code>&lt;img&gt;</code> con stream MJPEG de YOLO (o placeholder si no hay conexion).<br>
+        HUD con FPS / modo / bateria superpuesto en la esquina.
+    </div>
+    <div style="color:#1a237e; font-size:16pt; margin:6px 0;">[ overlays sobre el video ]</div>
+    <div class="layer" style="background: #bbdefb;">
+        <strong>CAPA 3 &mdash; CONTROLES FLOTANTES</strong><br>
+        <em>Escritorio:</em> pistas visuales de teclas W&middot;A&middot;S&middot;D, Q&middot;E, I&middot;J&middot;K&middot;L.<br>
+        <em>Movil:</em> joystick izquierdo (mover) y joystick derecho (girar), punto verde flotante de estado.
+    </div>
+    <div style="color:#1a237e; font-size:16pt; margin:6px 0;">[ panel lateral deslizable ]</div>
+    <div class="layer" style="background: #fff3e0;">
+        <strong>CAPA 4 &mdash; PANEL LATERAL</strong><br>
+        Metricas (bateria, modo, velocidad, FPS), trazado 2D sobre canvas,<br>
+        lista de detecciones YOLO y ayuda de controles.
+    </div>
+</div>
+
+<p>
+    En movil en modo vertical se muestra un aviso <em>&laquo;Gira tu dispositivo&raquo;</em> para forzar el modo
+    horizontal, que es para el cual fue disenada la vista.
+</p>
+
+<!-- ═════════════ C. CONTROLES ═════════════ -->
+<h2>D. Sistema de Controles</h2>
+
+<h3>D.1 Mapas de Entrada</h3>
+<table>
+    <tr><th>Dispositivo</th><th>Tecla / gesto</th><th>Accion</th></tr>
+    <tr><td rowspan="3">Teclado (escritorio)</td><td><code>W</code> / <code>A</code> / <code>S</code> / <code>D</code></td><td>Adelante / izquierda / atras / derecha (velocidad 0.45)</td></tr>
+    <tr><td><code>Q</code> / <code>E</code></td><td>Giro izquierda / derecha (velocidad angular 0.75)</td></tr>
+    <tr><td><code>I</code> / <code>J</code> / <code>K</code> / <code>L</code></td><td>Acciones A / B / Y / X (pulsacion unica)</td></tr>
+    <tr><td rowspan="2">Joystick virtual (movil)</td><td>Izquierdo</td><td>Desplazamiento (adelante / atras / estrafe)</td></tr>
+    <tr><td>Derecho</td><td>Giro (solo eje horizontal)</td></tr>
+    <tr><td>Botones de accion</td><td>A / B / X / Y</td><td><code>frontjump</code> / <code>hello</code> / <code>frontpounce</code> / <code>heart</code></td></tr>
+    <tr><td>Emergencia</td><td>Boton <strong>PARADA</strong> (rojo)</td><td><code>POST /api/emergency</code> (envia <code>Damp</code>)</td></tr>
+</table>
+
+<h3>D.2 Composicion de Vector de Velocidad</h3>
+<p>
+    El movimiento no se dispara como comando discreto: el frontend mantiene tres vectores independientes
+    (teclado, joystick de desplazamiento, joystick de giro) y los combina en cada tick.
+</p>
+<pre><span class="comment"># Tres fuentes independientes se componen en un unico vector final</span>
+movement = {
+    keyboard:  { x, y, z },   <span class="comment"># derivado de las teclas activas</span>
+    joyMove:   { x, y },      <span class="comment"># joystick izquierdo (movil)</span>
+    joyRotate: { z }          <span class="comment"># joystick derecho (movil)</span>
+}
+
+<span class="keyword">def</span> composeVector():
+    <span class="keyword">return</span> {
+        x: kb.x <span class="keyword">if</span> kb.x != 0 <span class="keyword">else</span> joyMove.x,
+        y: kb.y <span class="keyword">if</span> kb.y != 0 <span class="keyword">else</span> joyMove.y,
+        z: kb.z <span class="keyword">if</span> kb.z != 0 <span class="keyword">else</span> joyRotate.z
+    }</pre>
+
+<div class="note">
+    <strong>Regla de eje dominante.</strong> Si el usuario presiona simultaneamente adelante y estrafe,
+    se cancela el estrafe mientras el eje adelante/atras este por encima del umbral (factor 1.8&times;).
+    Esto elimina el &laquo;caminado de cangrejo&raquo; que aparecia al mover el joystick en diagonal sutil.
+</div>
+
+<h3>D.3 Bucle de Envio a 5 Hz con Cuantizacion</h3>
+<pre><span class="comment"># Mientras haya entrada activa, se publica cada 200 ms por Socket.IO</span>
+<span class="keyword">function</span> tick():
+    raw = composeVector()
+    q = (n) =&gt; abs(n) &lt; 0.05 ? 0 : round(n * 20) / 20   <span class="comment"># cuantizacion 0.05 m/s</span>
+    v = { x: q(raw.x), y: q(raw.y), z: q(raw.z) }
+
+    <span class="keyword">if</span> v es cero:
+        stopLoop()
+        <span class="keyword">return</span>
+
+    socket.emit(<span class="string">'move_command'</span>, v)
+    advanceTraceFromVelocity(v, 0.2)   <span class="comment"># alimenta el canvas de trazado</span>
+
+setInterval(tick, 200)</pre>
+
+<p>
+    La cuantizacion a pasos de 0.05 m/s corrige el &laquo;andar borracho&raquo; del robot cuando el joystick
+    oscilaba microscopicamente cerca del centro (el ruido tactil mandaba vectores de norma 0.01&ndash;0.04
+    que el Go2 interpretaba como correcciones de rumbo).
+</p>
+
+<h3>D.4 Dead-Man&rsquo;s Switch (Seguridad)</h3>
+<div class="warning">
+    <strong>Principio de seguridad.</strong> El robot se mueve &uacute;nicamente mientras una entrada este
+    activa. Basta con soltar la tecla, liberar el joystick, alejar el dedo, o cambiar de pestana para que
+    se emita <code>stop_command</code> inmediatamente.
+</div>
+<p>La capa de seguridad tiene cuatro puntos de corte:</p>
+<ul>
+    <li><code>keyup</code> / <code>pointerup</code> / <code>pointercancel</code>: al liberar teclado o joystick, la fuente vuelve a cero y <code>syncMovement()</code> detiene el loop.</li>
+    <li><code>blur</code> y <code>visibilitychange</code>: si la ventana pierde el foco, se vacian las teclas activas y se llama <code>stopMovement()</code> (evita que <code>Alt+Tab</code> con <code>W</code> pulsada deje al robot corriendo).</li>
+    <li><code>setRobotState(false)</code>: si se pierde la conexion WebRTC con el robot, se detiene el movimiento como efecto lateral.</li>
+    <li>Boton <strong>PARADA</strong>: envia <code>POST /api/emergency</code> y llama <code>stopMovement()</code>; funciona incluso con el robot desconectado del servidor.</li>
+</ul>
+
+<!-- ═════════════ D. INTEGRACION YOLO + DEAD RECKONING ═════════════ -->
+<h2>E. Telemetria Visual</h2>
+
+<h3>E.1 Stream YOLO como Ventana Principal</h3>
+<p>
+    A diferencia del dashboard tecnico, en la vista de operador el video <strong>es</strong> la interfaz.
+    Los botones <code>YOLO</code> / <code>Stop</code> arrancan el mismo detector del backend (modulo
+    <code>yolo_detector.py</code> del 17 de Abril) y el stream MJPEG <code>/api/yolo/stream</code> se
+    consume directamente como <code>src</code> de una etiqueta <code>&lt;img&gt;</code>.
+</p>
+<p>
+    Se mantiene un <em>polling</em> de 800 ms sobre <code>/api/yolo/status</code> y
+    <code>/api/yolo/detections</code> que:
+</p>
+<ul>
+    <li>Actualiza el badge de FPS en el HUD.</li>
+    <li>Desengancha el stream y apaga los pills si el detector fue detenido desde otro cliente.</li>
+    <li>Renderiza las 6 detecciones con mayor confianza en el panel lateral, etiquetadas con
+        <code>direction</code> (<em>left</em> / <em>center</em> / <em>right</em>).</li>
+</ul>
+
+<h3>E.2 Trazado 2D por Dead Reckoning</h3>
+<p>
+    El canvas <code>#cr-trace-canvas</code> dibuja la trayectoria del robot integrando el vector de
+    velocidad enviado en cada tick. No requiere telemetria adicional del robot &mdash; reutiliza el mismo
+    comando que se esta publicando &mdash; por lo que funciona mientras haya control activo y sirve como
+    indicador cualitativo del recorrido.
+</p>
+<pre><span class="comment"># Integracion simple en marco local del robot</span>
+pose.heading += v.z * dt
+forward = v.x * dt
+strafe  = v.y * dt
+pose.x += forward * cos(heading) - strafe * sin(heading)
+pose.y += forward * sin(heading) + strafe * cos(heading)
+
+<span class="comment"># Visualizacion: rejilla + ejes, escala 6 m visibles,</span>
+<span class="comment"># punto azul = pose actual, linea verde = historia (max 400 muestras)</span></pre>
+
+<div class="note">
+    <strong>Limitacion conocida.</strong> Al ser <em>dead reckoning</em> puro, el error se acumula con el
+    tiempo (deriva) y no incorpora odometria real del Go2. Es suficiente para un indicador visual de
+    maniobra, no como posicionamiento absoluto.
+</div>
+
+<!-- ═════════════ E. ENDPOINTS Y SOCKETS ═════════════ -->
+<h2>F. Enganche con el Backend</h2>
+
+<table>
+    <tr><th>Canal</th><th>Evento / Endpoint</th><th>Proposito</th></tr>
+    <tr><td>Socket.IO</td><td><code>move_command</code> { x, y, z }</td><td>Tick de movimiento a 5 Hz mientras haya entrada activa</td></tr>
+    <tr><td>Socket.IO</td><td><code>stop_command</code></td><td>Detiene al robot cuando todas las fuentes vuelven a cero</td></tr>
+    <tr><td>Socket.IO</td><td><code>state_update</code></td><td>Recibe bateria, modo y conexion del robot; mantiene las pildoras y el HUD sincronizados</td></tr>
+    <tr><td><code>GET</code></td><td><code>/api/status</code></td><td>Polling de respaldo cada 4 s (resiliencia ante desconexiones del socket)</td></tr>
+    <tr><td><code>GET</code></td><td><code>/api/config</code></td><td>Autocompleta la IP del robot al cargar la pagina</td></tr>
+    <tr><td><code>POST</code></td><td><code>/api/connect</code> / <code>/api/disconnect</code></td><td>Administra el ciclo de vida WebRTC del Go2</td></tr>
+    <tr><td><code>POST</code></td><td><code>/api/action</code> { action }</td><td>Ejecuta acciones gamepad: <code>frontjump</code>, <code>hello</code>, <code>frontpounce</code>, <code>heart</code></td></tr>
+    <tr><td><code>POST</code></td><td><code>/api/emergency</code></td><td>Parada de emergencia (envia <code>Damp</code>), disponible sin conexion activa</td></tr>
+    <tr><td><code>POST</code></td><td><code>/api/yolo/start</code> / <code>/api/yolo/stop</code></td><td>Control de la inferencia YOLO desde el operador</td></tr>
+    <tr><td><code>GET</code></td><td><code>/api/yolo/stream</code></td><td>Stream MJPEG consumido como <code>src</code> del video principal</td></tr>
+    <tr><td><code>GET</code></td><td><code>/api/yolo/detections</code></td><td>Lista de detecciones ordenadas por confianza (panel lateral)</td></tr>
+</table>
+
+<h3>F.1 Nuevas Rutas Servidas por Flask</h3>
+<pre><span class="keyword">@app.route</span>(<span class="string">'/control-remoto'</span>)
+<span class="keyword">@app.route</span>(<span class="string">'/controlRemoto.html'</span>)
+<span class="keyword">def</span> <span class="cmd">control_remoto</span>():
+    <span class="keyword">return</span> send_from_directory(<span class="string">'website'</span>, <span class="string">'controlRemoto.html'</span>)</pre>
+
+<p>Ademas se anadio el enlace en la barra de navegacion principal de [website/index.html](website/index.html):</p>
+<pre><span class="comment">&lt;!-- Nueva entrada en el nav --&gt;</span>
+&lt;a href=<span class="string">"/control-remoto"</span> class=<span class="string">"nav-link"</span>&gt;Control Remoto&lt;/a&gt;</pre>
+
+<!-- ═════════════ F. VERIFICACION ═════════════ -->
+<h2>G. Verificacion Funcional</h2>
+
+<div class="success">
+    <strong>Estado: VERIFICADO EN HARDWARE.</strong> Todas las funcionalidades fueron probadas contra el
+    Unitree Go2 Air real en el laboratorio y funcionan correctamente (ver mensaje de commit
+    <code>51ec6ce3</code>: &laquo;<em>se realiza la implementacion del control remoto y se verifica
+    positivamente su funcionamiento</em>&raquo;).
+</div>
+
+<table>
+    <tr><th>Caso de Prueba</th><th>Resultado</th></tr>
+    <tr><td>Conectar / desconectar el robot desde la vista de operador</td><td>OK</td></tr>
+    <tr><td>Caminar con W&middot;A&middot;S&middot;D &mdash; detencion al soltar la tecla</td><td>OK</td></tr>
+    <tr><td>Giro con Q&middot;E &mdash; detencion inmediata al liberar</td><td>OK</td></tr>
+    <tr><td>Joystick izquierdo movil: desplazamiento con regla de eje dominante</td><td>OK</td></tr>
+    <tr><td>Joystick derecho movil: giros sin deriva</td><td>OK</td></tr>
+    <tr><td>Botones A&middot;B&middot;X&middot;Y y teclas I&middot;J&middot;K&middot;L disparan acciones correctas</td><td>OK</td></tr>
+    <tr><td>Stream YOLO en vivo como video principal</td><td>OK</td></tr>
+    <tr><td>Detecciones ordenadas por confianza en panel lateral</td><td>OK</td></tr>
+    <tr><td>Canvas de trazado 2D dibuja la trayectoria en tiempo real</td><td>OK</td></tr>
+    <tr><td>Parada de emergencia (PARADA) detiene inmediatamente al robot</td><td>OK</td></tr>
+    <tr><td>Alt+Tab con tecla pulsada: el robot se detiene (evento <code>blur</code>)</td><td>OK</td></tr>
+    <tr><td>Aviso de orientacion en movil portrait</td><td>OK</td></tr>
+</table>
+
+<h2>H. Cierre y Pendientes Abiertos</h2>
+
+<p>Con esta entrega se cumple el objetivo de disponer de una <strong>vista de operador independiente del
+dashboard tecnico</strong>, optimizada para uso de campo con video, joysticks y seguridad por
+dead-man&rsquo;s switch. Quedan abiertos como trabajo posterior:</p>
+
+<ul>
+    <li><strong>Reconocimiento facial individual con InsightFace:</strong> pasar de la clase gen&eacute;rica
+        <code>&laquo;person&raquo;</code> de YOLO v8 a la identificacion nominal de personas usando fotos
+        previamente cargadas (seguimiento en memoria del proyecto).</li>
+    <li><strong>Ciclo cerrado vision-navegacion:</strong> consumir los campos <code>direction</code> /
+        <code>distance_hint</code> de YOLO para disparar <code>robot_mover</code> de forma autonoma (la
+        politica propuesta en la seccion D del 17 de Abril).</li>
+    <li><strong>Odometria real:</strong> sustituir el dead reckoning actual por la odometria expuesta por
+        el Go2 para eliminar la deriva en el trazado.</li>
+</ul>
+
 <!-- ═══════════════════════════════════════ FOOTER ═══════════════════════════════════════ -->
 <div class="footer">
     <p>
-        <strong>Daiver Control CUN</strong> &mdash; Informe Tecnico &mdash; 8 de Abril de 2026<br>
+        <strong>Daiver Control CUN</strong> &mdash; Informe Tecnico &mdash; 8 de Abril de 2026
+        (actualizado 17 y 20 de Abril de 2026)<br>
         Laboratorio 2 &mdash; Corporacion Unificada Nacional (CUN)<br>
         Proyecto unitreeWebRTC &mdash; Control remoto de Unitree Go2 Air via WebRTC
     </p>

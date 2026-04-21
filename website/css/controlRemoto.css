@@ -17,14 +17,18 @@ html, body {
     height: 100%;
     overflow: hidden;
     background: #05070b;
+    overscroll-behavior: none;
 }
 
 body.control-remoto-body {
     color: var(--color-text);
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     min-height: 100vh;
+    /* dvh respeta la barra de direcciones dinámica en iOS/Android. */
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
+    -webkit-text-size-adjust: 100%;
 }
 
 /* ====== Top Bar ====== */
@@ -143,6 +147,12 @@ body.control-remoto-body {
 .cr-btn.danger { background: var(--cr-danger); }
 .cr-btn.warn { background: var(--cr-warn); color: #1a1a1a; }
 .cr-btn.ghost { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--cr-border); }
+.cr-btn[aria-pressed="true"] {
+    background: var(--cr-ok);
+    color: #03130a;
+    border-color: transparent;
+    box-shadow: 0 0 8px rgba(0, 200, 83, 0.55);
+}
 
 /* ====== Main stage ====== */
 .cr-stage {
@@ -324,6 +334,36 @@ body.control-remoto-body {
     padding: 0 0.15rem;
 }
 
+.cr-trace-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+}
+
+.cr-tstat {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--cr-border);
+    border-radius: 8px;
+    padding: 0.4rem 0.55rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.cr-tstat .label {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    color: #8c919a;
+    letter-spacing: 0.5px;
+}
+
+.cr-tstat .value {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #00c853;
+}
+
 /* ====== Detections mini list ====== */
 .cr-detections {
     max-height: 140px;
@@ -365,19 +405,34 @@ body.control-remoto-body {
 }
 
 /* ====== Gamepad overlays (mobile): dual joysticks ====== */
+/* Anchored to the bottom corners so they never sit at mid-screen.
+   Individual joysticks are positioned absolutely (left/right) — safer than
+   space-between, which depended on viewport width. */
 .cr-gamepad {
     position: absolute;
-    bottom: 22px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    padding: 0 4vw;
+    inset: 0;
     pointer-events: none;
     z-index: 10;
 }
 
 .cr-gamepad > * { pointer-events: auto; }
+
+/* Joysticks lifted to the vertical middle — natural thumb rest when the
+   phone is held in landscape. transform: translateY(-50%) centers each one
+   on its top anchor so they stay put regardless of joystick size. */
+.cr-joystick.joy-move {
+    position: absolute;
+    left: max(14px, env(safe-area-inset-left, 0px));
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.cr-joystick.joy-rotate {
+    position: absolute;
+    right: max(14px, env(safe-area-inset-right, 0px));
+    top: 50%;
+    transform: translateY(-50%);
+}
 
 .cr-joystick.joy-rotate {
     background: radial-gradient(circle at center, rgba(249, 171, 0, 0.18), rgba(0, 0, 0, 0.55));
@@ -392,11 +447,11 @@ body.control-remoto-body {
     background: radial-gradient(circle at 40% 35%, #ffd572, #f9ab00);
 }
 
-/* Joystick */
+/* Joystick — size scales with viewport so it fits on any phone. */
 .cr-joystick {
     position: relative;
-    width: 150px;
-    height: 150px;
+    width: clamp(100px, 22vmin, 150px);
+    height: clamp(100px, 22vmin, 150px);
     border-radius: 50%;
     background: radial-gradient(circle at center, rgba(26, 115, 232, 0.18), rgba(0, 0, 0, 0.55));
     border: 2px solid rgba(255, 255, 255, 0.18);
@@ -409,8 +464,8 @@ body.control-remoto-body {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 62px;
-    height: 62px;
+    width: clamp(42px, 9vmin, 62px);
+    height: clamp(42px, 9vmin, 62px);
     border-radius: 50%;
     background: radial-gradient(circle at 40% 35%, #4a90f0, #1557b0);
     transform: translate(-50%, -50%);
@@ -432,6 +487,116 @@ body.control-remoto-body {
     color: #9aa0a6;
     letter-spacing: 1px;
     text-transform: uppercase;
+}
+
+/* Mobile-only back-to-dashboard tab, anchored to the top-left of the video.
+   Hidden on desktop — the topbar already provides a back arrow there. */
+.cr-mobile-back {
+    display: none;
+    position: absolute;
+    top: max(10px, env(safe-area-inset-top, 0px));
+    left: max(10px, env(safe-area-inset-left, 0px));
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.65rem 0.35rem 0.5rem;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+    color: #e8eaed;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-decoration: none;
+    backdrop-filter: blur(4px);
+    z-index: 20;
+    touch-action: manipulation;
+    transition: background 0.18s, transform 0.12s;
+}
+
+.cr-mobile-back .arrow { font-size: 0.95rem; line-height: 1; }
+.cr-mobile-back:active { transform: scale(0.95); background: rgba(26, 115, 232, 0.55); }
+
+/* Mobile-only sensor toggle, top-right of the video (next to the dot). */
+.cr-mobile-sensor {
+    display: none;
+    position: absolute;
+    top: max(10px, env(safe-area-inset-top, 0px));
+    right: calc(max(12px, env(safe-area-inset-right, 0px)) + 30px);
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.35rem 0.6rem;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+    color: #e8eaed;
+    font-size: 0.72rem;
+    font-weight: 600;
+    backdrop-filter: blur(4px);
+    z-index: 20;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background 0.18s, border-color 0.18s, transform 0.12s;
+    font-family: inherit;
+}
+
+.cr-mobile-sensor .ico { font-size: 0.95rem; line-height: 1; }
+.cr-mobile-sensor:active { transform: scale(0.95); }
+.cr-mobile-sensor[aria-pressed="true"] {
+    background: rgba(0, 200, 83, 0.8);
+    border-color: rgba(0, 200, 83, 0.9);
+    color: #03130a;
+    box-shadow: 0 0 10px rgba(0, 200, 83, 0.5);
+}
+
+/* Proximity alert banner — flashes on top of the video when obstacle found. */
+.cr-proximity-banner {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 0.8rem 1.25rem;
+    background: rgba(217, 48, 37, 0.88);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    border-radius: 14px;
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    z-index: 15;
+    pointer-events: none;
+    box-shadow: 0 6px 28px rgba(0, 0, 0, 0.6);
+    animation: crProxFlash 0.4s ease-in-out 3;
+}
+
+.cr-proximity-banner.visible { display: block; }
+
+/* Badge del modo FORCE (doble tap WASD) — aparece arriba central. */
+.cr-force-badge {
+    position: fixed;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.32rem 0.9rem;
+    background: rgba(249, 171, 0, 0.92);
+    color: #1a1400;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    box-shadow: 0 0 14px rgba(249, 171, 0, 0.6);
+    z-index: 30;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+}
+
+.cr-force-badge.visible { opacity: 1; }
+
+@keyframes crProxFlash {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
 }
 
 /* Floating mobile-only connection indicator (replaces the topbar on mobile) */
@@ -465,6 +630,59 @@ body.control-remoto-body {
 @keyframes crDotPulse {
     0%, 100% { box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.4), 0 0 10px rgba(0, 200, 83, 0.6); }
     50% { box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.4), 0 0 18px rgba(0, 200, 83, 0.95); }
+}
+
+/* ====== Mobile action buttons (center of the screen, between joysticks) ====== */
+.cr-mobile-actions {
+    display: none;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    flex-direction: row;
+    gap: 0.55rem;
+    z-index: 11;
+    pointer-events: auto;
+}
+
+.cr-mob-action-btn {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-width: 62px;
+    padding: 0.4rem 0.55rem;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #e8eaed;
+    border-radius: 12px;
+    backdrop-filter: blur(4px);
+    font-family: inherit;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: transform 0.12s, background 0.18s, border-color 0.18s;
+}
+
+.cr-mob-action-btn .ico { font-size: 1.15rem; line-height: 1; }
+.cr-mob-action-btn .lbl {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: #cfd2d6;
+}
+
+.cr-mob-action-btn:active,
+.cr-mob-action-btn.pressed {
+    transform: scale(0.94);
+    background: rgba(26, 115, 232, 0.55);
+    border-color: rgba(90, 168, 255, 0.7);
+}
+
+.cr-mob-action-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
 }
 
 /* On desktop: hide joystick, show keyboard hints instead */
@@ -513,16 +731,51 @@ body.control-remoto-body {
 @media (hover: none) and (pointer: coarse), (max-width: 900px) {
     .cr-topbar { display: none; }
     .cr-desktop-hints { display: none; }
-    .cr-gamepad { display: flex; }
+    .cr-gamepad { display: block; }
+    .cr-mobile-actions { display: flex; }
+    .cr-mobile-back { display: inline-flex; }
+    .cr-mobile-sensor { display: inline-flex; }
     .cr-mobile-status { display: block; }
     .cr-side { display: none; }
-    .cr-hud { display: none; }  /* HUD lives in the side panel on mobile, keep the view clean */
+    .cr-hud { display: none; }
     .cr-stage { grid-template-columns: 1fr; }
-    html, body, .control-remoto-body { height: 100%; }
+    html, body, .control-remoto-body { height: 100%; height: 100dvh; }
+    .cr-video-wrap { height: 100%; }
+}
+
+/* Short landscape phones (iPhone SE, old Androids with address bar visible):
+   collapse labels and shrink paddings so controls never exceed viewport. */
+@media (hover: none) and (pointer: coarse) and (max-height: 520px) {
+    .cr-joystick .cr-joy-label { bottom: -16px; font-size: 0.58rem; }
+    .cr-mob-action-btn { min-width: 52px; padding: 0.32rem 0.42rem; border-radius: 10px; }
+    .cr-mob-action-btn .ico { font-size: 0.95rem; }
+    .cr-mob-action-btn .lbl { font-size: 0.54rem; }
+    .cr-mobile-back { padding: 0.28rem 0.55rem 0.28rem 0.45rem; font-size: 0.68rem; }
+    .cr-mobile-sensor { padding: 0.28rem 0.5rem; font-size: 0.68rem; }
+}
+
+/* Narrow landscape (<=680px wide): labels off, buttons circular. */
+@media (hover: none) and (pointer: coarse) and (max-width: 680px) {
+    .cr-mobile-actions { gap: 0.3rem; }
+    .cr-mob-action-btn .lbl { display: none; }
+    .cr-mob-action-btn { min-width: 42px; padding: 0.42rem; border-radius: 50%; }
+    .cr-mob-action-btn .ico { font-size: 1rem; }
+}
+
+/* Very small phones (max 400px landscape height): hide the "Dashboard"
+   label, shrink the back pill to just an arrow so nothing overlaps. */
+@media (hover: none) and (pointer: coarse) and (max-height: 400px) {
+    .cr-mobile-back .lbl { display: none; }
+    .cr-mobile-back { padding: 0.3rem 0.5rem; }
+    .cr-mobile-sensor .lbl { display: none; }
+    .cr-mobile-sensor { padding: 0.3rem 0.5rem; right: calc(max(10px, env(safe-area-inset-right, 0px)) + 26px); }
 }
 
 @media (hover: hover) and (pointer: fine) and (min-width: 901px) {
     .cr-gamepad { display: none; }
+    .cr-mobile-actions { display: none; }
+    .cr-mobile-back { display: none; }
+    .cr-mobile-sensor { display: none; }
     .cr-desktop-hints { display: flex; }
     .cr-mobile-status { display: none; }
     .cr-side-toggle { display: none !important; }
@@ -546,6 +799,19 @@ body.control-remoto-body {
 @media (orientation: portrait) and (max-width: 900px) {
     .cr-orientation-hint { display: flex; }
 }
+
+.cr-orient-card {
+    max-width: 340px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+}
+.cr-orient-icon { font-size: 3rem; line-height: 1; }
+.cr-orient-title { font-size: 1.25rem; font-weight: 700; letter-spacing: 0.3px; }
+.cr-orient-sub { color: #aaa; font-size: 0.9rem; }
+.cr-orient-btn { margin-top: 0.6rem; padding: 0.6rem 1.2rem; font-size: 0.92rem; }
+.cr-orient-note { color: #ffb74d; font-size: 0.78rem; min-height: 1em; margin-top: 0.4rem; }
 
 /* Side panel toggle (mobile) */
 .cr-side-toggle {

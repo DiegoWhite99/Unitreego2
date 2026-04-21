@@ -21,10 +21,14 @@ const ControlRemoto = {
         serverConnected: false,
         robotConnected: false,
         yoloRunning: false,
+        sensorEnabled: false,
         battery: 0,
         mode: '--',
         ip: ''
     },
+
+    // TTS: preferred Spanish voice is picked once voices load.
+    tts: { voice: null, lastAlertTs: 0 },
 
     // Movement state (dead-man's switch: robot moves ONLY while an input is held)
     movement: {
@@ -32,12 +36,15 @@ const ControlRemoto = {
         rotFactor: 0.75,
         interval: null,
         activeKeys: new Set(),
-        // Three independent input sources — the final velocity is composed
-        // from whichever are non-zero. When all go to zero, the loop stops
-        // and stop_command is emitted immediately.
         keyboard: { x: 0, y: 0, z: 0 },
         joyMove: { x: 0, y: 0 },
-        joyRotate: { z: 0 }
+        joyRotate: { z: 0 },
+        // Doble tap de WASD/QE activa "force": los comandos se marcan con
+        // force=true y el backend salta el bloqueo del sensor. Dura MIENTRAS
+        // el operador siga conduciendo; se apaga solo cuando suelta todas
+        // las teclas (stopLoop) o se desconecta el robot.
+        forceActive: false,
+        lastKeyTap: {},
     },
 
     // Simple dead-reckoning trace
@@ -47,7 +54,20 @@ const ControlRemoto = {
         history: [],           // [{x,y}]
         pose: { x: 0, y: 0, heading: 0 },
         lastTick: null,
-        tickTimer: null
+        tickTimer: null,
+        heat: new Map(),
+        heatCellSize: 0.15,
+        lidarPose: null,
+        totalMeters: 0.0,
+        lastPoseForDistance: null,
+        metersPerStep: 0.30,
+        // Pan manual del mapa: mientras el usuario arrastra, se desacopla
+        // del centrado automático en la pose. Doble click vuelve a centrar.
+        viewOffset: { x: 0, y: 0 },
+        viewOffsetInUse: false,
+        dragging: false,
+        dragStart: null,
+        zoom: 1.0,            // zoom con wheel / pinch
     },
 
     yoloPollTimer: null,
@@ -58,6 +78,10 @@ const ControlRemoto = {
         this.setupConnectBar();
         this.setupJoysticks();
         this.setupActionBar();
+        this.setupMobileActions();
+        this.setupSensorToggle();
+        this.setupTts();
+        this.setupAutoRotate();
         this.setupKeyboard();
         this.setupSidePanelToggle();
         this.initTraceCanvas();
@@ -87,10 +111,15 @@ const ControlRemoto = {
             detections: document.getElementById('cr-detections'),
             joyMove: document.getElementById('cr-joy-move'),
             joyRotate: document.getElementById('cr-joy-rotate'),
+            btnSensor: document.getElementById('cr-sensor'),
+            btnMobileSensor: document.getElementById('cr-mobile-sensor'),
+            proximityBanner: document.getElementById('cr-proximity-banner'),
             sidePanel: document.getElementById('cr-side'),
             sideToggle: document.getElementById('cr-side-toggle'),
             traceCanvas: document.getElementById('cr-trace-canvas'),
-            mobileStatus: document.getElementById('cr-mobile-status')
+            mobileStatus: document.getElementById('cr-mobile-status'),
+            statDistance: document.getElementById('cr-m-distance'),
+            statSteps: document.getElementById('cr-m-steps')
         };
     },
 
@@ -113,6 +142,13 @@ const ControlRemoto = {
                 this.updateMetrics();
             }
         });
+
+        // Proximity sensor alerts: backend emits when YOLO sees something too
+        // close. Speak the warning, stop the robot, flash a banner.
+        this.socket.on('proximity_alert', (data) => this.onProximityAlert(data));
+
+        // Puntos del lidar (world frame) para el heatmap + paredes.
+        this.socket.on('lidar_points', (data) => this.onLidarPoints(data));
     },
 
     async loadInitialData() {
@@ -188,6 +224,9 @@ const ControlRemoto = {
         document.querySelectorAll('.cr-action-btn').forEach(btn => {
             btn.disabled = !canDo;
         });
+        document.querySelectorAll('.cr-mob-action-btn').forEach(btn => {
+            btn.disabled = !canDo;
+        });
     },
 
     /* ============ Connect bar ============ */
@@ -242,6 +281,19 @@ const ControlRemoto = {
 
             if (/^[wWsSaAdDqQeE]$/.test(e.key)) {
                 e.preventDefault();
+                // Doble tap de la misma tecla en <350 ms activa el modo FORCE.
+                // Una vez activo, el movimiento es libre hasta que sueltes
+                // todas las teclas (ver stopLoop).
+                if (!keys.has(e.key)) {
+                    const now = Date.now();
+                    const k = e.key.toLowerCase();
+                    const last = this.movement.lastKeyTap[k] || 0;
+                    if (now - last < 350) {
+                        this.movement.forceActive = true;
+                        this.showForceBadge();
+                    }
+                    this.movement.lastKeyTap[k] = now;
+                }
                 keys.add(e.key);
                 this.recomputeKeyboardVector();
             }
@@ -280,8 +332,8 @@ const ControlRemoto = {
         // Dominant-axis rule: forward/back cancels strafe to avoid crab-walk
         if (fwd && !back) x = s;
         else if (back && !fwd) x = -s;
-        else if (lft && !rgt) y = s * 0.5;
-        else if (rgt && !lft) y = -s * 0.5;
+        else if (lft && !rgt) y = s;        // strafe a factor completo
+        else if (rgt && !lft) y = -s;       // (antes 0.5, el Go2 se balanceaba)
 
         if (rotL && !rotR) z = r;
         else if (rotR && !rotL) z = -r;
@@ -320,17 +372,18 @@ const ControlRemoto = {
         if (this.movement.interval) return;
         const tick = () => {
             const raw = this.composeVector();
-            // Quantize to 0.05 to kill micro-jitter -> smoother, non-drunk walking
             const q = (n) => Math.abs(n) < 0.05 ? 0 : Math.round(n * 20) / 20;
             const v = { x: q(raw.x), y: q(raw.y), z: q(raw.z) };
 
             if (v.x === 0 && v.y === 0 && v.z === 0) {
-                // Source went idle between ticks — stop right now.
                 this.stopLoop();
                 return;
             }
+
             if (this.socket && this.state.robotConnected) {
-                this.socket.emit('move_command', v);
+                const payload = { ...v };
+                if (this.movement.forceActive) payload.force = true;
+                this.socket.emit('move_command', payload);
             }
             this.advanceTraceFromVelocity(v, 0.2);
         };
@@ -338,13 +391,34 @@ const ControlRemoto = {
         this.movement.interval = setInterval(tick, 200);
     },
 
+    showForceBadge() {
+        let el = document.getElementById('cr-force-badge');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'cr-force-badge';
+            el.className = 'cr-force-badge';
+            el.textContent = 'FORCE';
+            document.body.appendChild(el);
+        }
+        el.classList.add('visible');
+    },
+
+    hideForceBadge() {
+        const el = document.getElementById('cr-force-badge');
+        if (el) el.classList.remove('visible');
+    },
+
     stopLoop() {
         if (this.movement.interval) {
             clearInterval(this.movement.interval);
             this.movement.interval = null;
         }
-        // Emit stop_command even if the interval wasn't running — it's cheap
-        // and guarantees the robot halts the moment every input releases.
+        // Al soltar todas las teclas, apagamos el modo FORCE: la próxima
+        // conducción pedirá un nuevo doble tap para forzar.
+        if (this.movement.forceActive) {
+            this.movement.forceActive = false;
+            this.hideForceBadge();
+        }
         if (this.socket) this.socket.emit('stop_command');
     },
 
@@ -467,6 +541,151 @@ const ControlRemoto = {
         if (!entry) return;
         if (!this.state.robotConnected) return;
         await this.apiCall('/api/action', 'POST', { action: entry.action });
+    },
+
+    /* ============ Mobile action buttons (hello / sit / recovery) ============
+       Always visible on mobile so the operator reaches the poses without
+       opening the side panel. Disabled while the robot is offline. */
+    setupMobileActions() {
+        document.querySelectorAll('.cr-mob-action-btn').forEach(btn => {
+            const action = btn.dataset.action;
+            if (!action) return;
+            btn.addEventListener('click', async () => {
+                if (!this.state.robotConnected) return;
+                btn.classList.add('pressed');
+                setTimeout(() => btn.classList.remove('pressed'), 180);
+                await this.apiCall('/api/action', 'POST', { action });
+            });
+        });
+    },
+
+    /* ============ Sensor de proximidad ============
+       Toggle ON: backend arranca un watcher que mira detecciones YOLO
+       "near" y emite `proximity_alert`. Aquí respondemos con TTS + stop.
+       La alerta también llega desde el servidor, así que el stop es
+       doble: el servidor manda Move=0 y nosotros mandamos stop_command. */
+    setupSensorToggle() {
+        const handler = () => this.toggleSensor();
+        this.el.btnSensor?.addEventListener('click', handler);
+        this.el.btnMobileSensor?.addEventListener('click', handler);
+        this.refreshSensorStatus();
+    },
+
+    async refreshSensorStatus() {
+        const s = await this.apiCall('/api/sensor/status', 'GET');
+        if (s && typeof s.enabled === 'boolean') {
+            this.applySensorState(s.enabled);
+        }
+    },
+
+    async toggleSensor() {
+        if (!this.state.sensorEnabled && !this.state.robotConnected) return;
+        const desired = !this.state.sensorEnabled;
+        const res = await this.apiCall('/api/sensor/toggle', 'POST', { enabled: desired });
+        if (res && typeof res.enabled === 'boolean') {
+            this.applySensorState(res.enabled);
+        }
+    },
+
+    applySensorState(enabled) {
+        this.state.sensorEnabled = enabled;
+        const pressed = enabled ? 'true' : 'false';
+        if (this.el.btnSensor) {
+            this.el.btnSensor.setAttribute('aria-pressed', pressed);
+            this.el.btnSensor.textContent = enabled ? 'Sensor ON' : 'Sensor';
+            this.el.btnSensor.classList.toggle('ghost', !enabled);
+        }
+        if (this.el.btnMobileSensor) {
+            this.el.btnMobileSensor.setAttribute('aria-pressed', pressed);
+        }
+    },
+
+    /* ============ Text-to-speech (alerta de voz) ============ */
+    setupTts() {
+        if (!('speechSynthesis' in window)) return;
+        const pickVoice = () => {
+            const voices = speechSynthesis.getVoices() || [];
+            const es = voices.find(v => /^es/i.test(v.lang)) || voices[0];
+            this.tts.voice = es || null;
+        };
+        pickVoice();
+        speechSynthesis.onvoiceschanged = pickVoice;
+    },
+
+    speak(text) {
+        if (!text || !('speechSynthesis' in window)) return;
+        try {
+            speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            if (this.tts.voice) u.voice = this.tts.voice;
+            else u.lang = 'es-CO';
+            u.rate = 1.05;
+            u.pitch = 1.0;
+            u.volume = 1.0;
+            speechSynthesis.speak(u);
+        } catch (_) { /* ignore */ }
+    },
+
+    onProximityAlert(data) {
+        const now = Date.now();
+        if (now - this.tts.lastAlertTs < 2000) return;
+        this.tts.lastAlertTs = now;
+
+        this.stopMovement();
+        if (this.socket) this.socket.emit('stop_command');
+
+        // Solo alerta visual (el usuario pidió sin voz).
+        this.flashProximityBanner(data);
+    },
+
+    flashProximityBanner(data) {
+        const el = this.el.proximityBanner;
+        if (!el) return;
+        const where = data && data.direction ? ` (${data.direction})` : '';
+        const cm = data && typeof data.distance_m === 'number'
+            ? `${Math.round(data.distance_m * 100)} cm`
+            : 'obstaculo';
+        el.textContent = `!Detente! ${cm}${where}`;
+        el.classList.add('visible');
+        clearTimeout(this._banTimer);
+        this._banTimer = setTimeout(() => el.classList.remove('visible'), 1600);
+    },
+
+    /* ============ Auto-rotar a landscape ============
+       screen.orientation.lock() solo funciona en fullscreen en iOS/Android,
+       así que primero pedimos fullscreen y después el lock. Si el navegador
+       no lo soporta, mostramos un aviso para que el usuario gire manualmente
+       (iOS Safari bloquea la API de orientation.lock). */
+    setupAutoRotate() {
+        const btn = document.getElementById('cr-auto-rotate');
+        const note = document.getElementById('cr-orient-note');
+        if (!btn) return;
+
+        btn.addEventListener('click', async () => {
+            if (note) note.textContent = '';
+            try {
+                const root = document.documentElement;
+                const req = root.requestFullscreen
+                    || root.webkitRequestFullscreen
+                    || root.msRequestFullscreen;
+                if (req) await req.call(root);
+            } catch (err) {
+                if (note) note.textContent = 'No se pudo entrar a pantalla completa: ' + err.message;
+            }
+
+            try {
+                if (screen.orientation && typeof screen.orientation.lock === 'function') {
+                    await screen.orientation.lock('landscape');
+                    if (note) note.textContent = '';
+                } else {
+                    throw new Error('API de orientación no soportada');
+                }
+            } catch (err) {
+                if (note) {
+                    note.textContent = 'Tu navegador no permite rotar automaticamente. Gira el dispositivo manualmente.';
+                }
+            }
+        });
     },
 
     /* ============ Side panel toggle (mobile) ============ */
@@ -619,8 +838,108 @@ const ControlRemoto = {
         resize();
         window.addEventListener('resize', resize);
 
-        // Draw every 150ms so the trace animates smoothly
         setInterval(() => this.drawTrace(), 150);
+
+        // -------- Pan / zoom con mouse y touch --------
+        canvas.style.cursor = 'grab';
+        canvas.title = 'Arrastra para mover · doble click para centrar · rueda para zoom';
+
+        const startDrag = (cx, cy) => {
+            this.trace.dragging = true;
+            this.trace.dragStart = { x: cx, y: cy };
+            this.trace.viewOffsetInUse = true;
+            canvas.style.cursor = 'grabbing';
+        };
+        const moveDrag = (cx, cy) => {
+            if (!this.trace.dragging) return;
+            const dx = cx - this.trace.dragStart.x;
+            const dy = cy - this.trace.dragStart.y;
+            this.trace.viewOffset.x += dx;
+            this.trace.viewOffset.y += dy;   // en píxeles, direct
+            this.trace.dragStart = { x: cx, y: cy };
+        };
+        const endDrag = () => {
+            this.trace.dragging = false;
+            canvas.style.cursor = 'grab';
+        };
+
+        canvas.addEventListener('mousedown', (e) => startDrag(e.clientX, e.clientY));
+        window.addEventListener('mousemove', (e) => moveDrag(e.clientX, e.clientY));
+        window.addEventListener('mouseup', endDrag);
+
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length !== 1) return;
+            startDrag(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: true });
+        canvas.addEventListener('touchmove', (e) => {
+            if (e.touches.length !== 1) return;
+            moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: true });
+        canvas.addEventListener('touchend', endDrag);
+
+        canvas.addEventListener('dblclick', () => {
+            this.trace.viewOffset = { x: 0, y: 0 };
+            this.trace.viewOffsetInUse = false;
+            this.trace.zoom = 1.0;
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const f = Math.exp(-e.deltaY * 0.0015);
+            this.trace.zoom = Math.max(0.3, Math.min(4.0, this.trace.zoom * f));
+        }, { passive: false });
+    },
+
+    /* ============ Lidar heatmap + paredes ============
+       Recibimos puntos del lidar en coordenadas del mapa del robot. Los
+       acumulamos en una grid 2D (key `ix,iy`) para formar un heatmap de
+       densidad — cuanto más tiempo vea una superficie, más brillante. El
+       trayecto del robot (pose del lidar) sobrescribe esto al dibujar. */
+    onLidarPoints(data) {
+        if (!data || !Array.isArray(data.xy)) return;
+        const cell = this.trace.heatCellSize;
+        const heat = this.trace.heat;
+        const xy = data.xy;
+        // xy viene aplanado [x0,y0,x1,y1,...]
+        for (let i = 0; i + 1 < xy.length; i += 2) {
+            const ix = Math.round(xy[i] / cell);
+            const iy = Math.round(xy[i + 1] / cell);
+            const k = ix + ',' + iy;
+            heat.set(k, Math.min(255, (heat.get(k) || 0) + 1));
+        }
+        // Evita crecimiento ilimitado (decae cada 1500 entradas).
+        if (heat.size > 20000) {
+            for (const [k, v] of heat) {
+                if (v <= 1) heat.delete(k);
+                else heat.set(k, v - 1);
+            }
+        }
+
+        if (data.pose) {
+            this.trace.lidarPose = data.pose;
+            const last = this.trace.history.at(-1);
+            if (!last || Math.hypot(data.pose.x - last.x, data.pose.y - last.y) > 0.05) {
+                this.trace.history.push({ x: data.pose.x, y: data.pose.y });
+                if (this.trace.history.length > 600) this.trace.history.shift();
+            }
+
+            // Suma distancia real desde la pose anterior (filtramos saltos
+            // anómalos >1 m típicos de reinicios del SLAM).
+            const prev = this.trace.lastPoseForDistance;
+            if (prev) {
+                const d = Math.hypot(data.pose.x - prev.x, data.pose.y - prev.y);
+                if (d < 1.0) this.trace.totalMeters += d;
+            }
+            this.trace.lastPoseForDistance = { x: data.pose.x, y: data.pose.y };
+            this.updateTraceStats();
+        }
+    },
+
+    updateTraceStats() {
+        const km = this.trace.totalMeters / 1000;
+        const steps = Math.round(this.trace.totalMeters / this.trace.metersPerStep);
+        if (this.el.statDistance) this.el.statDistance.textContent = `${km.toFixed(3)} km`;
+        if (this.el.statSteps) this.el.statSteps.textContent = steps.toLocaleString('es-CO');
     },
 
     advanceTraceFromVelocity(v, dt) {
@@ -646,8 +965,10 @@ const ControlRemoto = {
         const H = canvas.clientHeight;
         ctx.clearRect(0, 0, W, H);
 
-        // Grid
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+        // Fondo y grilla
+        ctx.fillStyle = 'rgba(5, 10, 18, 0.85)';
+        ctx.fillRect(0, 0, W, H);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
         ctx.lineWidth = 1;
         const step = 20;
         for (let x = 0; x < W; x += step) {
@@ -657,48 +978,66 @@ const ControlRemoto = {
             ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
         }
 
-        // Axes
-        ctx.strokeStyle = 'rgba(26, 115, 232, 0.35)';
-        ctx.beginPath();
-        ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H);
-        ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2);
-        ctx.stroke();
-
-        // Scale meters -> pixels
-        const scale = Math.min(W, H) / 6;  // 6 m visible
+        // Si tenemos pose del lidar, centramos la vista en el robot.
+        // Si el usuario arrastró, respetamos su offset.
+        const pose = this.trace.lidarPose || { x: 0, y: 0, yaw: 0 };
+        const scale = (Math.min(W, H) / 8) * this.trace.zoom;   // 8 m visibles * zoom
+        const off = this.trace.viewOffset;
 
         ctx.save();
-        ctx.translate(W / 2, H / 2);
-        ctx.scale(1, -1);  // y up
+        ctx.translate(W / 2 + off.x, H / 2 + off.y);
+        ctx.scale(1, -1);  // y arriba
 
-        // Trace
+        // --- Heatmap de paredes (desde el lidar) ---
+        const heat = this.trace.heat;
+        const cell = this.trace.heatCellSize;
+        const cellPx = Math.max(2, cell * scale);
+        let maxHits = 1;
+        for (const v of heat.values()) if (v > maxHits) maxHits = v;
+        for (const [k, v] of heat) {
+            const [ix, iy] = k.split(',').map(Number);
+            const wx = ix * cell - pose.x;
+            const wy = iy * cell - pose.y;
+            // Recorta al área visible
+            const px = wx * scale, py = wy * scale;
+            if (Math.abs(px) > W / 2 + cellPx || Math.abs(py) > H / 2 + cellPx) continue;
+            const intensity = Math.min(1, Math.pow(v / maxHits, 0.45));
+            // gradiente azul -> cyan -> amarillo -> naranja
+            const r = Math.round(255 * Math.min(1, intensity * 1.8 - 0.3));
+            const g = Math.round(255 * Math.min(1, intensity * 1.3));
+            const b = Math.round(255 * (0.9 - intensity * 0.6));
+            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${0.25 + intensity * 0.6})`;
+            ctx.fillRect(px - cellPx / 2, py - cellPx / 2, cellPx, cellPx);
+        }
+
+        // --- Trayectoria (verde) relativa a la pose ---
         if (this.trace.history.length > 1) {
-            ctx.strokeStyle = 'rgba(0, 200, 83, 0.85)';
+            ctx.strokeStyle = 'rgba(0, 230, 110, 0.9)';
             ctx.lineWidth = 2;
             ctx.beginPath();
             this.trace.history.forEach((pt, i) => {
-                const px = pt.x * scale;
-                const py = pt.y * scale;
+                const px = (pt.x - pose.x) * scale;
+                const py = (pt.y - pose.y) * scale;
                 if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
             });
             ctx.stroke();
         }
 
-        // Robot pose
-        const rx = this.trace.pose.x * scale;
-        const ry = this.trace.pose.y * scale;
+        // --- Robot (centro) con flecha de heading ---
         ctx.fillStyle = '#1a73e8';
+        ctx.shadowColor = 'rgba(90, 168, 255, 0.7)';
+        ctx.shadowBlur = 10;
         ctx.beginPath();
-        ctx.arc(rx, ry, 5, 0, Math.PI * 2);
+        ctx.arc(0, 0, 6, 0, Math.PI * 2);
         ctx.fill();
+        ctx.shadowBlur = 0;
 
-        // Heading arrow
+        const yaw = pose.yaw || 0;
         ctx.strokeStyle = '#5aa8ff';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.moveTo(rx, ry);
-        ctx.lineTo(rx + Math.cos(this.trace.pose.heading) * 15,
-                   ry + Math.sin(this.trace.pose.heading) * 15);
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(yaw) * 18, Math.sin(yaw) * 18);
         ctx.stroke();
 
         ctx.restore();

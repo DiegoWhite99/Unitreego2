@@ -25,6 +25,7 @@
             <button id="cr-disconnect" class="cr-btn ghost" disabled>Off</button>
             <button id="cr-yolo-start" class="cr-btn">YOLO</button>
             <button id="cr-yolo-stop" class="cr-btn ghost" disabled>Stop</button>
+            <button id="cr-sensor" class="cr-btn ghost" aria-pressed="false">Sensor</button>
             <button id="cr-emergency" class="cr-btn danger" disabled>PARADA</button>
         </div>
 
@@ -83,9 +84,40 @@
                 </div>
             </div>
 
+            <!-- Mobile-only: back to dashboard tab (top-left of the video) -->
+            <a class="cr-mobile-back" href="/" aria-label="Volver al dashboard">
+                <span class="arrow">&larr;</span>
+                <span class="lbl">Dashboard</span>
+            </a>
+
+            <!-- Mobile-only: sensor toggle (top-right, next to connection dot) -->
+            <button id="cr-mobile-sensor" class="cr-mobile-sensor" aria-pressed="false" aria-label="Activar sensor de proximidad">
+                <span class="ico">&#x1F6E1;</span>
+                <span class="lbl">Sensor</span>
+            </button>
+
+            <!-- Proximity alert banner -->
+            <div id="cr-proximity-banner" class="cr-proximity-banner" aria-live="assertive"></div>
+
             <!-- Mobile-only: floating green connection indicator (replaces nav) -->
             <div id="cr-mobile-status" class="cr-mobile-status" aria-label="Estado de conexion">
                 <span class="cr-mobile-dot"></span>
+            </div>
+
+            <!-- Mobile action buttons: stay visible on mobile alongside joysticks -->
+            <div class="cr-mobile-actions" aria-label="Acciones rapidas">
+                <button class="cr-mob-action-btn" data-action="hello" aria-label="Saludar">
+                    <span class="ico">&#x270B;</span>
+                    <span class="lbl">Saludar</span>
+                </button>
+                <button class="cr-mob-action-btn" data-action="sit" aria-label="Sentarse">
+                    <span class="ico">&#x1F415;</span>
+                    <span class="lbl">Sentarse</span>
+                </button>
+                <button class="cr-mob-action-btn" data-action="recovery" aria-label="Recuperarse">
+                    <span class="ico">&#x21BB;</span>
+                    <span class="lbl">Recuperar</span>
+                </button>
             </div>
 
             <!-- Mobile gamepad overlays: dual joysticks (move + turn) -->
@@ -132,13 +164,24 @@
             </section>
 
             <section class="cr-panel">
-                <h4>Trazado 3D del entorno</h4>
+                <h4>Mapa de calor del entorno</h4>
                 <div class="cr-trace-wrap">
                     <canvas id="cr-trace-canvas"></canvas>
                 </div>
                 <div class="cr-trace-legend">
-                    <span>Punto azul: robot</span>
-                    <span>Linea verde: trayectoria</span>
+                    <span>Azul: robot</span>
+                    <span>Verde: recorrido</span>
+                    <span>Calor: paredes/obstaculos</span>
+                </div>
+                <div class="cr-trace-stats">
+                    <div class="cr-tstat">
+                        <span class="label">Recorrido</span>
+                        <span class="value" id="cr-m-distance">0.000 km</span>
+                    </div>
+                    <div class="cr-tstat">
+                        <span class="label">Pasos</span>
+                        <span class="value" id="cr-m-steps">0</span>
+                    </div>
                 </div>
             </section>
 
@@ -162,9 +205,12 @@
 
     <!-- Portrait warning on mobile -->
     <div class="cr-orientation-hint">
-        <div>
-            <p style="font-size:1.2rem;margin-bottom:0.5rem;">Gira tu dispositivo</p>
-            <p style="color:#aaa;">Para una mejor experiencia de control remoto, usa el modo horizontal.</p>
+        <div class="cr-orient-card">
+            <div class="cr-orient-icon">&#x1F4F1;</div>
+            <p class="cr-orient-title">Gira tu dispositivo</p>
+            <p class="cr-orient-sub">Para una mejor experiencia de control remoto, usa el modo horizontal.</p>
+            <button id="cr-auto-rotate" class="cr-btn cr-orient-btn">Girar automaticamente</button>
+            <p id="cr-orient-note" class="cr-orient-note"></p>
         </div>
     </div>
 
