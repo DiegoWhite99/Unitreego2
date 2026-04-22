@@ -200,6 +200,14 @@
                         <span class="value" id="cr-m-steps">0</span>
                     </div>
                 </div>
+                <div class="cr-trace-actions">
+                    <button id="cr-reset-origin" class="cr-btn ghost" title="Borra el mapa de calor y fija la posicion actual como origen">
+                        &#x21BA; Reiniciar origen
+                    </button>
+                    <button id="cr-go-qr" class="cr-btn ghost" title="Ir a la pagina de ruta guiada por QR">
+                        &#x1F4D0; Guiar por QR
+                    </button>
+                </div>
                 <button id="cr-save-route" class="cr-btn" style="margin-top:0.6rem;width:100%;">
                     Guardar ruta y abrir Auto-Ruta
                 </button>
@@ -222,6 +230,22 @@
 
         </aside>
     </main>
+
+    <!-- Modal: "Guiar por QR" debe usarse desde el celular -->
+    <div id="cr-mobile-only-modal" class="cr-mobile-only-modal hidden" aria-hidden="true">
+        <div class="cr-mo-card">
+            <div class="cr-mo-icon">&#x1F4F1;</div>
+            <h2>Usa esta funcion desde tu celular</h2>
+            <p>La <strong>Ruta Guiada por QR</strong> necesita que camines con el robot y le muestres cada marcador. Desde el celular el flujo es mucho mas comodo: vas al lado del perro y apuntas los QRs a la camara.</p>
+            <p class="cr-mo-sub">Escanea este QR con la camara del celular para abrir la pagina directamente:</p>
+            <div class="cr-mo-qr"><img id="cr-mo-qr-img" alt="QR con la URL de ruta guiada"></div>
+            <div class="cr-mo-url" id="cr-mo-url-text"></div>
+            <div class="cr-mo-actions">
+                <button id="cr-mo-continue" class="cr-btn ghost">Continuar en escritorio igual</button>
+                <button id="cr-mo-close" class="cr-btn">Entendido</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Portrait warning on mobile -->
     <div class="cr-orientation-hint">

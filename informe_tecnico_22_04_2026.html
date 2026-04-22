@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informe Tecnico - Daiver Control CUN - 22/04/2026</title>
+    <style>
+        @page { size: A4; margin: 2cm 2.5cm; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 11pt; line-height: 1.6; color: #1a1a1a;
+            background: #fff; padding: 2cm 2.5cm;
+        }
+        .cover {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; min-height: 90vh; text-align: center;
+            page-break-after: always;
+        }
+        .cover h1 { font-size: 28pt; color: #1a237e; margin-bottom: 8px; letter-spacing: 1px; }
+        .cover h2 { font-size: 16pt; color: #5c6bc0; font-weight: 400; margin-bottom: 40px; }
+        .cover-info {
+            border-top: 3px solid #1a237e; padding-top: 20px;
+            font-size: 12pt; color: #444; line-height: 2;
+        }
+        .cover-info strong { color: #1a237e; }
+        h1 {
+            font-size: 18pt; color: #1a237e;
+            border-bottom: 2px solid #1a237e; padding-bottom: 6px;
+            margin: 30px 0 15px 0; page-break-after: avoid;
+        }
+        h2 { font-size: 14pt; color: #303f9f; margin: 20px 0 10px 0; page-break-after: avoid; }
+        h3 { font-size: 12pt; color: #3949ab; margin: 15px 0 8px 0; }
+        p { margin-bottom: 10px; text-align: justify; }
+        ul, ol { margin: 8px 0 15px 25px; }
+        li { margin-bottom: 5px; }
+        code {
+            background: #f0f0f5; padding: 2px 6px; border-radius: 3px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 10pt; color: #d32f2f;
+        }
+        pre {
+            background: #1e1e2e; color: #cdd6f4; padding: 15px 18px;
+            border-radius: 6px; font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 9.5pt; line-height: 1.5; overflow-x: auto;
+            margin: 10px 0 18px 0; page-break-inside: avoid;
+        }
+        pre .comment { color: #6c7086; }
+        pre .keyword { color: #cba6f7; }
+        pre .string { color: #a6e3a1; }
+        pre .cmd { color: #89b4fa; }
+        pre .flag { color: #f9e2af; }
+        table {
+            width: 100%; border-collapse: collapse;
+            margin: 10px 0 18px 0; font-size: 10pt;
+            page-break-inside: avoid;
+        }
+        th {
+            background: #1a237e; color: white; padding: 10px 12px;
+            text-align: left; font-weight: 600;
+        }
+        td { padding: 8px 12px; border-bottom: 1px solid #e0e0e0; }
+        tr:nth-child(even) { background: #f5f5fa; }
+        .note {
+            background: #e8eaf6; border-left: 4px solid #1a237e;
+            padding: 12px 16px; border-radius: 0 6px 6px 0;
+            margin: 12px 0; font-size: 10pt;
+        }
+        .note strong { color: #1a237e; }
+        .warning {
+            background: #fff3e0; border-left: 4px solid #e65100;
+            padding: 12px 16px; border-radius: 0 6px 6px 0;
+            margin: 12px 0; font-size: 10pt;
+        }
+        .warning strong { color: #e65100; }
+        .success {
+            background: #e8f5e9; border-left: 4px solid #2e7d32;
+            padding: 12px 16px; border-radius: 0 6px 6px 0;
+            margin: 12px 0; font-size: 10pt;
+        }
+        .success strong { color: #2e7d32; }
+        .architecture-box {
+            background: #fafafa; border: 1px solid #e0e0e0;
+            border-radius: 8px; padding: 20px; margin: 15px 0;
+            text-align: center; font-family: 'Consolas', monospace;
+            font-size: 10pt; line-height: 1.8; page-break-inside: avoid;
+        }
+        .architecture-box .layer {
+            background: #e8eaf6; border: 1px solid #9fa8da;
+            border-radius: 6px; padding: 8px 16px;
+            margin: 5px auto; max-width: 560px;
+        }
+        .architecture-box .arrow { color: #1a237e; font-size: 16pt; margin: 2px 0; }
+        .footer {
+            text-align: center; font-size: 9pt; color: #888;
+            margin-top: 40px; padding-top: 15px; border-top: 1px solid #ddd;
+        }
+        @media print {
+            body { padding: 0; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== PORTADA ===== -->
+<div class="cover">
+    <h1>INFORME TECNICO</h1>
+    <h2>Ruta Guiada por QR, Follow-me Visual y Auto-Ruta Fluida</h2>
+    <p style="font-size: 13pt; color: #666; margin-bottom: 30px;">
+        Daiver Control CUN &mdash; Unitree Go2 Air<br>
+        Integracion percepcion-accion con marcadores visuales y mapa 3D
+    </p>
+    <div class="cover-info">
+        <strong>Proyecto:</strong> unitreeWebRTC &mdash; Laboratorio 2<br>
+        <strong>Institucion:</strong> CUN &mdash; Corporacion Unificada Nacional<br>
+        <strong>Fecha:</strong> 22 de Abril de 2026<br>
+        <strong>Tecnologias:</strong> Python (Flask + asyncio) + JavaScript + Socket.IO + WebRTC + OpenCV QR + qrcode<br>
+        <strong>Robot:</strong> Unitree Go2 Air
+    </div>
+</div>
+
+<!-- ===== RESUMEN EJECUTIVO ===== -->
+<h1 style="background: #1a237e; color: white; padding: 12px 18px; border-radius: 6px; border-bottom: none;">
+    Actualizacion &mdash; Miercoles 22 de Abril de 2026
+</h1>
+
+<div class="note">
+    <strong>Resumen ejecutivo.</strong> La sesion de hoy es la mas densa hasta ahora: se construye un
+    <strong>pipeline completo de captura de rutas por marcadores visuales</strong> (QR), se suma un
+    modo <strong>Follow-me</strong> donde el robot persigue un QR que el operador muestra, se migra
+    el heatmap a <strong>voxels 3D reales</strong> con persistencia entre sesiones, y se endurece el
+    Auto-Ruta con <strong>retorno obligatorio al origen</strong>, <strong>modo fluido</strong> sin
+    paradas entre waypoints, y una capa de herramientas de edicion por coordenadas exactas con
+    <strong>registro de ubicaciones</strong>.
+</div>
+
+<h2>A. Alcance Tecnico de la Sesion</h2>
+<p>La actualizacion agrupa seis bloques de trabajo, tres nuevos y tres evolutivos:</p>
+<ol>
+    <li><strong>Pagina <code>/rutaguiada</code> (nueva):</strong> captura de waypoints guiada por
+        marcadores QR, con modal inicial, lista de waypoints capturados, exportacion a Auto-Ruta y
+        generador de QRs para imprimir.</li>
+    <li><strong>Follow-me visual (nuevo):</strong> el robot persigue cualquier QR visible, con
+        control proporcional sobre posicion en frame (giro) y area ocupada (distancia). Detencion
+        automatica si el QR se pierde.</li>
+    <li><strong>Heatmap 3D (evolucion mayor):</strong> migracion de grid 2D (ix, iy) a voxels 3D
+        (ix, iy, iz) con tamanos reducidos (8 cm XY, 12 cm Z), filtrado de ruido y persistencia
+        incremental en <code>localStorage</code> + exportacion JSON.</li>
+    <li><strong>Auto-Ruta con regla de retorno (evolucion):</strong> al terminar cada ciclo el robot
+        siempre regresa al origen por el mismo camino en reversa. Aplica tambien despues del ultimo
+        ciclo.</li>
+    <li><strong>Modo fluido (nuevo):</strong> opt-in que elimina paradas entre waypoints y ajusta el
+        seguidor para transiciones continuas, con atenuacion proporcional al error de heading.</li>
+    <li><strong>Herramientas de edicion y diagnostico:</strong> tooltip de coordenadas al hover,
+        etiquetas de coords en cada waypoint, badge con pose del robot en vivo, input numerico para
+        agregar waypoints por coords exactas, registro de ubicaciones con timestamp.</li>
+</ol>
+
+<h2>B. Archivos Modificados y Creados</h2>
+<table>
+    <tr><th>Archivo</th><th>Estado</th><th>Cambios principales</th></tr>
+    <tr>
+        <td><code>app.py</code></td>
+        <td>Modificado</td>
+        <td>Callback de QR y emision Socket.IO; endpoints <code>/api/qr/image</code>, <code>/api/qr/last</code>, <code>/rutaguiada</code>, <code>/api/follow/start|stop|status</code>; loop async <code>_follow_loop</code>; Auto-Ruta con <code>smooth_mode</code> y retorno universal al origen; emision <code>xyz</code> en <code>lidar_points</code>.</td>
+    </tr>
+    <tr>
+        <td><code>yolo_detector.py</code></td>
+        <td>Modificado</td>
+        <td>Campo <code>_qr_detector</code> (cv2.QRCodeDetector); detector throttled cada 4 frames; callback registrable (<code>set_qr_callback</code>); <code>get_last_qr_tracking()</code> con centro normalizado y area del QR; dibujo del borde cyan sobre el stream anotado.</td>
+    </tr>
+    <tr>
+        <td><code>website/rutaGuiada.html</code></td>
+        <td>Nuevo</td>
+        <td>Pagina completa: topbar con pills de estado (servidor, robot, QR), stream de camara, modal inicial con boton de origen, pose en vivo, lista de waypoints con QR labels, generador de QR para imprimir, panel follow-me.</td>
+    </tr>
+    <tr>
+        <td><code>website/css/rutaGuiada.css</code></td>
+        <td>Nuevo</td>
+        <td>Estilos dedicados: layout 2 columnas, stream 16:10, toast flotante ambar de deteccion, pill verde/ambar/gris para follow-me con pulsos CSS, modal de origen con backdrop-filter.</td>
+    </tr>
+    <tr>
+        <td><code>website/js/rutaGuiada.js</code></td>
+        <td>Nuevo</td>
+        <td>Cliente Socket.IO, listener <code>qr_detected</code>, captura de waypoints con etiqueta del QR, exportacion a <code>daiver:lastRoute</code> con el heatmap del <code>liveScan</code>, generador de QR via API, follow-me con estado visual.</td>
+    </tr>
+    <tr>
+        <td><code>website/controlRemoto.html</code></td>
+        <td>Modificado</td>
+        <td>Dos botones nuevos bajo el mini-mapa (<em>Reiniciar origen</em>, <em>Guiar por QR</em>). Modal <em>mobile-only</em> con QR de la URL para escanear desde el celular.</td>
+    </tr>
+    <tr>
+        <td><code>website/js/controlRemoto.js</code></td>
+        <td>Modificado</td>
+        <td><code>resetOriginAndTrace()</code>; deteccion escritorio/movil via <code>matchMedia</code>; heatmap 3D con clave <code>ix,iy,iz</code>; auto-persistencia del escaneo cada 10 s en <code>daiver:liveScan</code>; <code>restoreLiveScan()</code> en init; serializacion con umbral de confianza en save-route.</td>
+    </tr>
+    <tr>
+        <td><code>website/css/controlRemoto.css</code></td>
+        <td>Modificado</td>
+        <td>Estilos <code>.cr-trace-actions</code>, <code>.cr-mobile-only-modal</code>, <code>.cr-mo-qr</code>, <code>.cr-mo-url</code>.</td>
+    </tr>
+    <tr>
+        <td><code>website/autoroute.html</code></td>
+        <td>Modificado</td>
+        <td>Checkbox <em>Modo fluido</em>; input numerico X/Y para agregar waypoints exactos; panel <em>Registro de ubicaciones</em>; tooltip de coords; badge con pose del robot en vivo; boton <em>Nueva ruta vacia</em> y <em>Guardar datos escaneados</em>.</td>
+    </tr>
+    <tr>
+        <td><code>website/js/autoroute.js</code></td>
+        <td>Modificado</td>
+        <td>Loader 3D-aware; render de voxels apilados coloreados por Z; hover-to-coords; <code>renderWaypointRegistry</code>; etiquetas de coords por waypoint; badge del robot en vivo; etiqueta flotante de pose sobre el robot en canvas; pase de <code>smooth_mode</code> al backend; estado <em>returning</em>; download del scan JSON; <code>startBlank</code>.</td>
+    </tr>
+    <tr>
+        <td><code>website/css/autoroute.css</code></td>
+        <td>Modificado</td>
+        <td><code>.ar-coord-tip</code>, <code>.ar-robot-badge</code> con pulso, <code>.ar-coord-input</code>, <code>.ar-wp-registry-*</code>, <code>.ar-translate-opt</code>, <code>.ar-smooth-opt</code>.</td>
+    </tr>
+    <tr>
+        <td><code>requirements.txt</code></td>
+        <td>Modificado</td>
+        <td>Agregado <code>qrcode[pil]&gt;=7.4</code>.</td>
+    </tr>
+</table>
+
+<!-- ===== 1. RUTA GUIADA POR QR ===== -->
+<h1>1. Ruta Guiada por QR &mdash; Captura Visual de Waypoints</h1>
+
+<h2>1.1 Motivacion</h2>
+<p>
+    El flujo anterior (caminar el robot desde el teleoperador y guardar la ruta del lidar) sirve para
+    trayectorias lineales, pero no captura la intencion semantica de "aca hay que parar". La ruta
+    guiada por QR convierte los marcadores fisicos en puntos de interes: pegas un QR en cada lugar
+    que el robot debe visitar, lo llevas hasta cada uno, el robot lo reconoce y el operador presiona
+    "Guardar waypoint" para fijar la pose actual del lidar.
+</p>
+
+<h2>1.2 Arquitectura del Pipeline</h2>
+<div class="architecture-box">
+    <div class="layer" style="background: #b2dfdb;">
+        <strong>1. CAMARA DEL ROBOT (WebRTC &rarr; YOLO)</strong><br>
+        Los frames entran al detector YOLO como siempre. En paralelo, 1 de cada 4 frames<br>
+        pasa por <code>cv2.QRCodeDetector.detectAndDecode()</code>.
+    </div>
+    <div class="arrow">&darr;</div>
+    <div class="layer" style="background: #c5cae9;">
+        <strong>2. YOLO_DETECTOR (hilo)</strong><br>
+        Si encuentra QR, guarda <code>_last_qr_text</code>, <code>_last_qr_corners</code>, <code>_last_qr_ts</code>.<br>
+        Dibuja el borde cyan + label sobre el frame anotado.<br>
+        Invoca el callback registrado por <code>app.py</code>.
+    </div>
+    <div class="arrow">&darr;</div>
+    <div class="layer" style="background: #bbdefb;">
+        <strong>3. APP.PY (Flask)</strong><br>
+        El callback enriquece con pose actual del lidar (<code>proximity_sensor._pose_*</code>)<br>
+        y emite Socket.IO <code>qr_detected</code> con dedup de 2 s.
+    </div>
+    <div class="arrow">&darr;</div>
+    <div class="layer" style="background: #fff3e0;">
+        <strong>4. FRONTEND (rutaGuiada.js)</strong><br>
+        Muestra toast ambar <em>"QR detectado: DAIVER_A"</em>, habilita el boton Guardar waypoint.<br>
+        Si el operador guarda, la pose actual se agrega a la lista local con la etiqueta del QR.
+    </div>
+</div>
+
+<h2>1.3 Deteccion de QR en <code>yolo_detector.py</code></h2>
+<pre><span class="comment"># Throttled a ~5 Hz para no robar CPU a YOLO.</span>
+self._qr_frame_count += 1
+<span class="keyword">if</span> self._qr_frame_count &gt;= self._qr_every_n:
+    self._qr_frame_count = 0
+    qr_text, qr_corners, _ = self._qr_detector.detectAndDecode(frame)
+    <span class="keyword">if</span> qr_text:
+        self._last_qr_text = qr_text
+        self._last_qr_ts = time.time()
+        corners_list = qr_corners.reshape(-1, 2).astype(int).tolist()
+        self._last_qr_corners = corners_list
+        <span class="comment"># Dibujo del borde sobre el frame anotado</span>
+        <span class="keyword">for</span> i <span class="keyword">in range</span>(len(pts)):
+            cv2.line(annotated, pts[i], pts[(i+1) % len(pts)],
+                     (0, 220, 255), 3)
+        cv2.putText(annotated, <span class="string">f"QR: {qr_text[:24]}"</span>, ...)
+        <span class="keyword">if</span> callable(self._qr_callback):
+            self._qr_callback(qr_text, corners_list)</pre>
+
+<h2>1.4 Endpoints REST Asociados</h2>
+<table>
+    <tr><th>Metodo</th><th>Endpoint</th><th>Descripcion</th></tr>
+    <tr><td><code>GET</code></td><td><code>/rutaguiada</code></td><td>Sirve la pagina <code>rutaGuiada.html</code>.</td></tr>
+    <tr><td><code>GET</code></td><td><code>/api/qr/last</code></td><td>Ultimo QR detectado: <code>text</code>, <code>last_ts</code>, <code>age_s</code>, <code>pose</code>.</td></tr>
+    <tr><td><code>GET</code></td><td><code>/api/qr/image?text=...</code></td><td>PNG del QR generado con la libreria <code>qrcode</code> (version auto, box_size=10, border=3, error_correction M).</td></tr>
+    <tr><td><code>POST</code></td><td><code>/api/follow/start</code></td><td>Arranca el loop Follow-me.</td></tr>
+    <tr><td><code>POST</code></td><td><code>/api/follow/stop</code></td><td>Cancela el loop y envia Move=0.</td></tr>
+    <tr><td><code>GET</code></td><td><code>/api/follow/status</code></td><td>Estado actual del follow-me (corriendo, ultima velocidad, razon).</td></tr>
+</table>
+
+<h2>1.5 Modal <em>Posiciona el robot en el punto inicial</em></h2>
+<p>
+    Al entrar a <code>/rutaguiada</code>, un modal semitransparente con backdrop-filter cubre la pagina y
+    le pide al operador colocar manualmente el Daiver en el lugar que sera el origen. Dos botones:
+</p>
+<ul>
+    <li><strong>Estoy en el punto inicial &mdash; registrar origen:</strong> valida que la pose del
+        lidar este disponible y, si lo esta, registra el primer waypoint con la pose actual y etiqueta
+        <code>ORIGEN</code>.</li>
+    <li><strong>Continuar sin registrar origen:</strong> cierra el modal y permite capturar waypoints
+        manualmente sin predefinir un origen.</li>
+</ul>
+<div class="warning">
+    <strong>Por que no autonavegar al origen.</strong> La pregunta surgio: &iquest;puede el robot ir
+    solo al punto inicial? Respuesta: <em>no con el stack actual</em>. Sin SLAM previo + planner no
+    hay forma de que conozca la posicion absoluta del "punto inicial" en el mundo. El trabajo sigue
+    requiriendo intervencion humana para colocar al Daiver.
+</div>
+
+<!-- ===== 2. FOLLOW-ME ===== -->
+<h1>2. Follow-me Visual &mdash; El Robot Persigue tu QR</h1>
+
+<h2>2.1 Idea</h2>
+<p>
+    Mas alla de capturar waypoints, el operador puede activar un modo donde el robot <em>sigue</em>
+    al QR en tiempo real, ajustando giro y velocidad segun donde y que tamano aparece en el frame.
+    El operador camina de espaldas mostrandole el QR, y el Daiver lo acompana manteniendo distancia.
+</p>
+
+<h2>2.2 Control Proporcional 2-D</h2>
+<pre><span class="comment"># Senales del yolo_detector</span>
+qr = yolo_detector.get_last_qr_tracking()
+<span class="comment"># qr = {text, age_s, norm_cx, norm_cy, area_ratio}</span>
+
+err = qr.norm_cx - 0.5    <span class="comment"># &gt;0 si el QR esta a la derecha en el frame</span>
+z = -k_angular * err      <span class="comment"># gira para centrarlo</span>
+
+<span class="keyword">if</span> area_ratio &gt;= near_area:
+    x = 0                 <span class="comment"># muy cerca, frenamos</span>
+<span class="keyword">elif</span> area_ratio &gt;= target_area:
+    x = 0.15              <span class="comment"># mantener distancia</span>
+<span class="keyword">else</span>:
+    x = min(max_linear, 0.18 + (target - area) * 4.0)  <span class="comment"># acercarse</span></pre>
+
+<h2>2.3 Normalizacion del QR en el Frame</h2>
+<p>
+    <code>yolo_detector.get_last_qr_tracking()</code> computa los metadatos derivados desde los
+    corners crudos + dimensiones del frame:
+</p>
+<pre><span class="comment"># Centroide</span>
+cx = sum(xs) / 4
+cy = sum(ys) / 4
+
+<span class="comment"># Area por formula del shoelace</span>
+area = abs(sum(x1*y2 - x2*y1)) * 0.5
+
+<span class="keyword">return</span> {
+    <span class="string">"norm_cx"</span>: cx / frame_width,      <span class="comment"># [0..1]</span>
+    <span class="string">"norm_cy"</span>: cy / frame_height,
+    <span class="string">"area_ratio"</span>: area / (w * h),      <span class="comment"># fraccion del frame</span>
+    <span class="string">"age_s"</span>: now - last_qr_ts,
+}</pre>
+
+<h2>2.4 Maquinas de Parada (Seguridad)</h2>
+<ul>
+    <li><strong>QR perdido:</strong> si <code>age_s &gt; 1.5</code>, Move=0 inmediato.</li>
+    <li><strong>Sensor de proximidad:</strong> si <code>_alert_active</code>, Move=0.</li>
+    <li><strong>Cancelacion externa:</strong> <code>POST /api/follow/stop</code> cancela el task y envia Move=0.</li>
+    <li><strong>Exclusividad:</strong> no se puede arrancar follow-me si Auto-Ruta esta corriendo.</li>
+</ul>
+
+<div class="success">
+    <strong>Resultado comprobado.</strong> El operador muestra el QR al robot desde aprox. 1.5 m,
+    el pill pasa a verde pulsante, el Go2 gira para centrarlo y arranca a caminar hacia el. Si el
+    operador retrocede, el robot acelera; si se detiene, el robot se queda dentro del target de
+    area (~1 m). Al cubrir el QR, el robot frena en menos de 2 segundos.
+</div>
+
+<!-- ===== 3. HEATMAP 3D ===== -->
+<h1>3. Heatmap 3D y Persistencia de Escaneo</h1>
+
+<h2>3.1 Problema con el Heatmap Plano</h2>
+<p>
+    El heatmap previo acumulaba hits en celdas <code>(ix, iy)</code>, colapsando toda la columna Z en
+    un solo bucket. Una silla y el piso debajo quedaban en la misma celda; una mesa alta y lo que
+    estaba sobre ella tambien. Visualmente, una torre de "color" no significaba nada espacialmente.
+    Ademas, celdas de 15 cm difuminaban objetos finos.
+</p>
+
+<h2>3.2 Migracion a Voxels 3D</h2>
+<table>
+    <tr><th>Aspecto</th><th>Antes</th><th>Ahora</th></tr>
+    <tr><td>Clave del Map</td><td><code>"ix,iy"</code></td><td><code>"ix,iy,iz"</code></td></tr>
+    <tr><td>Tamano XY</td><td>15 cm</td><td>8 cm</td></tr>
+    <tr><td>Tamano Z</td><td>N/A</td><td>12 cm</td></tr>
+    <tr><td>Umbral de confianza</td><td>Sin filtro</td><td><code>v &ge; 2</code> al guardar/renderizar</td></tr>
+    <tr><td>Decay</td><td>Destructivo al saturar</td><td>Decay solo voxels de intensidad 1 cuando <code>size &gt; 40k</code></td></tr>
+    <tr><td>Backend emite</td><td><code>xy</code> (flat)</td><td><code>xyz</code> (flat) + <code>xy</code> legado</td></tr>
+</table>
+
+<h2>3.3 Render de Voxels Apilados</h2>
+<p>
+    En la pagina de Auto-Ruta cada voxel se dibuja como una cajita 2.5D en su altura Z real. Los
+    componentes por voxel:
+</p>
+<ol>
+    <li><strong>Sombra en el suelo</strong> (eliptica, alpha proporcional a intensidad).</li>
+    <li><strong>Cara frontal</strong> con <code>linearGradient</code> de arriba mas brillante a abajo
+        mas oscuro (luz cenital simulada).</li>
+    <li><strong>Cara superior</strong> como paralelogramo isometrico.</li>
+    <li><strong>Borde tenue</strong> blanco en los bordes para separar voxels contiguos.</li>
+</ol>
+<p>
+    Color <strong>por altura Z</strong>, no por intensidad: azul profundo cerca del piso, amarillo a
+    altura media (~50 cm), rojo en la parte alta (&gt;1 m). Asi un mueble con patas + tablero se ve
+    literalmente como un mueble (patas azules, tablero rojo).
+</p>
+
+<h2>3.4 Persistencia en <code>localStorage</code></h2>
+<p>
+    Dos claves conviven:
+</p>
+<ul>
+    <li><strong><code>daiver:liveScan</code></strong>: autosave throttled cada 10 s desde el Control
+        Remoto. Contiene <code>heat</code> (array de triples), <code>history</code>, <code>totalMeters</code>.
+        Se restaura al recargar la pagina (<code>restoreLiveScan</code>).</li>
+    <li><strong><code>daiver:lastRoute</code></strong>: snapshot al guardar ruta, o al exportar desde
+        <code>/rutaguiada</code>. Contiene los waypoints ordenados + una copia del heat.</li>
+</ul>
+<p>
+    Si el JSON no cabe por <em>QuotaExceededError</em>, se guarda <code>daiver:lastRoute</code> con
+    <code>heat: []</code> y el flag <code>heatTruncated: true</code>. La pagina de Auto-Ruta, al
+    cargar, detecta el flag y reconstruye el heat desde <code>daiver:liveScan</code>.
+</p>
+
+<h2>3.5 Exportacion Manual</h2>
+<p>
+    Boton <strong>Guardar datos escaneados</strong> en la toolbar del editor de Auto-Ruta: descarga
+    un <code>daiver_scan_YYYY-MM-DDTHH-MM-SS.json</code> con <code>heatCellSize</code>, <code>heat</code>,
+    <code>points</code> y metadata. El operador puede archivar el escaneo fuera del navegador.
+</p>
+
+<!-- ===== 4. AUTO-RUTA MEJORADA ===== -->
+<h1>4. Auto-Ruta: Regla de Retorno y Modo Fluido</h1>
+
+<h2>4.1 Regla: Volver al Origen SIEMPRE</h2>
+<p>
+    El operador reporto que al terminar la ultima iteracion el robot se quedaba en el ultimo
+    waypoint. Se convirtio el retorno al origen en una <strong>regla universal</strong>:
+</p>
+<pre><span class="keyword">for</span> cycle <span class="keyword">in range</span>(1, state[<span class="string">"cycles_total"</span>] + 1):
+    <span class="comment"># --- Pasada adelante ---</span>
+    <span class="keyword">for</span> i, wp <span class="keyword">in enumerate</span>(state[<span class="string">"waypoints"</span>]):
+        <span class="keyword">await</span> _autoroute_go_to(wp)
+
+    <span class="comment"># --- REGLA: siempre volver al origen en reversa, independiente</span>
+    <span class="comment">#     de si queda otro ciclo o es el ultimo. ---</span>
+    <span class="keyword">if not</span> state[<span class="string">"_cancel"</span>] <span class="keyword">and</span> total_wp &gt;= 2:
+        <span class="keyword">for</span> i <span class="keyword">in range</span>(total_wp - 2, -1, -1):
+            state[<span class="string">"wp_now"</span>] = i + 1
+            socketio.emit(<span class="string">"autoroute_progress"</span>, {<span class="string">"returning"</span>: <span class="keyword">True</span>, ...})
+            <span class="keyword">await</span> _autoroute_go_to(state[<span class="string">"waypoints"</span>][i])</pre>
+<p>
+    El pill de la UI muestra "Volviendo al origen..." durante el retorno (usando el flag
+    <code>returning</code> en los eventos <code>autoroute_progress</code>).
+</p>
+
+<h2>4.2 Modo Fluido &mdash; Sin Paradas entre Waypoints</h2>
+<p>
+    Opt-in via checkbox verde "Modo fluido". Cuando esta activo, el seguidor pasa de "stop-and-go"
+    a "pure pursuit" suavizado:
+</p>
+<table>
+    <tr><th>Parametro</th><th>Preciso (default)</th><th>Fluido</th></tr>
+    <tr><td>Reach radius</td><td>0.25 m</td><td><strong>0.50 m</strong></td></tr>
+    <tr><td>Heading threshold</td><td>0.4 rad (~23&deg;)</td><td><strong>1.4 rad (~80&deg;)</strong></td></tr>
+    <tr><td>Velocidad lineal max</td><td>0.35 m/s</td><td><strong>0.4 m/s</strong></td></tr>
+    <tr><td>Parada entre waypoints</td><td>Move=0</td><td><strong>Sin frenar</strong></td></tr>
+    <tr><td>Atenuacion lineal por heading</td><td>No</td><td><strong>Si, factor 0.35..1.0</strong></td></tr>
+</table>
+
+<h2>4.3 Coordenadas Exactas y Registro de Ubicaciones</h2>
+<p>
+    Tres entradas complementarias para posicionar waypoints con precision:
+</p>
+<ul>
+    <li><strong>Hover tooltip:</strong> el mouse sobre el canvas muestra una pildora monospace con
+        <code>x=... m  y=... m</code> en coords del mundo. Se actualiza a 60 Hz por el evento
+        <code>mousemove</code> + inversa <code>screenToWorld</code>.</li>
+    <li><strong>Click-to-place:</strong> en modo edicion, agrega un waypoint en la coord exacta del
+        cursor. Cada waypoint ahora guarda <code>ts: Date.now()</code> y <code>source: 'click' |
+        'numeric'</code>.</li>
+    <li><strong>Input numerico:</strong> dos campos X/Y en el panel Ruta + boton <code>+</code>.
+        Permite tipear "0.50" / "1.20" y crear el waypoint sin depender del pixel.</li>
+    <li><strong>Etiquetas sobre el canvas:</strong> cada waypoint con &le; 30 totales muestra su
+        <code>(x, y)</code> debajo del marcador, con fondo negro y borde coloreado segun tipo
+        (origen verde, final rojo, activo ambar, intermedio azul).</li>
+    <li><strong>Registro de ubicaciones:</strong> <code>&lt;details&gt;</code> colapsable en el panel
+        con <code>(n)</code> total y lista de cada waypoint: numero + coords + hora local. Click en
+        un item dispara un redraw con flash visual.</li>
+</ul>
+
+<h2>4.4 Badge del Robot en Vivo</h2>
+<p>
+    El canvas muestra ahora la pose del robot de dos maneras redundantes para que el operador la
+    tenga visible mientras trabaja:
+</p>
+<ul>
+    <li><strong>Badge esquinero</strong> (abajo-derecha): <code>Robot x=... y=... yaw=...</code>
+        con dot azul pulsante cuando llegan datos, gris cuando estan stale.</li>
+    <li><strong>Etiqueta flotante sobre el dibujo del robot</strong>: caja negra con borde azul
+        pegada al circulo, con <code>(x, y)</code> actualizado en tiempo real cada vez que entra un
+        <code>lidar_points</code> (~5 Hz).</li>
+</ul>
+
+<h2>4.5 Otros Cambios del Editor</h2>
+<ul>
+    <li><strong>Checkbox <em>Ajustar origen al robot antes de iniciar</em></strong>: opt-in para el
+        traslado automatico de waypoints (removido como default; antes deformaba la ruta).</li>
+    <li><strong>Boton <em>Nueva ruta vacia</em></strong>: confirm + descarta los waypoints cargados y
+        entra en modo edicion.</li>
+    <li><strong>Carga tolerante de formato legado</strong> <code>[ix, iy, v]</code> de heatmap 2D en
+        el render (convierte a <code>iz=0</code>).</li>
+</ul>
+
+<!-- ===== 5. UX ===== -->
+<h1>5. Mejoras de UX &mdash; Control Remoto y Mobile</h1>
+
+<h2>5.1 Dos Botones Nuevos al Mini-Mapa</h2>
+<p>
+    Bajo el canvas de mapa de calor en el Control Remoto se agregaron dos botones en grid 1fr / 1fr:
+</p>
+<ul>
+    <li><strong><code>&#x21BA; Reiniciar origen</code></strong>: con confirm, borra
+        <code>trace.history</code>, <code>trace.heat</code>, <code>pose</code>,
+        <code>totalMeters</code> y <code>daiver:liveScan</code>. Fija el &ldquo;aqui y ahora&rdquo;
+        como cero del mapa.</li>
+    <li><strong><code>&#x1F4D0; Guiar por QR</code></strong>: si el dispositivo es touch (detectado
+        via <code>matchMedia('(hover: none) and (pointer: coarse)')</code>), navega directo a
+        <code>/rutaguiada</code>. Si es escritorio, abre el modal <em>mobile-only</em>.</li>
+</ul>
+
+<h2>5.2 Modal <em>Usa tu celular para esta funcion</em></h2>
+<p>
+    En escritorio la ruta guiada por QR no tiene sentido: el operador tiene que caminar al lado del
+    robot mostrandole marcadores. En vez de prohibirlo, se muestra un modal que explica el caso de
+    uso y ofrece un <strong>QR de la URL</strong> para escanear con el celular (<code>/api/qr/image?text=&lt;URL&gt;</code>).
+    Dos acciones: <em>Entendido</em> (cierra) o <em>Continuar en escritorio igual</em> (navega de
+    todos modos).
+</p>
+
+<h2>5.3 Dependencia Nueva</h2>
+<pre><span class="comment"># requirements.txt</span>
+<span class="string">qrcode[pil]&gt;=7.4</span>   <span class="comment"># Generador de PNG del QR (usa Pillow)</span></pre>
+<p>
+    Instalado y verificado: <code>pip install qrcode[pil]</code>. Se importa <em>lazy</em> dentro del
+    endpoint <code>/api/qr/image</code>, con mensaje claro si falta.
+</p>
+
+<!-- ===== ESTADO AL CIERRE ===== -->
+<h1>6. Estado al Cierre de la Sesion</h1>
+<table>
+    <tr><th>Componente</th><th>Estado</th><th>Observacion</th></tr>
+    <tr><td>Pagina <code>/rutaguiada</code></td><td>Operativa</td><td>Modal, camara, QR, waypoints, export</td></tr>
+    <tr><td>Deteccion de QR en YOLO</td><td>Operativa</td><td>OpenCV QRCodeDetector cada 4 frames</td></tr>
+    <tr><td>Socket.IO <code>qr_detected</code> con pose</td><td>Operativo</td><td>Dedup 2 s</td></tr>
+    <tr><td>Endpoint <code>/api/qr/image</code></td><td>Operativo</td><td>Requiere <code>qrcode[pil]</code></td></tr>
+    <tr><td>Follow-me visual</td><td>Operativo</td><td>Control proporcional + safety 1.5 s</td></tr>
+    <tr><td>Heatmap 3D en controlRemoto</td><td>Operativo</td><td>Voxels <code>(ix, iy, iz)</code></td></tr>
+    <tr><td>Render 3D en Auto-Ruta</td><td>Operativo</td><td>Color por altura, sombras por columna</td></tr>
+    <tr><td>Auto-persistencia del escaneo</td><td>Operativa</td><td>10 s throttle + restore en init</td></tr>
+    <tr><td>Download JSON del escaneo</td><td>Operativo</td><td>Boton en toolbar</td></tr>
+    <tr><td>Retorno al origen universal</td><td>Operativo</td><td>Aplica tambien despues del ultimo ciclo</td></tr>
+    <tr><td>Modo fluido</td><td>Operativo</td><td>Opt-in, sin paradas</td></tr>
+    <tr><td>Tooltip + etiquetas de coords</td><td>Operativo</td><td>Hover + labels en waypoints</td></tr>
+    <tr><td>Input numerico de coords</td><td>Operativo</td><td>X/Y + Enter/click</td></tr>
+    <tr><td>Registro de ubicaciones</td><td>Operativo</td><td>Timestamp por waypoint</td></tr>
+    <tr><td>Badge del robot en vivo</td><td>Operativo</td><td>Corner + etiqueta sobre el robot</td></tr>
+    <tr><td>Modal mobile-only con QR</td><td>Operativo</td><td>Detecta escritorio via matchMedia</td></tr>
+</table>
+
+<!-- ===== RECOMENDACIONES ===== -->
+<h1 style="background: #303f9f; color: white; padding: 12px 18px; border-radius: 6px; border-bottom: none;">
+    Recomendaciones de Desarrollo desde este Punto
+</h1>
+
+<h2>Linea 1 &mdash; Reconocer QR por Identidad (prioridad alta)</h2>
+<p>
+    Actualmente el Follow-me y la captura de waypoints tratan a todos los QRs por igual: si hay dos
+    en la escena, el ultimo detectado gana. Proxima iteracion: usar el texto del QR como identidad,
+    asi <code>DAIVER_A</code> y <code>DAIVER_B</code> co-visibles pueden priorizarse por distancia o
+    por orden de visita. Tambien abre la puerta a rutas nombradas: el operador define previamente
+    que orden espera (<code>A &rarr; B &rarr; C</code>) y el sistema valida.
+</p>
+
+<h2>Linea 2 &mdash; SLAM Ligero para Persistencia entre Sesiones (prioridad alta)</h2>
+<p>
+    Hoy el heatmap se pierde si el robot pierde el origen (reconecta, sesion nueva). Seria util un
+    alineamiento por ICP contra el mapa previo usando la nube del lidar, o al menos un <em>landmark
+    relock</em> por QR: al ver <code>DAIVER_ORIGEN</code> reutilizar el heatmap de la sesion anterior
+    trasladandolo por la pose del QR.
+</p>
+
+<h2>Linea 3 &mdash; Evasion Reactiva en Follow-me (prioridad media)</h2>
+<p>
+    El follow-me hoy frena ante obstaculos pero no los esquiva. Si el sensor de proximidad dispara,
+    el robot se queda quieto hasta que el camino se libere. Proxima iteracion: un controlador
+    hibrido que combine el error del QR con una fuerza repulsiva derivada del lidar frontal para
+    desviar la trayectoria sin perder el target.
+</p>
+
+<h2>Linea 4 &mdash; Smoothing Spline de la Ruta Capturada (prioridad media)</h2>
+<p>
+    Los waypoints capturados por QR son puntos dispersos; el Auto-Ruta los une con segmentos
+    rectos. Interpolar con una spline cubica (catmull-rom o bezier) y re-samplearla a waypoints
+    densos daria trayectorias mucho mas naturales, sobre todo en <em>modo fluido</em>.
+</p>
+
+<h2>Linea 5 &mdash; Tests Unitarios de la Proyeccion y de los Reclamos del Lidar (prioridad baja)</h2>
+<ul>
+    <li><code>worldToScreen</code> / <code>screenToWorld</code> inverso exacto (error &lt; 1e-6).</li>
+    <li><code>_autoroute_go_to</code> converge a waypoint valido en &lt;20 s dado un pose path simulado.</li>
+    <li><code>get_last_qr_tracking</code> con QR sintetico (imagen con QR en posicion conocida).</li>
+</ul>
+
+<h2>Consideraciones Transversales</h2>
+<div class="note">
+    <strong>Concurrencia de loops async.</strong> Ahora conviven Auto-Ruta y Follow-me, ambos
+    publicando Move al robot. Se previene su coexistencia (follow rechaza arrancar si autoruta
+    corre), pero si se agregan mas (p. ej. una rutina de demo), conviene centralizar el acceso al
+    canal Move en un <em>mutex</em> que rechace o encole.
+</div>
+<div class="note">
+    <strong>Tamano del <code>localStorage</code>.</strong> Con la celda reducida a 8 cm, un mapeo
+    sostenido puede superar 5 MB. Actualmente guardamos truncando al borde. A medio plazo, migrar
+    a IndexedDB (sin limite practico) o al backend permitiria sesiones mas largas sin perder detalle.
+</div>
+<div class="note">
+    <strong>Resolucion del QR detector.</strong> <code>cv2.QRCodeDetector</code> funciona bien con
+    QRs &gt;80 px en frame y poco motion blur. Para QRs impresos de &lt;10 cm a 2 m de distancia la
+    camara del Go2 Air apenas resuelve el patron. Conviene usar QRs impresos a 15&ndash;20 cm y el
+    bracket <code>error_correction=M</code> (ya configurado).
+</div>
+
+<!-- ===== APENDICES ===== -->
+<h1>Apendice A &mdash; Instalacion y Puesta en Marcha</h1>
+
+<h2>A.1 Dependencias</h2>
+<pre><span class="cmd">pip</span> install qrcode[pil]    <span class="comment"># Nuevo hoy</span>
+<span class="cmd">pip</span> install -r requirements.txt</pre>
+
+<h2>A.2 Flujo de Prueba End-to-End de Ruta Guiada</h2>
+<ol>
+    <li><code>python app.py</code> &rarr; servidor en :5000.</li>
+    <li>Control Remoto: conectar robot, activar sensor proximidad, iniciar YOLO.</li>
+    <li>Click boton <em>Guiar por QR</em>. Si es escritorio, escanear el QR del modal con el celular.</li>
+    <li>En el celular, confirmar en el modal inicial &mdash; se registra el primer waypoint (ORIGEN).</li>
+    <li>Caminar con el robot a cada marcador. Cuando aparezca el toast ambar, presionar
+        <em>Guardar waypoint</em>.</li>
+    <li>Presionar <em>Exportar a Auto-Ruta</em>.</li>
+    <li>En Auto-Ruta, activar <em>Modo fluido</em> si se quiere transicion continua. Presionar
+        <em>Iniciar ruta</em>.</li>
+    <li>El robot recorre todos los waypoints en orden y al final vuelve al origen por el mismo
+        camino en reversa.</li>
+</ol>
+
+<h2>A.3 Flujo de Prueba Follow-me</h2>
+<ol>
+    <li>Desde <code>/rutaguiada</code>: <em>Iniciar camara</em>, luego <em>Empezar a seguirme</em>.</li>
+    <li>Mostrar un QR al robot desde ~1.5 m. El indicador pasa a verde pulsante.</li>
+    <li>Caminar de espaldas &mdash; el robot avanza.</li>
+    <li>Cubrir el QR &mdash; el robot frena en &lt;2 s (lost_timeout 1.5 s).</li>
+    <li>Presionar <em>Detener</em> en cualquier momento para cortar.</li>
+</ol>
+
+<h1>Apendice B &mdash; Diff Resumido por Archivo</h1>
+
+<h2>B.1 <code>app.py</code></h2>
+<ul>
+    <li><code>qr_state</code>: nuevo diccionario global (<code>last_text</code>, <code>last_ts</code>,
+        <code>last_pose</code>, <code>dedup_window_s</code>).</li>
+    <li><code>_on_qr_detected_from_yolo()</code>: callback registrado en yolo_detector.</li>
+    <li>Endpoints <code>/api/qr/last</code>, <code>/api/qr/image</code>, <code>/rutaguiada</code>.</li>
+    <li><code>follow_state</code>: nuevo diccionario (<code>max_linear</code>, <code>k_angular</code>,
+        <code>target_area</code>, <code>lost_timeout_s</code>, etc.).</li>
+    <li><code>_follow_loop()</code>: async task con BalanceStand inicial, Move=0 si QR perdido,
+        control proporcional 2-D.</li>
+    <li>Endpoints <code>/api/follow/start|stop|status</code>.</li>
+    <li><code>autoroute_state</code>: flags <code>translate_to_pose</code> y <code>smooth_mode</code>.</li>
+    <li><code>_autoroute_go_to()</code>: ramas distintas para modo preciso vs fluido; no frena entre
+        waypoints en modo fluido; gain lineal atenuado por heading.</li>
+    <li><code>_autoroute_follow_loop()</code>: retorno al origen universal (no solo entre ciclos).</li>
+    <li><code>_maybe_emit_lidar_points()</code>: emite <code>xyz</code> ademas de <code>xy</code> legado.</li>
+</ul>
+
+<h2>B.2 <code>yolo_detector.py</code></h2>
+<ul>
+    <li>Campos <code>_qr_detector</code>, <code>_last_qr_*</code>, <code>_qr_callback</code>.</li>
+    <li>QR detection throttled cada 4 frames en el loop de inferencia.</li>
+    <li><code>set_qr_callback(cb)</code>, <code>get_last_qr()</code>, <code>get_last_qr_tracking()</code>.</li>
+</ul>
+
+<h2>B.3 Frontend nuevo: <code>rutaGuiada.html/.css/.js</code></h2>
+<ul>
+    <li>Layout 2 columnas con stream a la izquierda y panel con instrucciones + pose + ultimo QR +
+        waypoints + control de camara + follow-me + generador de QR a la derecha.</li>
+    <li>Modal inicial con backdrop-filter y dos acciones.</li>
+    <li>Toast flotante (<code>.rg-toast</code>) animado para deteccion de QR.</li>
+    <li>Lista de waypoints con boton <code>&times;</code> de borrado individual.</li>
+    <li>Exportacion: construye <code>daiver:lastRoute</code> tomando el heat del <code>liveScan</code>
+        si existe.</li>
+    <li>Generador de QR que pega <code>/api/qr/image?text=</code> como <code>src</code> de un
+        <code>&lt;img&gt;</code>.</li>
+</ul>
+
+<h2>B.4 Frontend modificado: <code>controlRemoto</code></h2>
+<ul>
+    <li>Dos botones <code>cr-trace-actions</code>; modal <code>cr-mobile-only-modal</code>.</li>
+    <li>Handlers <code>handleGoToQR</code>, <code>resetOriginAndTrace</code>.</li>
+    <li>Heatmap 3D: clave con <code>iz</code>; umbral &ge; 2 al guardar.</li>
+    <li>Auto-save <code>daiver:liveScan</code> cada 10 s + <code>restoreLiveScan</code>.</li>
+</ul>
+
+<h2>B.5 Frontend modificado: <code>autoroute</code></h2>
+<ul>
+    <li>Render de voxels apilados (<code>drawHeatColumns</code> rehecho) coloreado por Z.</li>
+    <li>Checkbox <code>ar-smooth-mode</code> y flag <code>smooth_mode</code> enviado al backend.</li>
+    <li>Tooltip de coords al <code>mousemove</code>.</li>
+    <li>Etiquetas de coords por waypoint en canvas.</li>
+    <li>Badge del robot en DOM + etiqueta flotante en canvas.</li>
+    <li>Input numerico X/Y + boton <em>+</em> que llama <code>addWaypointAt</code>.</li>
+    <li><code>renderWaypointRegistry</code> con timestamps.</li>
+    <li><code>startBlank</code> para ruta vacia; <code>downloadScan</code> para exportar JSON.</li>
+    <li>Pill de progreso muestra "Volviendo al origen..." cuando <code>returning</code>.</li>
+</ul>
+
+<div class="footer">
+    Informe generado a partir del trabajo realizado el 22/04/2026 sobre la rama <code>aplicacion</code>.<br>
+    Daiver Control CUN &mdash; Laboratorio 2 &mdash; Corporacion Unificada Nacional.
+</div>
+
+</body>
+</html>

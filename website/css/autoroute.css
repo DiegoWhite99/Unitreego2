@@ -134,6 +134,156 @@
 .ar-map-hint-body { margin-top: 0.3rem; color: #9aa0a6; }
 .ar-map-hint-body p { margin: 0 0 0.2rem 0; }
 
+/* Tooltip de coordenadas world-frame al mover el mouse */
+.ar-coord-tip {
+    position: absolute;
+    pointer-events: none;
+    padding: 0.3rem 0.5rem;
+    background: rgba(0, 0, 0, 0.8);
+    color: #5aa8ff;
+    font-family: 'Consolas', monospace;
+    font-size: 0.75rem;
+    border-radius: 5px;
+    border: 1px solid rgba(90, 168, 255, 0.35);
+    z-index: 5;
+    opacity: 0;
+    transition: opacity 0.1s;
+    white-space: nowrap;
+}
+.ar-coord-tip.visible { opacity: 1; }
+
+/* Badge flotante con la coordenada del robot en vivo */
+.ar-robot-badge {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    padding: 0.45rem 0.7rem;
+    background: rgba(26, 115, 232, 0.22);
+    border: 1px solid rgba(26, 115, 232, 0.55);
+    border-radius: 8px;
+    backdrop-filter: blur(6px);
+    font-family: 'Consolas', monospace;
+    font-size: 0.75rem;
+    color: #cfd2d6;
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    box-shadow: 0 0 14px rgba(26, 115, 232, 0.25);
+}
+.ar-robot-badge .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #1a73e8;
+    box-shadow: 0 0 8px rgba(90, 168, 255, 0.8);
+    animation: ar-robot-pulse 1.4s ease-in-out infinite;
+}
+.ar-robot-badge strong { color: #5aa8ff; font-weight: 700; }
+.ar-robot-badge.stale {
+    background: rgba(140, 145, 154, 0.2);
+    border-color: rgba(140, 145, 154, 0.4);
+}
+.ar-robot-badge.stale .dot {
+    background: #8c919a;
+    box-shadow: none;
+    animation: none;
+}
+
+@keyframes ar-robot-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.4); }
+}
+
+/* Input numerico para agregar waypoint con coords exactas */
+.ar-coord-input {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 0.3rem;
+    margin-top: 0.55rem;
+}
+.ar-coord-input input {
+    padding: 0.35rem 0.45rem;
+    border-radius: 5px;
+    border: 1px solid var(--cr-border, rgba(255,255,255,0.1));
+    background: rgba(0, 0, 0, 0.35);
+    color: #e8eaed;
+    font-family: 'Consolas', monospace;
+    font-size: 0.78rem;
+}
+.ar-coord-input input::-webkit-outer-spin-button,
+.ar-coord-input input::-webkit-inner-spin-button {
+    -webkit-appearance: none; margin: 0;
+}
+.ar-coord-input button {
+    font-size: 1rem;
+    padding: 0.25rem 0.55rem;
+}
+
+/* Registro de waypoints (ubicaciones) */
+.ar-wp-registry {
+    margin-top: 0.5rem;
+    font-size: 0.76rem;
+    color: #cfd2d6;
+}
+.ar-wp-registry summary {
+    cursor: pointer;
+    font-weight: 700;
+    color: #9aa0a6;
+    padding: 0.3rem 0;
+    user-select: none;
+}
+.ar-wp-registry summary:hover { color: #cfd2d6; }
+.ar-wp-registry-list {
+    max-height: 160px;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 5px;
+    padding: 0.3rem;
+    margin-top: 0.3rem;
+}
+.ar-wp-registry-empty {
+    text-align: center;
+    padding: 0.55rem;
+    color: #8c919a;
+    font-style: italic;
+}
+.ar-wp-registry-item {
+    display: grid;
+    grid-template-columns: 24px 1fr auto;
+    gap: 0.35rem;
+    align-items: center;
+    padding: 0.3rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.73rem;
+    cursor: pointer;
+}
+.ar-wp-registry-item:hover { background: rgba(255, 255, 255, 0.04); }
+.ar-wp-registry-item.active { background: rgba(255, 202, 40, 0.18); }
+.ar-wp-registry-item.origin { background: rgba(0, 200, 83, 0.1); }
+.ar-wp-registry-item .num {
+    background: #1a73e8;
+    color: white;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 700;
+}
+.ar-wp-registry-item.origin .num { background: #00c853; }
+.ar-wp-registry-item .coords {
+    font-family: 'Consolas', monospace;
+    color: #cfd2d6;
+}
+.ar-wp-registry-item .ts {
+    font-size: 0.65rem;
+    color: #8c919a;
+}
+
 /* Leyenda inferior */
 .ar-map-legend {
     position: absolute;
@@ -267,6 +417,34 @@
     color: #9aa0a6;
     line-height: 1.4;
 }
+
+.ar-translate-opt {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.7rem;
+    padding: 0.45rem 0.55rem;
+    background: rgba(26, 115, 232, 0.1);
+    border: 1px solid rgba(26, 115, 232, 0.3);
+    border-radius: 6px;
+    font-size: 0.74rem;
+    color: #cfd2d6;
+    cursor: pointer;
+}
+
+.ar-translate-opt input {
+    width: 16px;
+    height: 16px;
+    accent-color: #1a73e8;
+    cursor: pointer;
+}
+
+.ar-smooth-opt {
+    background: rgba(0, 200, 83, 0.12);
+    border-color: rgba(0, 200, 83, 0.35);
+    margin-top: 0.4rem;
+}
+.ar-smooth-opt input { accent-color: #00c853; }
 
 /* Responsive: apilado vertical en mobile. Mapa arriba, panel abajo. */
 @media (max-width: 900px) {

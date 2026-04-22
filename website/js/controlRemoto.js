@@ -62,7 +62,9 @@ const ControlRemoto = {
         lastTick: null,
         tickTimer: null,
         heat: new Map(),
-        heatCellSize: 0.15,
+        heatCellSize: 0.08,      // 8 cm por celda XY (antes 15 cm; mas detalle fino)
+        heatCellSizeZ: 0.12,     // 12 cm por capa Z (resolucion vertical del voxel)
+        lastHeatPersistTs: 0,    // throttle del auto-save a localStorage
         lidarPose: null,
         totalMeters: 0.0,
         lastPoseForDistance: null,
@@ -92,7 +94,9 @@ const ControlRemoto = {
         this.setupSaveRoute();
         this.setupKeyboard();
         this.setupSidePanelToggle();
+        this.setupTraceActions();
         this.initTraceCanvas();
+        this.restoreLiveScan();
         this.loadInitialData();
         this.startStatusPolling();
         this.refreshYoloStatus();
@@ -733,6 +737,76 @@ const ControlRemoto = {
         this._banTimer = setTimeout(() => el.classList.remove('visible'), 1600);
     },
 
+    /* ============ Reiniciar origen / Ir a ruta guiada ============
+       Los dos botones nuevos del panel del mini-mapa. El de reinicio limpia
+       trayectoria, heatmap y pose base; el de QR navega a la pagina de
+       ruta guiada donde el robot captura waypoints a partir de QRs. */
+    setupTraceActions() {
+        const btnReset = document.getElementById('cr-reset-origin');
+        const btnQR = document.getElementById('cr-go-qr');
+        if (btnReset) {
+            btnReset.addEventListener('click', () => this.resetOriginAndTrace());
+        }
+        if (btnQR) {
+            btnQR.addEventListener('click', () => this.handleGoToQR());
+        }
+
+        // Botones del modal "usa tu celular"
+        const mo = document.getElementById('cr-mobile-only-modal');
+        const moClose = document.getElementById('cr-mo-close');
+        const moContinue = document.getElementById('cr-mo-continue');
+        if (moClose && mo) {
+            moClose.addEventListener('click', () => mo.classList.add('hidden'));
+        }
+        if (moContinue) {
+            moContinue.addEventListener('click', () => { window.location.href = '/rutaguiada'; });
+        }
+    },
+
+    /* En escritorio la ruta guiada por QR no tiene sentido (necesitas
+       caminar junto al robot mostrando marcadores). Mostramos un aviso
+       con un QR de la URL para que el operador lo escanee con el
+       celular y abra la pagina alli. En mobile se navega directo. */
+    handleGoToQR() {
+        const isTouchDevice = window.matchMedia &&
+            (window.matchMedia('(hover: none) and (pointer: coarse)').matches
+             || window.matchMedia('(max-width: 900px)').matches);
+        if (isTouchDevice) {
+            window.location.href = '/rutaguiada';
+            return;
+        }
+        this.showMobileOnlyModal();
+    },
+
+    showMobileOnlyModal() {
+        const mo = document.getElementById('cr-mobile-only-modal');
+        if (!mo) return;
+        const targetUrl = `${window.location.origin}/rutaguiada`;
+        const img = document.getElementById('cr-mo-qr-img');
+        const urlText = document.getElementById('cr-mo-url-text');
+        if (img) {
+            img.src = `/api/qr/image?text=${encodeURIComponent(targetUrl)}&t=${Date.now()}`;
+        }
+        if (urlText) {
+            urlText.textContent = targetUrl;
+        }
+        mo.classList.remove('hidden');
+    },
+
+    resetOriginAndTrace() {
+        if (!confirm('Borrar el mapa de calor y reiniciar el punto de origen aqui?')) return;
+        this.trace.history = [];
+        this.trace.heat = new Map();
+        this.trace.pose = { x: 0, y: 0, heading: 0 };
+        this.trace.totalMeters = 0.0;
+        this.trace.lastPoseForDistance = null;
+        this.trace.lidarPose = null;
+        this.trace.lastHeatPersistTs = 0;
+        try { localStorage.removeItem('daiver:liveScan'); } catch (_) {}
+        this.updateTraceStats();
+        this.drawTrace();
+    },
+
     /* ============ Guardar ruta y abrir Auto-Ruta ============
        Serializa la trayectoria registrada y la deja en localStorage para
        que la página de auto-ruta la cargue. Si hay menos de 4 puntos,
@@ -753,20 +827,39 @@ const ControlRemoto = {
                 const last = sampled.at(-1);
                 if (Math.hypot(p.x - last.x, p.y - last.y) >= 0.40) sampled.push(p);
             }
-            // Serializa el heatmap (Map -> array de [ix, iy, v]) para que la
-            // pagina de Auto-Ruta pueda redibujarlo como terreno.
+            // Serializa el heatmap 3D (Map -> array de [ix, iy, iz, v]).
+            // Filtramos voxels de confianza 1 (ruido de un solo hit).
             const heatArr = [];
             for (const [k, v] of this.trace.heat) {
-                const [ix, iy] = k.split(',').map(Number);
-                heatArr.push([ix, iy, v]);
+                if (v < 2) continue;  // umbral minimo para descartar ruido aislado
+                const parts = k.split(',').map(Number);
+                const ix = parts[0], iy = parts[1];
+                const iz = parts.length > 2 ? parts[2] : 0;
+                heatArr.push([ix, iy, iz, v]);
             }
-            localStorage.setItem('daiver:lastRoute', JSON.stringify({
-                savedAt: Date.now(),
-                points: sampled,
-                totalMeters: this.trace.totalMeters,
-                heatCellSize: this.trace.heatCellSize,
-                heat: heatArr,
-            }));
+            try {
+                localStorage.setItem('daiver:lastRoute', JSON.stringify({
+                    savedAt: Date.now(),
+                    points: sampled,
+                    totalMeters: this.trace.totalMeters,
+                    heatCellSize: this.trace.heatCellSize,
+                    heatCellSizeZ: this.trace.heatCellSizeZ,
+                    heat: heatArr,
+                }));
+            } catch (err) {
+                // QuotaExceededError: el heat es muy grande. Guarda sin heat
+                // y avisa; la Auto-Ruta podra pedirlo via IndexedDB mas tarde.
+                console.warn('heat demasiado grande para localStorage, se guardara sin heat', err);
+                localStorage.setItem('daiver:lastRoute', JSON.stringify({
+                    savedAt: Date.now(),
+                    points: sampled,
+                    totalMeters: this.trace.totalMeters,
+                    heatCellSize: this.trace.heatCellSize,
+                    heatCellSizeZ: this.trace.heatCellSizeZ,
+                    heat: [],
+                    heatTruncated: true,
+                }));
+            }
             window.location.href = '/autoroute';
         });
     },
@@ -1016,19 +1109,34 @@ const ControlRemoto = {
        densidad — cuanto más tiempo vea una superficie, más brillante. El
        trayecto del robot (pose del lidar) sobrescribe esto al dibujar. */
     onLidarPoints(data) {
-        if (!data || !Array.isArray(data.xy)) return;
+        if (!data) return;
         const cell = this.trace.heatCellSize;
+        const cellZ = this.trace.heatCellSizeZ;
         const heat = this.trace.heat;
-        const xy = data.xy;
-        // xy viene aplanado [x0,y0,x1,y1,...]
-        for (let i = 0; i + 1 < xy.length; i += 2) {
-            const ix = Math.round(xy[i] / cell);
-            const iy = Math.round(xy[i + 1] / cell);
-            const k = ix + ',' + iy;
-            heat.set(k, Math.min(255, (heat.get(k) || 0) + 1));
+        // Preferimos xyz (3D real). Fallback a xy (backend antiguo).
+        const xyz = Array.isArray(data.xyz) ? data.xyz : null;
+        if (xyz) {
+            // xyz viene aplanado [x0,y0,z0, x1,y1,z1, ...]
+            for (let i = 0; i + 2 < xyz.length; i += 3) {
+                const ix = Math.round(xyz[i] / cell);
+                const iy = Math.round(xyz[i + 1] / cell);
+                const iz = Math.round(xyz[i + 2] / cellZ);
+                const k = ix + ',' + iy + ',' + iz;
+                heat.set(k, Math.min(255, (heat.get(k) || 0) + 1));
+            }
+        } else if (Array.isArray(data.xy)) {
+            const xy = data.xy;
+            for (let i = 0; i + 1 < xy.length; i += 2) {
+                const ix = Math.round(xy[i] / cell);
+                const iy = Math.round(xy[i + 1] / cell);
+                // Sin Z, asumimos capa 0 (plano medio).
+                const k = ix + ',' + iy + ',0';
+                heat.set(k, Math.min(255, (heat.get(k) || 0) + 1));
+            }
         }
-        // Evita crecimiento ilimitado (decae cada 1500 entradas).
-        if (heat.size > 20000) {
+        // Evita crecimiento ilimitado: cuando hay muchas voxels, decae
+        // solo los de baja confianza (ruido) y preserva los firmes.
+        if (heat.size > 40000) {
             for (const [k, v] of heat) {
                 if (v <= 1) heat.delete(k);
                 else heat.set(k, v - 1);
@@ -1053,6 +1161,58 @@ const ControlRemoto = {
             this.trace.lastPoseForDistance = { x: data.pose.x, y: data.pose.y };
             this.updateTraceStats();
         }
+
+        // Auto-persiste el escaneo cada 10 s para sobrevivir recargas.
+        this.maybePersistLiveScan();
+    },
+
+    /* Auto-save throttled del heatmap 3D. Conserva el escaneo entre recargas
+       dentro de la misma sesion y al cambiar de pagina. Al restaurar, los
+       voxels siguen ahi y solo se suman los nuevos. */
+    maybePersistLiveScan() {
+        const now = Date.now();
+        if (now - this.trace.lastHeatPersistTs < 10000) return;
+        this.trace.lastHeatPersistTs = now;
+        try {
+            const arr = [];
+            for (const [k, v] of this.trace.heat) {
+                if (v < 2) continue;
+                const parts = k.split(',').map(Number);
+                arr.push([parts[0], parts[1], parts.length > 2 ? parts[2] : 0, v]);
+            }
+            localStorage.setItem('daiver:liveScan', JSON.stringify({
+                savedAt: now,
+                heatCellSize: this.trace.heatCellSize,
+                heatCellSizeZ: this.trace.heatCellSizeZ,
+                heat: arr,
+                history: this.trace.history.slice(-400),
+                totalMeters: this.trace.totalMeters,
+            }));
+        } catch (_) {
+            // Quota: dejar como esta (proxima ronda decae voxels debiles)
+        }
+    },
+
+    restoreLiveScan() {
+        try {
+            const raw = localStorage.getItem('daiver:liveScan');
+            if (!raw) return;
+            const data = JSON.parse(raw);
+            if (!data) return;
+            if (data.heatCellSize) this.trace.heatCellSize = data.heatCellSize;
+            if (data.heatCellSizeZ) this.trace.heatCellSizeZ = data.heatCellSizeZ;
+            if (Array.isArray(data.heat)) {
+                for (const h of data.heat) {
+                    this.trace.heat.set(h[0] + ',' + h[1] + ',' + (h[2] || 0), h[3]);
+                }
+            }
+            if (Array.isArray(data.history)) {
+                this.trace.history = data.history.slice();
+            }
+            if (typeof data.totalMeters === 'number') {
+                this.trace.totalMeters = data.totalMeters;
+            }
+        } catch (_) { /* ignore */ }
     },
 
     updateTraceStats() {
@@ -1108,21 +1268,30 @@ const ControlRemoto = {
         ctx.translate(W / 2 + off.x, H / 2 + off.y);
         ctx.scale(1, -1);  // y arriba
 
-        // --- Heatmap de paredes (desde el lidar) ---
+        // --- Heatmap de paredes (desde el lidar 3D) ---
+        // Colapsamos los voxels 3D a la columna (x,y) de mayor intensidad
+        // para el mini-mapa del control remoto. El 3D completo se ve en
+        // la pagina de Auto-Ruta.
         const heat = this.trace.heat;
         const cell = this.trace.heatCellSize;
         const cellPx = Math.max(2, cell * scale);
+        const column = new Map();  // "ix,iy" -> max v
         let maxHits = 1;
-        for (const v of heat.values()) if (v > maxHits) maxHits = v;
         for (const [k, v] of heat) {
-            const [ix, iy] = k.split(',').map(Number);
+            const parts = k.split(',');
+            const colKey = parts[0] + ',' + parts[1];
+            const cur = column.get(colKey) || 0;
+            if (v > cur) column.set(colKey, v);
+            if (v > maxHits) maxHits = v;
+        }
+        for (const [colKey, v] of column) {
+            if (v < 2) continue;  // umbral de confianza
+            const [ix, iy] = colKey.split(',').map(Number);
             const wx = ix * cell - pose.x;
             const wy = iy * cell - pose.y;
-            // Recorta al área visible
             const px = wx * scale, py = wy * scale;
             if (Math.abs(px) > W / 2 + cellPx || Math.abs(py) > H / 2 + cellPx) continue;
             const intensity = Math.min(1, Math.pow(v / maxHits, 0.45));
-            // gradiente azul -> cyan -> amarillo -> naranja
             const r = Math.round(255 * Math.min(1, intensity * 1.8 - 0.3));
             const g = Math.round(255 * Math.min(1, intensity * 1.3));
             const b = Math.round(255 * (0.9 - intensity * 0.6));

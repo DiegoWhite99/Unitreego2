@@ -650,6 +650,110 @@ body.control-remoto-body {
 
 .cr-proximity-banner.visible { display: block; }
 
+/* Modal: avisa al operador que la ruta guiada va mejor en el celular. */
+.cr-mobile-only-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 10, 18, 0.85);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    z-index: 200;
+}
+
+.cr-mobile-only-modal.hidden { display: none; }
+
+.cr-mo-card {
+    background: linear-gradient(180deg, rgba(40, 60, 100, 0.95), rgba(14, 22, 34, 0.98));
+    border: 1px solid rgba(90, 168, 255, 0.45);
+    border-radius: 14px;
+    padding: 1.8rem 2rem;
+    max-width: 500px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 50px rgba(90, 168, 255, 0.15);
+    color: #e8eaed;
+}
+
+.cr-mo-icon {
+    font-size: 3rem;
+    margin-bottom: 0.2rem;
+}
+
+.cr-mo-card h2 {
+    color: #f9ab00;
+    font-size: 1.35rem;
+    margin-bottom: 0.6rem;
+    font-weight: 700;
+}
+
+.cr-mo-card p {
+    color: #cfd2d6;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 0.6rem;
+}
+
+.cr-mo-sub {
+    font-size: 0.82rem !important;
+    color: #9aa0a6 !important;
+    margin-top: 0.4rem;
+}
+
+.cr-mo-qr {
+    background: #fff;
+    border-radius: 10px;
+    padding: 0.8rem;
+    margin: 0.6rem auto 0.5rem;
+    width: fit-content;
+}
+
+.cr-mo-qr img {
+    display: block;
+    width: 200px;
+    height: 200px;
+    image-rendering: pixelated;
+}
+
+.cr-mo-url {
+    font-family: 'Consolas', monospace;
+    font-size: 0.8rem;
+    color: #5aa8ff;
+    background: rgba(0, 0, 0, 0.35);
+    padding: 0.5rem 0.7rem;
+    border-radius: 6px;
+    word-break: break-all;
+    margin-bottom: 0.8rem;
+    border: 1px solid rgba(90, 168, 255, 0.2);
+}
+
+.cr-mo-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.cr-mo-actions .cr-btn {
+    padding: 0.6rem 1rem;
+    font-size: 0.88rem;
+}
+
+/* Botones adicionales al canvas del mini-mapa (reiniciar + ir a QR). */
+.cr-trace-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.45rem;
+    margin-top: 0.55rem;
+}
+
+.cr-trace-actions .cr-btn {
+    font-size: 0.76rem;
+    padding: 0.45rem 0.55rem;
+}
+
 /* Badge del modo FORCE (doble tap WASD) — aparece arriba central. */
 .cr-force-badge {
     position: fixed;

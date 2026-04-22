@@ -8,10 +8,11 @@
 const API = window.location.origin;
 
 /* Proyeccion 2.5D: el plano XY del mundo se "inclina" hacia adelante
-   (foreshortening en Y) y las celdas del heatmap crecen como columnas
-   verticales. La misma transformacion se usa para clicks inversos. */
+   (foreshortening en Y) y cada voxel 3D se dibuja como un cubito en su
+   altura real. La misma transformacion XY se usa para clicks inversos. */
 const TILT_KY = 0.62;
-const COLUMN_HEIGHT_PX = 28;
+const VOXEL_Z_PX_PER_M = 70;      // 1 m de Z real = 70 px en pantalla
+const VOXEL_ALPHA_BASE = 0.55;    // opacidad base de voxels
 
 const AutoRoute = {
     socket: null,
@@ -81,10 +82,24 @@ const AutoRoute = {
             btnStop:      document.getElementById('ar-stop'),
             btnYolo:      document.getElementById('ar-yolo-toggle'),
             btnEdit:      document.getElementById('ar-edit-toggle'),
+            btnBlank:     document.getElementById('ar-edit-blank'),
             btnUndo:      document.getElementById('ar-edit-undo'),
             btnClear:     document.getElementById('ar-edit-clear'),
             btnSave:      document.getElementById('ar-edit-save'),
+            btnSaveScan:  document.getElementById('ar-save-scan'),
+            chkTranslate: document.getElementById('ar-translate-to-pose'),
+            chkSmooth:    document.getElementById('ar-smooth-mode'),
             editModeLbl:  document.getElementById('ar-edit-mode-label'),
+            coordTip:     document.getElementById('ar-coord-tip'),
+            robotBadge:   document.getElementById('ar-robot-badge'),
+            robotX:       document.getElementById('ar-robot-x'),
+            robotY:       document.getElementById('ar-robot-y'),
+            robotYaw:     document.getElementById('ar-robot-yaw'),
+            inX:          document.getElementById('ar-coord-x'),
+            inY:          document.getElementById('ar-coord-y'),
+            btnCoordAdd:  document.getElementById('ar-coord-add'),
+            wpRegistryList:  document.getElementById('ar-wp-registry-list'),
+            wpRegistryCount: document.getElementById('ar-wp-registry-count'),
         };
     },
 
@@ -102,11 +117,24 @@ const AutoRoute = {
                 totalMeters: data.totalMeters || 0,
                 savedAt: data.savedAt,
                 heat: Array.isArray(data.heat) ? data.heat : [],
-                heatCellSize: data.heatCellSize || 0.15,
+                heatCellSize: data.heatCellSize || 0.08,
+                heatCellSizeZ: data.heatCellSizeZ || 0.12,
             };
+            // Si el heat venia truncado en localStorage (quota), intentamos
+            // reconstruirlo desde el auto-save 'liveScan'.
+            if (data.heatTruncated) {
+                try {
+                    const live = JSON.parse(localStorage.getItem('daiver:liveScan') || '{}');
+                    if (Array.isArray(live.heat) && live.heat.length) {
+                        this.route.heat = live.heat;
+                        this.route.heatCellSize = live.heatCellSize || this.route.heatCellSize;
+                        this.route.heatCellSizeZ = live.heatCellSizeZ || this.route.heatCellSizeZ;
+                    }
+                } catch (_) { /* ignore */ }
+            }
         } catch (err) {
             console.warn('No se pudo cargar ruta', err);
-            this.route = { points: [], totalMeters: 0, heat: [], heatCellSize: 0.15 };
+            this.route = { points: [], totalMeters: 0, heat: [], heatCellSize: 0.08, heatCellSizeZ: 0.12 };
         }
     },
 
@@ -126,6 +154,55 @@ const AutoRoute = {
             this.el.wpTotal.textContent = '0';
         }
         this.refreshEditorButtons();
+        this.renderWaypointRegistry();
+    },
+
+    renderWaypointRegistry() {
+        const list = this.el.wpRegistryList;
+        const countEl = this.el.wpRegistryCount;
+        if (!list) return;
+        const pts = (this.route && this.route.points) || [];
+        if (countEl) countEl.textContent = `(${pts.length})`;
+        list.innerHTML = '';
+        if (pts.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'ar-wp-registry-empty';
+            empty.textContent = 'Sin waypoints registrados.';
+            list.appendChild(empty);
+            return;
+        }
+        pts.forEach((p, i) => {
+            const item = document.createElement('div');
+            const isActive = (i + 1 === this.state.wpNow) && this.state.running;
+            item.className = 'ar-wp-registry-item'
+                + (i === 0 ? ' origin' : '')
+                + (isActive ? ' active' : '');
+            const ts = p.ts ? new Date(p.ts) : null;
+            const tsStr = ts
+                ? ts.toLocaleTimeString('es-CO', { hour12: false })
+                : '';
+            item.innerHTML = `
+                <span class="num">${i + 1}</span>
+                <span class="coords">x=${p.x.toFixed(2)}  y=${p.y.toFixed(2)}</span>
+                <span class="ts">${tsStr}</span>
+            `;
+            // Click: centra la vista alrededor de ese waypoint (util para ubicarlo).
+            item.addEventListener('click', () => {
+                this.focusWaypoint(i);
+            });
+            list.appendChild(item);
+        });
+    },
+
+    focusWaypoint(idx) {
+        const pts = this.route && this.route.points;
+        if (!pts || idx < 0 || idx >= pts.length) return;
+        const wp = pts[idx];
+        // Ajusta view para que ese waypoint quede centrado en pantalla.
+        // Simple: forzamos re-fit expandiendo alrededor del punto.
+        this.drawRoute();
+        // Flash visual: destacar el item brevemente dibujando un anillo.
+        this._focusFlash = { idx, until: Date.now() + 1500 };
     },
 
     computeRouteLength(pts) {
@@ -151,7 +228,10 @@ const AutoRoute = {
         });
 
         this.socket.on('lidar_points', (d) => {
-            if (d && d.pose) this.pose = d.pose;
+            if (d && d.pose) {
+                this.pose = d.pose;
+                this.updateRobotBadge();
+            }
         });
 
         this.socket.on('autoroute_progress', (p) => {
@@ -161,6 +241,7 @@ const AutoRoute = {
             this.state.wpNow = p.waypoint || 0;
             this.state.wpTotal = p.waypoint_total || this.state.wpTotal;
             this.state.running = Boolean(p.running);
+            this.state.returning = Boolean(p.returning);
             this.updateProgress();
         });
 
@@ -195,13 +276,11 @@ const AutoRoute = {
         if (!el) return;
         el.classList.toggle('connected', running);
         el.classList.toggle('disconnected', !running);
-        el.querySelector('.txt').textContent = running ? 'Siguiendo ruta' : 'Detenido';
+        el.querySelector('.txt').textContent = running
+            ? (this.state.returning ? 'Volviendo al origen...' : 'Siguiendo ruta')
+            : 'Detenido';
         this.el.btnStart.disabled = running || !this.hasRoute();
         this.el.btnStop.disabled = !running;
-    },
-
-    hasRoute() {
-        return this.route && this.route.points && this.route.points.length >= 2;
     },
 
     updateProgress() {
@@ -209,6 +288,12 @@ const AutoRoute = {
         this.el.cycleTotal.textContent = this.state.cycleTotal;
         this.el.wpNow.textContent = this.state.wpNow;
         this.el.wpTotal.textContent = this.state.wpTotal;
+        // Refresca el texto del pill segun si esta volviendo al origen.
+        if (this.state.running) this.setRun(true);
+    },
+
+    hasRoute() {
+        return this.route && this.route.points && this.route.points.length >= 2;
     },
 
     /* -------------------- Controls -------------------- */
@@ -238,9 +323,13 @@ const AutoRoute = {
             return;
         }
         const cycles = Math.max(1, parseInt(this.el.cyclesInput.value, 10) || 1);
+        const translate = !!(this.el.chkTranslate && this.el.chkTranslate.checked);
+        const smooth = !!(this.el.chkSmooth && this.el.chkSmooth.checked);
         const res = await this.api('/api/autoroute/start', 'POST', {
             points: this.route.points,
             cycles,
+            translate_to_pose: translate,
+            smooth_mode: smooth,
         });
         if (res && res.status === 'ok') {
             this.state.cycleTotal = cycles;
@@ -297,6 +386,61 @@ const AutoRoute = {
         this.el.btnUndo.addEventListener('click', () => this.undo());
         this.el.btnClear.addEventListener('click', () => this.clearPoints());
         this.el.btnSave.addEventListener('click', () => this.savePoints());
+        this.el.btnBlank?.addEventListener('click', () => this.startBlank());
+        this.el.btnSaveScan?.addEventListener('click', () => this.downloadScan());
+
+        // Input numerico: agregar waypoint por coordenadas exactas
+        this.el.btnCoordAdd?.addEventListener('click', () => this.addWaypointFromInputs());
+        const onEnter = (e) => { if (e.key === 'Enter') this.addWaypointFromInputs(); };
+        this.el.inX?.addEventListener('keydown', onEnter);
+        this.el.inY?.addEventListener('keydown', onEnter);
+    },
+
+    addWaypointFromInputs() {
+        const x = parseFloat(this.el.inX.value);
+        const y = parseFloat(this.el.inY.value);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) {
+            alert('Ingresa coordenadas X e Y numericas (en metros).');
+            return;
+        }
+        this.addWaypointAt(x, y, { source: 'numeric' });
+        this.el.inX.value = '';
+        this.el.inY.value = '';
+    },
+
+    startBlank() {
+        const n = this.route ? this.route.points.length : 0;
+        const msg = n > 0
+            ? `Descartar los ${n} waypoints actuales y empezar una ruta vacia?`
+            : 'Entrar en modo edicion con ruta vacia?';
+        if (!confirm(msg)) return;
+        if (n > 0) this.pushHistory();
+        this.route.points = [];
+        this.edit.dirty = n > 0;
+        // Activar modo edicion si no lo esta
+        if (!this.edit.on) this.toggleEdit();
+        this.render();
+    },
+
+    downloadScan() {
+        const heat = this.route && this.route.heat ? this.route.heat : [];
+        const payload = {
+            savedAt: new Date().toISOString(),
+            heatCellSize: this.route?.heatCellSize || 0.15,
+            heat: heat,
+            points: this.route?.points || [],
+            note: 'Daiver CUN - datos escaneados del lidar Go2',
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        a.href = url;
+        a.download = `daiver_scan_${ts}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     },
 
     toggleEdit() {
@@ -353,9 +497,14 @@ const AutoRoute = {
         this.render();
     },
 
-    addWaypointAt(worldX, worldY) {
+    addWaypointAt(worldX, worldY, opts = {}) {
         this.pushHistory();
-        this.route.points.push({ x: worldX, y: worldY });
+        this.route.points.push({
+            x: +worldX.toFixed(3),
+            y: +worldY.toFixed(3),
+            ts: Date.now(),
+            source: opts.source || 'click',
+        });
         this.render();
     },
 
@@ -409,6 +558,32 @@ const AutoRoute = {
         c.addEventListener('pointerup',   (e) => this.onPointerUp(e));
         c.addEventListener('pointercancel', (e) => this.onPointerUp(e));
         c.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // Hover: mostrar coordenadas del mundo bajo el cursor
+        c.addEventListener('mousemove', (e) => this.onHoverCoords(e));
+        c.addEventListener('mouseleave', () => {
+            if (this.el.coordTip) this.el.coordTip.classList.remove('visible');
+        });
+    },
+
+    onHoverCoords(e) {
+        const { x: px, y: py } = this.clientToCanvas(e);
+        const [wx, wy] = this.screenToWorld(px, py);
+        const tip = this.el.coordTip;
+        if (!tip) return;
+        tip.textContent = `x=${wx.toFixed(2)} m  y=${wy.toFixed(2)} m`;
+        // Offset pequeno para que no tape el cursor
+        tip.style.left = (px + 14) + 'px';
+        tip.style.top  = (py + 14) + 'px';
+        tip.classList.add('visible');
+    },
+
+    updateRobotBadge() {
+        if (!this.pose) return;
+        if (this.el.robotBadge) this.el.robotBadge.classList.remove('stale');
+        if (this.el.robotX) this.el.robotX.textContent = this.pose.x.toFixed(2);
+        if (this.el.robotY) this.el.robotY.textContent = this.pose.y.toFixed(2);
+        if (this.el.robotYaw) this.el.robotYaw.textContent = (this.pose.yaw || 0).toFixed(2);
     },
 
     clientToCanvas(e) {
@@ -471,6 +646,8 @@ const AutoRoute = {
             if (y < minY) minY = y; if (y > maxY) maxY = y;
         };
         for (const p of pts) absorb(p.x, p.y);
+        // heat puede venir como [ix,iy,v] (legado) o [ix,iy,iz,v] (3D nuevo).
+        // En ambos casos ix,iy estan en los mismos indices.
         for (const h of heat) absorb(h[0] * cell, h[1] * cell);
         if (this.pose) absorb(this.pose.x, this.pose.y);
 
@@ -590,70 +767,87 @@ const AutoRoute = {
     drawHeatColumns(ctx) {
         const heat = this.route ? this.route.heat : [];
         if (!heat || heat.length === 0) return;
-        const cell = this.route.heatCellSize || 0.15;
+        const cell = this.route.heatCellSize || 0.08;
+        const cellZ = this.route.heatCellSizeZ || 0.12;
 
-        // Ancho de celda proyectado. Usamos el mismo para X y Y (ya que
-        // la tilt solo comprime en Y la posicion, no el tamano individual).
         const scale = this.view.scale;
         const cellPxX = Math.max(2, cell * scale);
         const cellPxYGround = Math.max(1.5, cell * scale * TILT_KY);
+        const voxelPxH = Math.max(2, cellZ * VOXEL_Z_PX_PER_M);
 
-        // Normaliza intensidad: asume el valor bruto ya viene capado en 255.
+        // Normaliza intensidad por voxel.
         let maxHits = 1;
-        for (const h of heat) { if (h[2] > maxHits) maxHits = h[2]; }
+        for (const h of heat) { if (h[3] > maxHits) maxHits = h[3]; }
 
-        // Ordena de fondo a frente (mayor Y mundo = mas atras -> se dibuja primero).
-        const sorted = heat.slice().sort((a, b) => b[1] - a[1]);
+        // Soporte legacy: entradas [ix, iy, v] (sin Z). Las tratamos como z=0.
+        const normalized = heat.map(h => h.length >= 4
+            ? { ix: h[0], iy: h[1], iz: h[2], v: h[3] }
+            : { ix: h[0], iy: h[1], iz: 0,    v: h[2] });
 
-        for (const h of sorted) {
-            const wx = h[0] * cell;
-            const wy = h[1] * cell;
-            const v = h[2];
+        // Ordena back-to-front para que voxels cercanos cubran los lejanos.
+        // 1) mayor iy = mas atras (se dibuja primero)
+        // 2) menor iz = mas abajo (se dibuja primero)
+        normalized.sort((a, b) => b.iy - a.iy || a.iz - b.iz);
+
+        // Sombras en el piso: una por columna (ix,iy), usando el voxel de
+        // mayor intensidad de esa columna como referencia.
+        const columnIntensity = new Map();  // "ix,iy" -> max v
+        for (const n of normalized) {
+            const key = n.ix + ',' + n.iy;
+            const cur = columnIntensity.get(key) || 0;
+            if (n.v > cur) columnIntensity.set(key, n.v);
+        }
+        for (const [key, v] of columnIntensity) {
+            const [ix, iy] = key.split(',').map(Number);
+            const [gx, gy] = this.worldToScreen(ix * cell, iy * cell);
             const intensity = Math.min(1, Math.pow(v / maxHits, 0.5));
-            if (intensity < 0.04) continue;
-
-            const [gx, gy] = this.worldToScreen(wx, wy);     // base (ground)
-            const colH = COLUMN_HEIGHT_PX * intensity;
-            const topY = gy - colH;
-
-            // Color: azul profundo -> cyan -> amarillo -> naranja -> rojo.
-            const rT = Math.round(255 * Math.min(1, intensity * 1.9 - 0.2));
-            const gT = Math.round(255 * Math.min(1, intensity * 1.5));
-            const bT = Math.round(255 * (0.95 - intensity * 0.8));
-
-            // Sombra en el suelo (eclipse aplanada).
-            ctx.fillStyle = `rgba(0, 0, 0, ${0.35 * intensity})`;
+            ctx.fillStyle = `rgba(0, 0, 0, ${0.28 * intensity})`;
             ctx.beginPath();
-            ctx.ellipse(gx, gy + cellPxYGround * 0.25,
-                cellPxX * 0.5, cellPxYGround * 0.5, 0, 0, Math.PI * 2);
+            ctx.ellipse(gx, gy + cellPxYGround * 0.2,
+                cellPxX * 0.55, cellPxYGround * 0.55, 0, 0, Math.PI * 2);
             ctx.fill();
+        }
 
-            // Cuerpo de la columna: cara frontal con gradiente vertical.
-            const grd = ctx.createLinearGradient(gx, topY, gx, gy);
-            grd.addColorStop(0, `rgba(${rT}, ${gT}, ${bT}, ${0.45 + intensity * 0.5})`);
-            grd.addColorStop(1, `rgba(${Math.floor(rT*0.4)}, ${Math.floor(gT*0.4)}, ${Math.floor(bT*0.5)}, ${0.25 + intensity * 0.45})`);
+        // Dibuja cada voxel como un cubito con cara frontal y cara superior.
+        const tiltOff = cellPxYGround * 0.35;
+        for (const n of normalized) {
+            const intensity = Math.min(1, Math.pow(n.v / maxHits, 0.55));
+            if (intensity < 0.05) continue;  // umbral visual
+
+            const [gx, gy] = this.worldToScreen(n.ix * cell, n.iy * cell);
+            // Altura del voxel: su Z en pantalla. Z=0 = suelo; mayor Z -> mas arriba en pantalla.
+            const zMid = n.iz * cellZ;
+            const voxelTopY = gy - zMid * VOXEL_Z_PX_PER_M - voxelPxH;
+            const voxelBotY = gy - zMid * VOXEL_Z_PX_PER_M;
+
+            // Color por altura Z: bajo = azul, medio = amarillo, alto = rojo.
+            const zNorm = Math.max(0, Math.min(1, zMid / 1.6));  // normaliza 0..1.6m
+            const rT = Math.round(255 * Math.max(0, Math.min(1, zNorm * 1.8 - 0.2)));
+            const gT = Math.round(255 * Math.max(0, Math.min(1, 1.2 - Math.abs(zNorm - 0.5) * 2)));
+            const bT = Math.round(255 * Math.max(0, 0.9 - zNorm * 0.9));
+            const alpha = VOXEL_ALPHA_BASE + 0.35 * intensity;
+
+            // Cara frontal con gradiente vertical (luz cenital).
+            const grd = ctx.createLinearGradient(gx, voxelTopY, gx, voxelBotY);
+            grd.addColorStop(0, `rgba(${Math.min(255, rT + 40)}, ${Math.min(255, gT + 40)}, ${Math.min(255, bT + 40)}, ${alpha})`);
+            grd.addColorStop(1, `rgba(${Math.floor(rT*0.5)}, ${Math.floor(gT*0.5)}, ${Math.floor(bT*0.5)}, ${alpha * 0.85})`);
             ctx.fillStyle = grd;
-            ctx.fillRect(gx - cellPxX / 2, topY, cellPxX, colH + 1);
+            ctx.fillRect(gx - cellPxX / 2, voxelTopY, cellPxX, voxelPxH + 1);
 
-            // Cara superior: paralelogramo plano (isometrica).
-            const tiltOff = cellPxYGround * 0.35;
+            // Cara superior (paralelogramo isometrico).
             ctx.beginPath();
-            ctx.moveTo(gx - cellPxX / 2, topY);
-            ctx.lineTo(gx + cellPxX / 2, topY);
-            ctx.lineTo(gx + cellPxX / 2, topY - tiltOff);
-            ctx.lineTo(gx - cellPxX / 2, topY - tiltOff);
+            ctx.moveTo(gx - cellPxX / 2, voxelTopY);
+            ctx.lineTo(gx + cellPxX / 2, voxelTopY);
+            ctx.lineTo(gx + cellPxX / 2, voxelTopY - tiltOff);
+            ctx.lineTo(gx - cellPxX / 2, voxelTopY - tiltOff);
             ctx.closePath();
-            const topAlpha = 0.55 + intensity * 0.4;
-            ctx.fillStyle = `rgba(${Math.min(255, rT + 50)}, ${Math.min(255, gT + 50)}, ${Math.min(255, bT + 60)}, ${topAlpha})`;
+            ctx.fillStyle = `rgba(${Math.min(255, rT + 70)}, ${Math.min(255, gT + 70)}, ${Math.min(255, bT + 70)}, ${alpha * 1.1})`;
             ctx.fill();
 
-            // Borde luminoso en la arista superior.
-            ctx.strokeStyle = `rgba(255, 240, 200, ${0.25 * intensity})`;
+            // Borde tenue arriba para contrastar bordes entre voxels.
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.18 * intensity})`;
             ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(gx - cellPxX / 2, topY);
-            ctx.lineTo(gx + cellPxX / 2, topY);
-            ctx.stroke();
+            ctx.strokeRect(gx - cellPxX / 2, voxelTopY, cellPxX, voxelPxH);
         }
     },
 
@@ -748,6 +942,35 @@ const AutoRoute = {
                 ctx.fillText(String(i + 1), sx, sy - 16);
             }
 
+            // Coordenadas debajo del waypoint (solo con densidad razonable
+            // para no saturar el mapa). En rutas mas densas mostramos solo
+            // origen, final y el waypoint activo.
+            const showCoords = pts.length <= 30
+                || isOrigin || isEnd || isActive;
+            if (showCoords) {
+                const txt = `(${p.x.toFixed(2)}, ${p.y.toFixed(2)})`;
+                ctx.font = 'bold 9px "Consolas", monospace';
+                const mw = ctx.measureText(txt).width;
+                const offsetY = isOrigin ? 22 : 8;  // el origen tiene "ORIGEN" primero
+                const tagX = sx - mw / 2 - 3;
+                const tagY = sy + offsetY;
+                // Fondo semitransparente para legibilidad
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(tagX, tagY - 8, mw + 6, 12);
+                ctx.strokeStyle = isActive
+                    ? 'rgba(255, 202, 40, 0.7)'
+                    : (isOrigin ? 'rgba(0, 200, 83, 0.5)' :
+                       isEnd ? 'rgba(217, 48, 37, 0.5)' :
+                       'rgba(90, 168, 255, 0.35)');
+                ctx.lineWidth = 1;
+                ctx.strokeRect(tagX, tagY - 8, mw + 6, 12);
+                ctx.fillStyle = isActive ? '#ffca28'
+                    : (isOrigin ? '#3effa0' : (isEnd ? '#ff8a80' : '#cfd2d6'));
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(txt, sx, tagY - 2);
+            }
+
             // Etiqueta "ORIGEN" debajo del primer waypoint.
             if (isOrigin) {
                 ctx.fillStyle = '#00c853';
@@ -786,6 +1009,23 @@ const AutoRoute = {
         ctx.moveTo(rx, ry);
         ctx.lineTo(rx + Math.cos(yaw) * 16, ry - Math.sin(yaw) * 16 * TILT_KY);
         ctx.stroke();
+
+        // Etiqueta de coordenadas del robot junto al punto, actualizada
+        // en tiempo real cada vez que llega un `lidar_points`.
+        const coordsTxt = `(${this.pose.x.toFixed(2)}, ${this.pose.y.toFixed(2)})`;
+        ctx.font = 'bold 11px "Consolas", monospace';
+        const mw = ctx.measureText(coordsTxt).width;
+        const lx = rx + 12;
+        const ly = ry - 22;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
+        ctx.fillRect(lx - 4, ly - 12, mw + 10, 18);
+        ctx.strokeStyle = 'rgba(90, 168, 255, 0.55)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(lx - 4, ly - 12, mw + 10, 18);
+        ctx.fillStyle = '#5aa8ff';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(coordsTxt, lx + 1, ly - 3);
     },
 
     /* -------------------- API helper -------------------- */

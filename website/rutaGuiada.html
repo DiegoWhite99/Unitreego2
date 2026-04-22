@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daiver - Ruta Guiada por QR</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/controlRemoto.css">
+    <link rel="stylesheet" href="css/rutaGuiada.css">
+</head>
+<body class="rg-body">
+
+    <header class="rg-topbar">
+        <div class="rg-brand">
+            <a class="cr-back" href="/controlRemoto">&larr;</a>
+            <h1>Daiver &mdash; Ruta Guiada por QR</h1>
+            <span class="badge">Marcadores</span>
+        </div>
+        <div class="rg-status-group">
+            <span id="rg-status-server" class="cr-pill disconnected">
+                <span class="dot"></span><span class="txt">Offline</span>
+            </span>
+            <span id="rg-status-robot" class="cr-pill disconnected">
+                <span class="dot"></span><span class="txt">Sin robot</span>
+            </span>
+            <span id="rg-status-qr" class="cr-pill disconnected">
+                <span class="dot"></span><span class="txt">Sin QR</span>
+            </span>
+        </div>
+    </header>
+
+    <!-- Modal inicial: posiciona el robot en el punto inicial -->
+    <div id="rg-init-modal" class="rg-init-modal">
+        <div class="rg-init-card">
+            <div class="rg-init-icon">&#x1F436;</div>
+            <h2>Posiciona el robot en el punto inicial</h2>
+            <p>Lleva manualmente al Daiver al lugar que sera el <strong>origen</strong> de la ruta.
+            Cuando este ubicado, presiona el boton para registrar su pose actual como waypoint 1.</p>
+            <p class="rg-init-note">Tip: podes usar el Control Remoto en otra pestana para moverlo, o caminar a su lado si esta en pausa.</p>
+            <button id="rg-init-ok" class="cr-btn">Estoy en el punto inicial &mdash; registrar origen</button>
+            <button id="rg-init-skip" class="cr-btn ghost">Continuar sin registrar origen</button>
+        </div>
+    </div>
+
+    <main class="rg-stage">
+        <!-- Camara con overlay de QR -->
+        <section class="rg-video-section">
+            <div class="rg-video-wrap">
+                <img id="rg-video" class="rg-video" alt="Camara del Daiver" style="display:none;">
+                <div id="rg-video-placeholder" class="rg-video-placeholder">
+                    <h3>Sin camara</h3>
+                    <p>Conecta el robot y presiona <strong>Iniciar camara</strong> para activar YOLO + deteccion de QR.</p>
+                </div>
+
+                <!-- Crosshair para ayudar al operador a encuadrar el QR -->
+                <div class="cr-crosshair" aria-hidden="true">
+                    <span class="ch-v"></span>
+                    <span class="ch-h"></span>
+                    <span class="ch-dot"></span>
+                </div>
+
+                <!-- Toast flotante cuando se detecta un QR -->
+                <div id="rg-toast" class="rg-toast" aria-live="polite"></div>
+            </div>
+        </section>
+
+        <!-- Panel lateral de controles -->
+        <aside class="rg-side">
+            <section class="cr-panel">
+                <h4>Instrucciones</h4>
+                <ol class="rg-steps">
+                    <li>Posiciona el robot en el origen y confirma en el modal.</li>
+                    <li>Camina al robot hasta el siguiente QR (usa el Control Remoto en otra pestana).</li>
+                    <li>Cuando el robot vea el QR aparece aqui un <em>toast</em>.</li>
+                    <li>Presiona <strong>Guardar waypoint</strong> para anadir la pose actual.</li>
+                    <li>Repite para cada marcador. Al final, <strong>Exportar</strong> abre Auto-Ruta con la ruta lista.</li>
+                </ol>
+            </section>
+
+            <section class="cr-panel">
+                <h4>Pose actual del robot</h4>
+                <div class="rg-pose">
+                    <div><span class="lbl">X</span><span class="val" id="rg-pose-x">&mdash;</span></div>
+                    <div><span class="lbl">Y</span><span class="val" id="rg-pose-y">&mdash;</span></div>
+                    <div><span class="lbl">Yaw</span><span class="val" id="rg-pose-yaw">&mdash;</span></div>
+                </div>
+            </section>
+
+            <section class="cr-panel">
+                <h4>Ultimo QR detectado</h4>
+                <div class="rg-last-qr">
+                    <div class="rg-last-qr-text" id="rg-last-qr-text">(ninguno todavia)</div>
+                    <div class="rg-last-qr-age" id="rg-last-qr-age"></div>
+                </div>
+                <button id="rg-save-wp" class="cr-btn" disabled style="margin-top:0.6rem;width:100%;">
+                    &#x2795; Guardar waypoint (pose actual)
+                </button>
+                <p class="rg-hint">Se habilita cuando el robot ve un QR o cuando el lidar reporta pose valida.</p>
+            </section>
+
+            <section class="cr-panel">
+                <h4>Waypoints capturados <span id="rg-wp-count" class="cr-pill"><span class="dot"></span><span>0</span></span></h4>
+                <div id="rg-wp-list" class="rg-wp-list">
+                    <div class="rg-wp-empty">Sin waypoints todavia.</div>
+                </div>
+                <div class="rg-wp-actions">
+                    <button id="rg-wp-clear" class="cr-btn ghost" disabled>&#x1F5D1; Limpiar</button>
+                    <button id="rg-export" class="cr-btn" disabled>&#x1F4E4; Exportar a Auto-Ruta</button>
+                </div>
+            </section>
+
+            <section class="cr-panel">
+                <h4>Control de camara</h4>
+                <div class="rg-cam-actions">
+                    <button id="rg-yolo-start" class="cr-btn">Iniciar camara</button>
+                    <button id="rg-yolo-stop" class="cr-btn ghost" disabled>Detener</button>
+                </div>
+            </section>
+
+            <section class="cr-panel rg-follow-panel">
+                <h4>Seguirme &mdash; el robot persigue el QR</h4>
+                <p class="rg-hint">Mostrale un QR a la camara del Daiver. El se alinea contigo y camina hacia el QR. Si lo ocultas, se detiene automaticamente.</p>
+                <div class="rg-follow-row">
+                    <button id="rg-follow-start" class="cr-btn rg-follow-btn">&#x1F436; Empezar a seguirme</button>
+                    <button id="rg-follow-stop" class="cr-btn danger" disabled>&#9632; Detener</button>
+                </div>
+                <div id="rg-follow-status" class="rg-follow-status idle">
+                    <span class="rg-follow-dot"></span>
+                    <span class="rg-follow-text">Detenido</span>
+                </div>
+                <div class="rg-follow-vel">
+                    <span>v=<strong id="rg-follow-x">0.00</strong> m/s</span>
+                    <span>w=<strong id="rg-follow-z">0.00</strong> rad/s</span>
+                </div>
+            </section>
+
+            <section class="cr-panel">
+                <h4>QR para imprimir</h4>
+                <p class="rg-hint">Genera un QR aqui, imprimelo y pegalo en cada waypoint fisico. El robot reconocera cualquier QR, asi que podes usar nombres como <code>DAIVER_A</code>, <code>DAIVER_B</code>.</p>
+                <div class="rg-qr-gen">
+                    <input type="text" id="rg-qr-text" value="DAIVER_WP" maxlength="60" placeholder="Texto del QR">
+                    <button id="rg-qr-generate" class="cr-btn ghost">Generar</button>
+                </div>
+                <div class="rg-qr-img-wrap">
+                    <img id="rg-qr-img" alt="QR generado">
+                </div>
+                <a id="rg-qr-download" class="cr-btn ghost" download="daiver_qr.png" style="display:none;">
+                    &#x1F4E5; Descargar PNG
+                </a>
+            </section>
+        </aside>
+    </main>
+
+    <script src="js/socket.io.min.js"></script>
+    <script src="js/rutaGuiada.js"></script>
+</body>
+</html>

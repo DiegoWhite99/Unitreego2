@@ -39,9 +39,15 @@
                     <button id="ar-edit-toggle" class="cr-btn ghost" aria-pressed="false">
                         <span class="ico">&#x270E;</span> Editar
                     </button>
+                    <button id="ar-edit-blank" class="cr-btn ghost" title="Borrar la ruta cargada y empezar desde cero">
+                        &#x2728; Nueva ruta vacia
+                    </button>
                     <button id="ar-edit-undo" class="cr-btn ghost" disabled>&#x21A9; Deshacer</button>
                     <button id="ar-edit-clear" class="cr-btn ghost" disabled>&#x1F5D1; Limpiar</button>
                     <button id="ar-edit-save" class="cr-btn" disabled>&#x1F4BE; Guardar ruta</button>
+                    <button id="ar-save-scan" class="cr-btn ghost" title="Descargar el mapa de calor escaneado como JSON">
+                        &#x1F4E6; Guardar datos escaneados
+                    </button>
                 </div>
 
                 <!-- Instrucciones contextuales, esquina superior derecha -->
@@ -59,6 +65,15 @@
                     <span class="lg lg-origin"></span>Origen
                     <span class="lg lg-wp"></span>Waypoint
                     <span class="lg lg-heat"></span>Obstaculos
+                </div>
+
+                <!-- Tooltip flotante de coordenadas (world frame) -->
+                <div id="ar-coord-tip" class="ar-coord-tip" aria-hidden="true"></div>
+
+                <!-- Badge con la pose del robot en vivo -->
+                <div id="ar-robot-badge" class="ar-robot-badge stale">
+                    <span class="dot"></span>
+                    <span>Robot x=<strong id="ar-robot-x">--</strong> &nbsp; y=<strong id="ar-robot-y">--</strong> &nbsp; yaw=<strong id="ar-robot-yaw">--</strong></span>
                 </div>
             </div>
         </section>
@@ -87,6 +102,18 @@
                     <span id="ar-route-points">Sin ruta guardada</span>
                     <span id="ar-route-length"></span>
                 </div>
+                <!-- Input numerico para agregar waypoints con coords exactas -->
+                <div class="ar-coord-input">
+                    <input type="number" step="0.01" id="ar-coord-x" placeholder="x (m)">
+                    <input type="number" step="0.01" id="ar-coord-y" placeholder="y (m)">
+                    <button id="ar-coord-add" class="cr-btn ghost" title="Agregar waypoint con coordenadas exactas">+</button>
+                </div>
+                <details class="ar-wp-registry" open>
+                    <summary>Registro de ubicaciones <span id="ar-wp-registry-count">(0)</span></summary>
+                    <div id="ar-wp-registry-list" class="ar-wp-registry-list">
+                        <div class="ar-wp-registry-empty">Sin waypoints registrados.</div>
+                    </div>
+                </details>
             </section>
 
             <section class="cr-panel">
@@ -112,7 +139,15 @@
                     <button id="ar-stop" class="cr-btn danger" disabled>&#9632; Detener</button>
                     <button id="ar-yolo-toggle" class="cr-btn ghost">Camara ON/OFF</button>
                 </div>
-                <p class="ar-hint">El robot seguira los waypoints usando el lidar. Asegurate de que este de pie y con espacio libre antes de iniciar.</p>
+                <label class="ar-translate-opt">
+                    <input type="checkbox" id="ar-translate-to-pose">
+                    <span>Ajustar origen al robot antes de iniciar</span>
+                </label>
+                <label class="ar-translate-opt ar-smooth-opt">
+                    <input type="checkbox" id="ar-smooth-mode">
+                    <span>&#x1F30A; Modo fluido &mdash; recorrido sin paradas entre waypoints</span>
+                </label>
+                <p class="ar-hint">Por defecto el robot sigue los waypoints en coordenadas absolutas del lidar (replica exacto lo que caminaste). Activa la casilla si la ruta se grabo sin sensor o queres arrancar desde donde este el robot.</p>
             </section>
         </aside>
     </main>

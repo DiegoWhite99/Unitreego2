@@ -677,6 +677,248 @@ async def rutina_exploracion():
 #  RUTAS FLASK — PAGINAS
 # ════════════════════════════════════════════════════════
 
+# ════════════════════════════════════════════════════════
+#  QR guided routing: callback desde yolo_detector +
+#  emision Socket.IO con pose actual del lidar.
+# ════════════════════════════════════════════════════════
+
+qr_state = {
+    "last_text": None,
+    "last_ts": 0.0,
+    "last_pose": None,
+    "dedup_window_s": 2.0,
+}
+
+
+def _on_qr_detected_from_yolo(qr_text, corners):
+    """Invocado desde el hilo de inferencia de YOLO cuando ve un QR.
+    Agrega la pose actual del lidar y emite via Socket.IO. Dedupea para
+    no spamear (un mismo QR sostenido emite una vez cada 2 s)."""
+    now = time.time()
+    if (qr_text == qr_state["last_text"]
+            and now - qr_state["last_ts"] < qr_state["dedup_window_s"]):
+        return
+    pose = None
+    if proximity_sensor["_pose_valid"]:
+        pose = {
+            "x": round(proximity_sensor["_pose_x"], 3),
+            "y": round(proximity_sensor["_pose_y"], 3),
+            "yaw": round(proximity_sensor["_pose_yaw"], 3),
+        }
+    qr_state["last_text"] = qr_text
+    qr_state["last_ts"] = now
+    qr_state["last_pose"] = pose
+    try:
+        socketio.emit("qr_detected", {
+            "text": qr_text,
+            "pose": pose,
+            "corners": corners,
+            "ts": now,
+        })
+    except Exception:
+        pass
+
+
+yolo_detector.set_qr_callback(_on_qr_detected_from_yolo)
+
+
+# ════════════════════════════════════════════════════════
+#  FOLLOW-ME por QR: el robot persigue cualquier QR que vea.
+#  Usa la posicion del QR en el frame para generar Move:
+#    - norm_cx - 0.5 => error lateral => gira para centrarlo
+#    - area_ratio    => proxy de distancia => avanza si esta lejos
+#  Seguridad: si el QR no se ve hace >1.5 s, Move=0. Si el sensor
+#  de proximidad dispara alerta, Move=0. El operador puede detener
+#  en cualquier momento via /api/follow/stop.
+# ════════════════════════════════════════════════════════
+
+follow_state = {
+    "running": False,
+    "_task": None,
+    "_cancel": False,
+    # Tuning
+    "max_linear": 0.35,          # m/s max hacia adelante
+    "max_angular": 0.75,         # rad/s max para girar
+    "target_area": 0.10,         # tamaño del QR en frame que consideramos "buena distancia"
+    "near_area": 0.18,           # si el QR ocupa mas que esto: muy cerca, frenamos
+    "k_angular": 1.8,            # ganancia del control lateral
+    "lost_timeout_s": 1.5,       # si no hay QR fresco, detener
+    # Estado para la UI
+    "_last_reason": "",
+    "_last_x": 0.0,
+    "_last_z": 0.0,
+    "_last_qr_text": None,
+}
+
+
+async def _follow_loop():
+    """Loop de seguimiento del QR. Corre cada 200 ms."""
+    state = follow_state
+    try:
+        # El Go2 ignora Move si esta sentado. Aseguramos BalanceStand.
+        emit_log('info', 'Follow-QR: BalanceStand')
+        try:
+            await robot_send_command("BalanceStand")
+        except Exception as exc:
+            emit_log('warning', f'Follow-QR: BalanceStand fallo: {exc}')
+
+        socketio.emit("follow_status", {"running": True, "reason": "started"})
+
+        while not state["_cancel"]:
+            # 1) Datos del QR
+            qr = yolo_detector.get_last_qr_tracking()
+            age = qr.get("age_s")
+            ncx = qr.get("norm_cx")
+            area = qr.get("area_ratio")
+            text = qr.get("text")
+
+            # 2) Reglas de parada
+            if age is None or age > state["lost_timeout_s"]:
+                await _follow_send(0.0, 0.0, "QR no visible")
+                await asyncio.sleep(0.2)
+                continue
+
+            if proximity_sensor["enabled"] and proximity_sensor["_alert_active"]:
+                await _follow_send(0.0, 0.0, "Obstaculo adelante (sensor)")
+                await asyncio.sleep(0.2)
+                continue
+
+            # 3) Control
+            err = ncx - 0.5  # positivo = QR a la derecha
+            z = -state["k_angular"] * err
+            z = max(-state["max_angular"], min(state["max_angular"], z))
+
+            if area >= state["near_area"]:
+                x = 0.0
+                reason = f"QR cerca (area {area:.3f})"
+            elif area >= state["target_area"]:
+                x = 0.15
+                reason = f"Siguiendo (area {area:.3f})"
+            else:
+                # cuanto mas lejos, mas avanzamos (hasta el max).
+                deficit = state["target_area"] - area
+                x = min(state["max_linear"], 0.18 + deficit * 4.0)
+                reason = f"Acercando (area {area:.3f})"
+
+            state["_last_qr_text"] = text
+            await _follow_send(x, z, reason)
+            await asyncio.sleep(0.2)
+    except Exception as exc:
+        emit_log('error', f'Follow-QR: error en el loop: {exc}')
+    finally:
+        # Parada limpia.
+        try:
+            await robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": 0.0})
+        except Exception:
+            pass
+        state["running"] = False
+        state["_task"] = None
+        state["_last_x"] = 0.0
+        state["_last_z"] = 0.0
+        socketio.emit("follow_status", {"running": False, "reason": "stopped"})
+
+
+async def _follow_send(x, z, reason):
+    """Envia Move al robot y actualiza estado expuesto al frontend."""
+    follow_state["_last_x"] = x
+    follow_state["_last_z"] = z
+    follow_state["_last_reason"] = reason
+    try:
+        await robot_send_command("Move", {"x": x, "y": 0.0, "z": z})
+    except Exception as exc:
+        emit_log('warning', f'Follow-QR move: {exc}')
+    # Heartbeat suave al frontend (~5 Hz).
+    socketio.emit("follow_status", {
+        "running": follow_state["running"],
+        "x": round(x, 3),
+        "z": round(z, 3),
+        "reason": reason,
+        "qr": follow_state["_last_qr_text"],
+    })
+
+
+@app.route('/api/follow/start', methods=['POST'])
+def api_follow_start():
+    if not robot_state["connected"]:
+        return jsonify({"status": "error", "message": "Robot no conectado"}), 400
+    if follow_state["running"]:
+        return jsonify({"status": "error", "message": "Ya estoy siguiendo"}), 409
+    if autoroute_state.get("running"):
+        return jsonify({"status": "error", "message": "Auto-Ruta esta corriendo, detenla primero"}), 409
+    if not yolo_detector.is_running():
+        return jsonify({"status": "error",
+                        "message": "YOLO no esta corriendo. Iniciala desde la pagina de ruta guiada."}), 400
+
+    follow_state["_cancel"] = False
+    follow_state["running"] = True
+    follow_state["_task"] = run_async_no_wait(_follow_loop())
+    emit_log('success', 'Follow-QR: iniciado')
+    return jsonify({"status": "ok"})
+
+
+@app.route('/api/follow/stop', methods=['POST'])
+def api_follow_stop():
+    follow_state["_cancel"] = True
+    try:
+        run_async(robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": 0.0}))
+    except Exception:
+        pass
+    emit_log('info', 'Follow-QR: detenido por el usuario')
+    return jsonify({"status": "ok"})
+
+
+@app.route('/api/follow/status', methods=['GET'])
+def api_follow_status():
+    return jsonify({
+        "status": "ok",
+        "running": follow_state["running"],
+        "x": follow_state["_last_x"],
+        "z": follow_state["_last_z"],
+        "reason": follow_state["_last_reason"],
+        "qr": follow_state["_last_qr_text"],
+    })
+
+
+@app.route('/api/qr/last', methods=['GET'])
+def api_qr_last():
+    """Ultimo QR visto por el robot, con su pose asociada."""
+    return jsonify({
+        "status": "ok",
+        "text": qr_state["last_text"],
+        "last_ts": qr_state["last_ts"],
+        "age_s": round(time.time() - qr_state["last_ts"], 2) if qr_state["last_ts"] else None,
+        "pose": qr_state["last_pose"],
+    })
+
+
+@app.route('/api/qr/image')
+def api_qr_image():
+    """Genera una imagen PNG del QR pedido via ?text=..."""
+    try:
+        import qrcode
+        from io import BytesIO
+    except ImportError:
+        return jsonify({
+            "status": "error",
+            "message": "Falta la dependencia 'qrcode'. Instala: pip install qrcode[pil]",
+        }), 500
+    text = request.args.get('text', 'DAIVER_WP').strip() or 'DAIVER_WP'
+    qr = qrcode.QRCode(version=None, box_size=10, border=3,
+                       error_correction=qrcode.constants.ERROR_CORRECT_M)
+    qr.add_data(text)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buf = BytesIO()
+    img.save(buf, 'PNG')
+    buf.seek(0)
+    return Response(buf.getvalue(), mimetype='image/png')
+
+
+@app.route('/rutaguiada')
+def ruta_guiada():
+    return send_from_directory('website', 'rutaGuiada.html')
+
+
 @app.route('/')
 def index():
     return send_from_directory('website', 'index.html')
@@ -1346,8 +1588,9 @@ def _maybe_clear_alert_state(distance_m):
 
 def _maybe_emit_lidar_points(pts, rx, ry, yaw):
     """Publica una muestra de puntos del lidar al frontend a ~5 Hz.
-    Los puntos se envían en el frame del MAPA (world): el frontend los
-    acumula para pintar el heatmap de paredes + trayectoria."""
+    Los puntos se envían en el frame del MAPA (world), con coordenada Z
+    preservada para que el frontend pueda construir un heatmap 3D real
+    (voxels apilados) en vez de un mapa plano."""
     now = time.time()
     if now - proximity_sensor["_last_points_emit_ts"] < 0.2:
         return
@@ -1357,20 +1600,23 @@ def _maybe_emit_lidar_points(pts, rx, ry, yaw):
         n = pts.shape[0]
         if n == 0:
             return
-        # Filtra al suelo / techo para quedarnos con paredes / objetos.
+        # Filtra piso y techo en Z absoluta. Ampliamos max_z un poco
+        # (+0.4 m) para capturar parte superior de sillas y mesas altas.
         zmask = (pts[:, 2] > proximity_sensor["min_z_m"]) & \
-                (pts[:, 2] < proximity_sensor["max_z_m"])
+                (pts[:, 2] < proximity_sensor["max_z_m"] + 0.4)
         w_pts = pts[zmask]
-        if w_pts.shape[0] > 1500:
-            idx = _np.random.choice(w_pts.shape[0], 1500, replace=False)
+        if w_pts.shape[0] > 2000:
+            idx = _np.random.choice(w_pts.shape[0], 2000, replace=False)
             w_pts = w_pts[idx]
 
-        xy = w_pts[:, :2].astype(float)
+        xyz = w_pts[:, :3].astype(float)
         socketio.emit("lidar_points", {
             "pose": {"x": rx, "y": ry, "yaw": yaw},
-            # xy aplanado para reducir peso JSON
-            "xy": xy.round(3).flatten().tolist(),
-            "count": int(xy.shape[0]),
+            # xyz aplanado [x0,y0,z0, x1,y1,z1, ...] para voxels 3D
+            "xyz": xyz.round(3).flatten().tolist(),
+            # xy aplanado mantenido por compatibilidad con clientes viejos
+            "xy": xyz[:, :2].round(3).flatten().tolist(),
+            "count": int(xyz.shape[0]),
         })
     except Exception:
         pass
@@ -1540,12 +1786,18 @@ autoroute_state = {
     "wp_now": 0,
     "_task": None,
     "_cancel": False,
-    # Tuning
+    "translate_to_pose": False,   # opt-in: solo trasladar si el operador lo pide
+    "smooth_mode": False,         # modo fluido: transiciones suaves entre waypoints
+    # Tuning del seguidor de waypoints (modo preciso)
     "linear_speed": 0.35,         # m/s hacia adelante máximo
     "angular_speed": 0.75,        # rad/s máximo para girar
-    "reach_radius_m": 0.35,       # waypoint alcanzado si dist < 35 cm
-    "heading_align_rad": 0.35,    # si dy ángulo > esto, solo rota
+    "reach_radius_m": 0.25,       # waypoint alcanzado si dist < 25 cm
+    "heading_align_rad": 0.4,     # si |err| > esto, solo rota antes de avanzar
     "timeout_per_wp_s": 20.0,     # si no llega en 20s, pasa al siguiente
+    # Tuning alternativo (modo fluido) — pure-pursuit relajado
+    "smooth_linear_speed": 0.4,
+    "smooth_reach_radius_m": 0.5, # alcanza waypoint antes, sin frenar tanto
+    "smooth_heading_align_rad": 1.4,  # casi nunca solo rota; siempre blend
 }
 
 
@@ -1592,28 +1844,37 @@ async def _autoroute_follow_loop():
             state["_cancel"] = True
             return
 
-        # 3) Traslada los waypoints: que el primero coincida con la pose
-        #    actual del robot. Asi las rutas grabadas con dead-reckoning o
-        #    con origen absoluto distinto funcionan desde "donde esta".
-        pose_x = proximity_sensor["_pose_x"]
-        pose_y = proximity_sensor["_pose_y"]
-        waypoints = state["waypoints"]
-        if waypoints:
-            ox = float(waypoints[0]["x"]) - pose_x
-            oy = float(waypoints[0]["y"]) - pose_y
-            translated = [
-                {"x": float(w["x"]) - ox, "y": float(w["y"]) - oy}
-                for w in waypoints
-            ]
-            state["waypoints"] = translated
+        # 3) Traslado opcional: solo si el operador lo pidio explicitamente
+        #    (checkbox "Ajustar al origen"). Por defecto se sigue la ruta
+        #    en el frame absoluto del lidar — asi el robot replica EXACTO
+        #    lo que caminaste, sin deformaciones.
+        if state.get("translate_to_pose"):
+            pose_x = proximity_sensor["_pose_x"]
+            pose_y = proximity_sensor["_pose_y"]
+            waypoints = state["waypoints"]
+            if waypoints:
+                ox = float(waypoints[0]["x"]) - pose_x
+                oy = float(waypoints[0]["y"]) - pose_y
+                translated = [
+                    {"x": float(w["x"]) - ox, "y": float(w["y"]) - oy}
+                    for w in waypoints
+                ]
+                state["waypoints"] = translated
+                emit_log('info',
+                         f'Auto-Ruta: ruta trasladada al origen del robot '
+                         f'(offset {ox:+.2f}, {oy:+.2f}).')
+        else:
             emit_log('info',
-                     f'Auto-Ruta: ruta trasladada al origen del robot '
-                     f'(offset {ox:+.2f}, {oy:+.2f}).')
+                     f'Auto-Ruta: siguiendo {len(state["waypoints"])} waypoints '
+                     f'en frame absoluto del lidar (sin traslado).')
 
+        total_wp = len(state["waypoints"])
         for cycle in range(1, state["cycles_total"] + 1):
             if state["_cancel"]:
                 break
             state["cycle_now"] = cycle
+
+            # --- Pasada hacia adelante: A -> B -> C -> ... -> FIN ---
             for i, wp in enumerate(state["waypoints"]):
                 if state["_cancel"]:
                     break
@@ -1623,10 +1884,43 @@ async def _autoroute_follow_loop():
                     "cycle": cycle,
                     "cycle_total": state["cycles_total"],
                     "waypoint": i + 1,
-                    "waypoint_total": len(state["waypoints"]),
+                    "waypoint_total": total_wp,
+                    "returning": False,
                 })
-
                 await _autoroute_go_to(wp)
+
+            # --- REGLA: al terminar cada ciclo SIEMPRE volvemos al origen
+            #     por el mismo camino en reversa. Esto aplica tanto entre
+            #     ciclos (para que el siguiente arranque en wp[0]) como
+            #     despues del ultimo (el robot termina donde empezo).
+            #     Evitamos cortar en linea recta por zonas sin validar. ---
+            if not state["_cancel"] and total_wp >= 2:
+                is_last_cycle = (cycle >= state["cycles_total"])
+                emit_log('info',
+                         f'Auto-Ruta: fin del ciclo {cycle}. '
+                         f'Volviendo al origen por el mismo camino...')
+                # Saltamos el ultimo (ahi estamos). El loop visita
+                # wp[N-2], wp[N-3], ..., wp[1] y finalmente wp[0].
+                for i in range(total_wp - 2, -1, -1):
+                    if state["_cancel"]:
+                        break
+                    wp = state["waypoints"][i]
+                    state["wp_now"] = i + 1
+                    socketio.emit("autoroute_progress", {
+                        "running": True,
+                        "cycle": cycle,
+                        "cycle_total": state["cycles_total"],
+                        "waypoint": i + 1,
+                        "waypoint_total": total_wp,
+                        "returning": True,
+                    })
+                    await _autoroute_go_to(wp)
+                if is_last_cycle:
+                    emit_log('success', 'Auto-Ruta: origen alcanzado. Recorrido completo.')
+                else:
+                    emit_log('success',
+                             f'Auto-Ruta: origen alcanzado. '
+                             f'Arrancando ciclo {cycle + 1}/{state["cycles_total"]}.')
 
         # Stop final
         try:
@@ -1644,9 +1938,28 @@ async def _autoroute_follow_loop():
 
 async def _autoroute_go_to(wp):
     """Conduce el robot hacia el waypoint hasta que entre en el radio o
-    se agote el timeout. Usa la pose del lidar (proximity_sensor)."""
+    se agote el timeout. Usa la pose del lidar (proximity_sensor).
+
+    En `smooth_mode` se usa un radio de alcance mayor, nunca se hace
+    "solo rotar" (siempre blend rotacion + avance) y no se frena entre
+    waypoints: la ruta sale fluida en vez de stop-and-go."""
     state = autoroute_state
+    smooth = state.get("smooth_mode", False)
     start_ts = asyncio.get_running_loop().time()
+
+    lin_max = state["smooth_linear_speed"] if smooth else state["linear_speed"]
+    reach = state["smooth_reach_radius_m"] if smooth else state["reach_radius_m"]
+    head_thr = state["smooth_heading_align_rad"] if smooth else state["heading_align_rad"]
+
+    # Log de apertura: posicion inicial del robot vs waypoint objetivo.
+    if proximity_sensor["_pose_valid"]:
+        p0x = proximity_sensor["_pose_x"]
+        p0y = proximity_sensor["_pose_y"]
+        d0 = math.hypot(float(wp.get("x", 0)) - p0x, float(wp.get("y", 0)) - p0y)
+        emit_log('info',
+                 f'  -> waypoint ({wp.get("x", 0):.2f}, {wp.get("y", 0):.2f}) '
+                 f'desde ({p0x:.2f}, {p0y:.2f}), distancia {d0:.2f} m'
+                 f'{" [fluido]" if smooth else ""}')
 
     while not state["_cancel"]:
         if (asyncio.get_running_loop().time() - start_ts) > state["timeout_per_wp_s"]:
@@ -1665,22 +1978,28 @@ async def _autoroute_go_to(wp):
         dx = float(wp.get("x", 0.0)) - px
         dy = float(wp.get("y", 0.0)) - py
         dist = math.hypot(dx, dy)
-        if dist < state["reach_radius_m"]:
+        if dist < reach:
             break
 
         target_heading = math.atan2(dy, dx)
         heading_err = _normalize_angle(target_heading - yaw)
 
-        # Estrategia simple: gira primero, avanza después.
-        if abs(heading_err) > state["heading_align_rad"]:
+        if abs(heading_err) > head_thr:
+            # Solo rotar (giros agudos, por encima del umbral).
             z = max(-state["angular_speed"],
                     min(state["angular_speed"], heading_err * 1.5))
             x = 0.0
         else:
-            # Avanza proporcional a la distancia (hasta el máximo).
-            x = max(0.0, min(state["linear_speed"], dist * 0.8))
-            # Correcciones de yaw suaves mientras camina
-            z = max(-0.4, min(0.4, heading_err * 1.2))
+            # Blend rotacion + avance. En smooth, la velocidad lineal se
+            # atenua con el error de heading (menos avance si estas muy
+            # torcido) — evita curvas demasiado cerradas.
+            if smooth:
+                gain_by_heading = max(0.35, 1.0 - abs(heading_err) / head_thr * 0.65)
+                x = min(lin_max, dist * 1.0) * gain_by_heading
+                z = max(-0.6, min(0.6, heading_err * 1.5))
+            else:
+                x = max(0.0, min(lin_max, dist * 0.8))
+                z = max(-0.4, min(0.4, heading_err * 1.2))
 
         # Si el sensor disparó alerta y NO estamos forzando, detenemos
         # este waypoint y pasamos al siguiente en la siguiente iteración.
@@ -1700,11 +2019,14 @@ async def _autoroute_go_to(wp):
 
         await asyncio.sleep(0.2)
 
-    # Stop entre waypoints
-    try:
-        await robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": 0.0})
-    except Exception:
-        pass
+    # En modo preciso frenamos entre waypoints (paradas marcadas).
+    # En modo fluido NO frenamos: dejamos que el siguiente waypoint tome
+    # el control del Move y la transicion sea continua.
+    if not smooth:
+        try:
+            await robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": 0.0})
+        except Exception:
+            pass
 
 
 @app.route('/api/autoroute/start', methods=['POST'])
@@ -1740,6 +2062,8 @@ def api_autoroute_start():
     autoroute_state["wp_now"] = 0
     autoroute_state["_cancel"] = False
     autoroute_state["running"] = True
+    autoroute_state["translate_to_pose"] = bool(data.get("translate_to_pose"))
+    autoroute_state["smooth_mode"] = bool(data.get("smooth_mode"))
     autoroute_state["_task"] = run_async_no_wait(_autoroute_follow_loop())
 
     emit_log('success', f'Auto-Ruta iniciada: {len(waypoints)} waypoints × {cycles} ciclos')

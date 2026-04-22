@@ -91,6 +91,17 @@ class YoloDetector:
         self._last_error: Optional[str] = None
         self._last_frame_ts = 0.0
 
+        # QR detector paralelo al pipeline YOLO. Corre cada N frames para
+        # no robar CPU a la inferencia principal. Si encuentra un QR, emite
+        # una notificacion via callback registrado desde app.py.
+        self._qr_detector = cv2.QRCodeDetector()
+        self._qr_every_n = 4       # corre QR 1 de cada 4 frames (~5 Hz)
+        self._qr_frame_count = 0
+        self._last_qr_text: Optional[str] = None
+        self._last_qr_ts: float = 0.0
+        self._last_qr_corners: Optional[list] = None
+        self._qr_callback = None   # Optional[Callable[[str, list], None]]
+
     # ------------------------------------------------------------
     #  API DE FRAMES (desde robot o webcam)
     # ------------------------------------------------------------
@@ -286,6 +297,41 @@ class YoloDetector:
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA
                         )
 
+            # --- Deteccion de QR en paralelo (throttled) ---
+            self._qr_frame_count += 1
+            if self._qr_frame_count >= self._qr_every_n:
+                self._qr_frame_count = 0
+                try:
+                    qr_text, qr_corners, _ = self._qr_detector.detectAndDecode(frame)
+                except Exception:
+                    qr_text, qr_corners = "", None
+                if qr_text:
+                    self._last_qr_text = qr_text
+                    self._last_qr_ts = time.time()
+                    corners_list = None
+                    if qr_corners is not None:
+                        try:
+                            corners_list = qr_corners.reshape(-1, 2).astype(int).tolist()
+                        except Exception:
+                            corners_list = None
+                    self._last_qr_corners = corners_list
+                    # Dibuja el QR detectado en el frame anotado.
+                    if corners_list and annotated is not frame:
+                        pts = [(int(p[0]), int(p[1])) for p in corners_list]
+                        for i in range(len(pts)):
+                            cv2.line(annotated, pts[i], pts[(i + 1) % len(pts)],
+                                     (0, 220, 255), 3)
+                        cv2.putText(annotated, f"QR: {qr_text[:24]}",
+                                    (pts[0][0], max(20, pts[0][1] - 8)),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.55,
+                                    (0, 220, 255), 2, cv2.LINE_AA)
+                    # Notifica al exterior (app.py registra aqui un emit Socket.IO)
+                    if callable(self._qr_callback):
+                        try:
+                            self._qr_callback(qr_text, corners_list)
+                        except Exception:
+                            pass
+
             ok_jpg, jpg = cv2.imencode(
                 ".jpg", annotated, [int(cv2.IMWRITE_JPEG_QUALITY), 80]
             )
@@ -359,6 +405,60 @@ class YoloDetector:
     def get_detections(self) -> List[Dict]:
         with self._lock:
             return list(self._latest_detections)
+
+    # ------------------------------------------------------------
+    #  API DE QR (pipeline paralelo a YOLO)
+    # ------------------------------------------------------------
+
+    def set_qr_callback(self, cb):
+        """Registra un callable(qr_text:str, corners:list) que se invoca
+        cada vez que se detecta un QR en el frame actual. app.py usa esto
+        para emitir `qr_detected` via Socket.IO con la pose del lidar."""
+        self._qr_callback = cb
+
+    def get_last_qr(self) -> Dict:
+        """Ultimo QR detectado y su antiguedad en segundos. None si nunca."""
+        if not self._last_qr_text:
+            return {"text": None, "age_s": None, "corners": None}
+        return {
+            "text": self._last_qr_text,
+            "age_s": round(time.time() - self._last_qr_ts, 2),
+            "corners": self._last_qr_corners,
+        }
+
+    def get_last_qr_tracking(self) -> Dict:
+        """Info derivada del ultimo QR, util para control de seguimiento.
+        Devuelve:
+          text      : texto del QR
+          age_s     : antiguedad en segundos (None si nunca se detecto)
+          norm_cx   : centro X normalizado en el frame [0=izq, 1=der]
+          norm_cy   : centro Y normalizado [0=arriba, 1=abajo]
+          area_ratio: fraccion del frame ocupada (proxy inverso de distancia)
+        """
+        if not self._last_qr_text or not self._last_qr_corners:
+            return {"text": None, "age_s": None,
+                    "norm_cx": None, "norm_cy": None, "area_ratio": None}
+        fw = max(1, self._frame_width)
+        fh = max(1, self._frame_height)
+        xs = [p[0] for p in self._last_qr_corners]
+        ys = [p[1] for p in self._last_qr_corners]
+        cx = sum(xs) / len(xs)
+        cy = sum(ys) / len(ys)
+        # Area del poligono (shoelace), absoluta.
+        n = len(self._last_qr_corners)
+        area = 0.0
+        for i in range(n):
+            x1, y1 = self._last_qr_corners[i]
+            x2, y2 = self._last_qr_corners[(i + 1) % n]
+            area += x1 * y2 - x2 * y1
+        area = abs(area) * 0.5
+        return {
+            "text": self._last_qr_text,
+            "age_s": round(time.time() - self._last_qr_ts, 3),
+            "norm_cx": round(cx / fw, 4),
+            "norm_cy": round(cy / fh, 4),
+            "area_ratio": round(area / (fw * fh), 5),
+        }
 
     def mjpeg_generator(self):
         boundary = b"--frame"
