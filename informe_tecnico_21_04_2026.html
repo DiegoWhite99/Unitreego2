@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informe Tecnico - Daiver Control CUN - 21/04/2026</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm 2.5cm;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 11pt;
+            line-height: 1.6;
+            color: #1a1a1a;
+            background: #fff;
+            padding: 2cm 2.5cm;
+        }
+
+        /* --- PORTADA --- */
+        .cover {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 90vh;
+            text-align: center;
+            page-break-after: always;
+        }
+
+        .cover-logo {
+            font-size: 64pt;
+            margin-bottom: 10px;
+        }
+
+        .cover h1 {
+            font-size: 28pt;
+            color: #1a237e;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+
+        .cover h2 {
+            font-size: 16pt;
+            color: #5c6bc0;
+            font-weight: 400;
+            margin-bottom: 40px;
+        }
+
+        .cover-info {
+            border-top: 3px solid #1a237e;
+            padding-top: 20px;
+            font-size: 12pt;
+            color: #444;
+            line-height: 2;
+        }
+
+        .cover-info strong {
+            color: #1a237e;
+        }
+
+        /* --- CONTENIDO --- */
+        h1 {
+            font-size: 18pt;
+            color: #1a237e;
+            border-bottom: 2px solid #1a237e;
+            padding-bottom: 6px;
+            margin: 30px 0 15px 0;
+            page-break-after: avoid;
+        }
+
+        h2 {
+            font-size: 14pt;
+            color: #303f9f;
+            margin: 20px 0 10px 0;
+            page-break-after: avoid;
+        }
+
+        h3 {
+            font-size: 12pt;
+            color: #3949ab;
+            margin: 15px 0 8px 0;
+        }
+
+        p {
+            margin-bottom: 10px;
+            text-align: justify;
+        }
+
+        ul, ol {
+            margin: 8px 0 15px 25px;
+        }
+
+        li {
+            margin-bottom: 5px;
+        }
+
+        code {
+            background: #f0f0f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 10pt;
+            color: #d32f2f;
+        }
+
+        pre {
+            background: #1e1e2e;
+            color: #cdd6f4;
+            padding: 15px 18px;
+            border-radius: 6px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 9.5pt;
+            line-height: 1.5;
+            overflow-x: auto;
+            margin: 10px 0 18px 0;
+            page-break-inside: avoid;
+        }
+
+        pre .comment { color: #6c7086; }
+        pre .keyword { color: #cba6f7; }
+        pre .string { color: #a6e3a1; }
+        pre .cmd { color: #89b4fa; }
+        pre .flag { color: #f9e2af; }
+        pre .url { color: #89dceb; }
+        pre .prompt { color: #a6adc8; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0 18px 0;
+            font-size: 10pt;
+            page-break-inside: avoid;
+        }
+
+        th {
+            background: #1a237e;
+            color: white;
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        tr:nth-child(even) {
+            background: #f5f5fa;
+        }
+
+        .note {
+            background: #e8eaf6;
+            border-left: 4px solid #1a237e;
+            padding: 12px 16px;
+            border-radius: 0 6px 6px 0;
+            margin: 12px 0;
+            font-size: 10pt;
+        }
+
+        .note strong {
+            color: #1a237e;
+        }
+
+        .warning {
+            background: #fff3e0;
+            border-left: 4px solid #e65100;
+            padding: 12px 16px;
+            border-radius: 0 6px 6px 0;
+            margin: 12px 0;
+            font-size: 10pt;
+        }
+
+        .warning strong {
+            color: #e65100;
+        }
+
+        .success {
+            background: #e8f5e9;
+            border-left: 4px solid #2e7d32;
+            padding: 12px 16px;
+            border-radius: 0 6px 6px 0;
+            margin: 12px 0;
+            font-size: 10pt;
+        }
+
+        .success strong {
+            color: #2e7d32;
+        }
+
+        .architecture-box {
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            text-align: center;
+            font-family: 'Consolas', monospace;
+            font-size: 10pt;
+            line-height: 1.8;
+            page-break-inside: avoid;
+        }
+
+        .architecture-box .layer {
+            background: #e8eaf6;
+            border: 1px solid #9fa8da;
+            border-radius: 6px;
+            padding: 8px 16px;
+            margin: 5px auto;
+            max-width: 560px;
+        }
+
+        .architecture-box .arrow {
+            color: #1a237e;
+            font-size: 16pt;
+            margin: 2px 0;
+        }
+
+        .toc {
+            background: #f8f9ff;
+            border: 1px solid #c5cae9;
+            border-radius: 8px;
+            padding: 20px 30px;
+            margin: 20px 0;
+        }
+
+        .toc h2 {
+            margin-top: 0;
+            text-align: center;
+        }
+
+        .toc ol {
+            margin-left: 20px;
+        }
+
+        .toc li {
+            margin-bottom: 6px;
+            color: #303f9f;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 9pt;
+            color: #888;
+            margin-top: 40px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
+
+        @media print {
+            body { padding: 0; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ========================== PORTADA ========================== -->
+<div class="cover">
+    <h1>INFORME TECNICO</h1>
+    <h2>Integracion de Sensores y Controles de Direccionamiento Autonomo</h2>
+    <p style="font-size: 13pt; color: #666; margin-bottom: 30px;">
+        Daiver Control CUN &mdash; Unitree Go2 Air<br>
+        Sensor de proximidad Lidar, Control Remoto con <em>Force Mode</em> y Auto-Ruta 2.5D
+    </p>
+    <div class="cover-info">
+        <strong>Proyecto:</strong> unitreeWebRTC &mdash; Laboratorio 2<br>
+        <strong>Institucion:</strong> CUN &mdash; Corporacion Unificada Nacional<br>
+        <strong>Fecha:</strong> 21 de Abril de 2026<br>
+        <strong>Tecnologias:</strong> Python (Flask + asyncio) + JavaScript + Socket.IO + WebRTC + Lidar L1<br>
+        <strong>Robot:</strong> Unitree Go2 Air
+    </div>
+</div>
+
+<!-- ========================== ENCABEZADO DEL DIA ========================== -->
+<h1 style="background: #1a237e; color: white; padding: 12px 18px; border-radius: 6px; border-bottom: none;">
+    Actualizacion &mdash; Martes 21 de Abril de 2026
+</h1>
+
+<div class="note">
+    <strong>Resumen ejecutivo.</strong> La sesion de hoy cierra el ciclo percepcion-accion local del Go2
+    trabajando sobre tres ejes complementarios: <strong>(1) proteccion con sensor de proximidad</strong>
+    del lidar L1 integrada al teleoperador, <strong>(2) un nuevo modo <em>Force</em></strong> que permite
+    ignorar selectivamente el sensor desde teclado (Shift sostenido) o boton movil (Override hold) sin
+    caer en la friccion del doble-tap previo, y <strong>(3) un editor visual 2.5D de rutas autonomas</strong>
+    que renderiza el mapa de calor del entorno como terreno con volumen y permite colocar manualmente
+    waypoints con el mouse, trasladandolos automaticamente al origen del robot al iniciar.
+</div>
+
+<h2>A. Alcance Tecnico de la Sesion</h2>
+<p>La actualizacion agrupa cinco bloques de trabajo sobre backend y frontend:</p>
+<ol>
+    <li><strong>Refactor del <em>Force Mode</em></strong> (teclado y movil) con tres fuentes independientes
+        unificadas por una maquina de estado compartida.</li>
+    <li><strong>Ventana de gracia del sensor</strong> en el backend (<code>_force_until</code>) que suprime
+        alertas y <code>Move=0</code> forzados mientras el operador sostiene el override.</li>
+    <li><strong>Editor visual de waypoints</strong> en la pagina de Auto-Ruta: click-para-agregar,
+        drag-para-mover, Shift+click-para-borrar, con undo/limpiar/guardar.</li>
+    <li><strong>Render 2.5D del mapa de calor</strong> del lidar como columnas verticales con sombras,
+        gradientes y proyeccion inclinada (tilt Ky = 0.62).</li>
+    <li><strong>Robustez de la Auto-Ruta</strong>: <code>BalanceStand</code> previo, espera de pose valida
+        con timeout, traslado automatico de waypoints al origen del robot, y logs estructurados para
+        diagnostico.</li>
+</ol>
+
+<h2>B. Archivos Modificados</h2>
+<table>
+    <tr><th>Archivo</th><th>Estado</th><th>Cambios principales</th></tr>
+    <tr>
+        <td><code>app.py</code></td>
+        <td>Modificado</td>
+        <td>Sensor de proximidad con <code>_force_until</code>; cierre inmediato de ventana en <code>stop_command</code> y en <code>move_command</code> sin <code>force</code>; <code>BalanceStand</code> previo y traslado automatico de waypoints en <code>_autoroute_follow_loop</code>; <code>_autoroute_wait_for_pose</code>.</td>
+    </tr>
+    <tr>
+        <td><code>website/controlRemoto.html</code></td>
+        <td>Modificado</td>
+        <td>Boton movil <em>Forzar</em> (Override hold) en la barra de acciones; pista nueva <code>Forzar sensor: Shift + WASD</code> en la zona de hints de escritorio.</td>
+    </tr>
+    <tr>
+        <td><code>website/js/controlRemoto.js</code></td>
+        <td>Modificado</td>
+        <td>Estado <code>movement</code> con 3 flags (<code>forceShift</code>, <code>forceButton</code>, <code>forceDoubleTap</code>) + <code>refreshForceState()</code>; <code>onProximityAlert</code> silenciada mientras <code>forceActive</code>; persistencia del heatmap al guardar ruta.</td>
+    </tr>
+    <tr>
+        <td><code>website/css/controlRemoto.css</code></td>
+        <td>Modificado</td>
+        <td>Estilos <code>.cr-mob-override</code>, <code>.cr-hint-group.cr-hint-force</code> y refinamientos del badge <code>FORCE</code>.</td>
+    </tr>
+    <tr>
+        <td><code>website/autoroute.html</code></td>
+        <td>Reescrito</td>
+        <td>Mapa 2.5D como area principal con toolbar flotante (<em>Editar</em>, <em>Deshacer</em>, <em>Limpiar</em>, <em>Guardar ruta</em>), panel de instrucciones, leyenda y panel lateral con camara + ciclos + control.</td>
+    </tr>
+    <tr>
+        <td><code>website/js/autoroute.js</code></td>
+        <td>Reescrito</td>
+        <td>Proyeccion world &harr; screen con tilt, render de columnas 3D, grid perspectiva, editor de waypoints (pointer events, historial, drag, shift+click, guardado).</td>
+    </tr>
+    <tr>
+        <td><code>website/css/autoroute.css</code></td>
+        <td>Reescrito</td>
+        <td>Layout grid 1fr / 340px, toolbar flotante, hint, leyenda, panel de video compactado, responsive vertical &lt;900 px.</td>
+    </tr>
+</table>
+
+<!-- ========================== SECCION A - FORCE MODE ========================== -->
+<h1>1. Refactor del Modo Force &mdash; Sostenido, Movil y Fallback</h1>
+
+<h2>1.1 Problema Identificado</h2>
+<p>
+    En entornos con muchas detecciones del lidar (habitaciones con mobiliario denso, pasillos con sillas,
+    etc.), el sensor de proximidad disparaba alertas con alta frecuencia y el unico mecanismo previo para
+    saltarse el bloqueo era un <strong>doble-tap WASD</strong> que se desactivaba en cuanto el operador
+    soltaba todas las teclas. El resultado: el operador terminaba tecleando en ciclo
+    <em>tap&ndash;tap&ndash;mover&ndash;soltar&ndash;repetir</em> para cada tramo, lo que degrada la ergonomia
+    y la reaccion a tiempo en operacion real.
+</p>
+
+<h2>1.2 Rediseno &mdash; Tres Fuentes, Un Estado</h2>
+<p>
+    Se reemplazo el boolean <code>forceActive</code> unico por un estado multi-fuente. Tres flags
+    independientes se unifican con un OR logico en el helper <code>refreshForceState()</code>, que tambien
+    gestiona la visibilidad del badge <em>FORCE</em> en la UI:
+</p>
+
+<div class="architecture-box">
+    <div class="layer" style="background: #bbdefb;">
+        <strong>FUENTE 1 &mdash; Shift sostenido (escritorio)</strong><br>
+        <code>keydown/keyup</code> sobre <code>'Shift'</code> &rarr; <code>forceShift</code> = true/false
+    </div>
+    <div class="layer" style="background: #c5cae9;">
+        <strong>FUENTE 2 &mdash; Boton Override (movil)</strong><br>
+        <code>pointerdown/up/cancel/leave</code> sobre <code>#cr-mobile-override</code> &rarr; <code>forceButton</code>
+    </div>
+    <div class="layer" style="background: #d1c4e9;">
+        <strong>FUENTE 3 &mdash; Doble-tap WASD (fallback)</strong><br>
+        Dos pulsaciones de la misma tecla en &lt;350 ms &rarr; <code>forceDoubleTap</code>, limpiado en <code>stopLoop</code>
+    </div>
+    <div style="color:#1a237e; font-size:16pt; margin:6px 0;">&darr;&nbsp;&nbsp;refreshForceState()&nbsp;&nbsp;&darr;</div>
+    <div class="layer" style="background: #fff3e0;">
+        <strong>SALIDA &mdash; <code>forceActive</code></strong><br>
+        <code>forceActive = forceShift || forceButton || forceDoubleTap</code><br>
+        Cada tick de movimiento agrega <code>force: true</code> al <code>move_command</code> si activo.
+    </div>
+</div>
+
+<pre><span class="comment">// website/js/controlRemoto.js</span>
+<span class="keyword">refreshForceState</span>() {
+    <span class="keyword">const</span> m = <span class="keyword">this</span>.movement;
+    <span class="keyword">const</span> active = m.forceShift || m.forceButton || m.forceDoubleTap;
+    m.forceActive = active;
+    <span class="keyword">if</span> (active) <span class="keyword">this</span>.showForceBadge();
+    <span class="keyword">else</span> <span class="keyword">this</span>.hideForceBadge();
+},
+
+<span class="comment">// En startLoopIfNeeded(), cada 200 ms:</span>
+<span class="keyword">const</span> payload = { ...v };
+<span class="keyword">if</span> (<span class="keyword">this</span>.movement.forceActive) payload.force = <span class="keyword">true</span>;
+<span class="keyword">this</span>.socket.emit(<span class="string">'move_command'</span>, payload);</pre>
+
+<h2>1.3 Boton <em>Forzar</em> en Movil (Override Hold)</h2>
+<p>
+    Se agrego a la barra de acciones movil un nuevo boton en color ambar que actua como
+    <strong>hold-to-press</strong>. A diferencia de las acciones puntuales (saludar, sentarse,
+    recuperarse) que responden a <code>click</code>, este boton responde a los eventos de puntero
+    de bajo nivel para poder distinguir presion sostenida de toque simple.
+</p>
+<pre><span class="comment">// setupMobileOverride() en controlRemoto.js</span>
+<span class="keyword">const</span> press = (e) =&gt; {
+    <span class="keyword">if</span> (e) e.preventDefault();
+    <span class="keyword">if</span> (<span class="keyword">this</span>.movement.forceButton) <span class="keyword">return</span>;
+    <span class="keyword">this</span>.movement.forceButton = <span class="keyword">true</span>;
+    btn.classList.add(<span class="string">'pressed'</span>);
+    btn.setAttribute(<span class="string">'aria-pressed'</span>, <span class="string">'true'</span>);
+    <span class="keyword">this</span>.refreshForceState();
+};
+<span class="keyword">const</span> release = () =&gt; {
+    <span class="keyword">if</span> (!<span class="keyword">this</span>.movement.forceButton) <span class="keyword">return</span>;
+    <span class="keyword">this</span>.movement.forceButton = <span class="keyword">false</span>;
+    btn.classList.remove(<span class="string">'pressed'</span>);
+    btn.setAttribute(<span class="string">'aria-pressed'</span>, <span class="string">'false'</span>);
+    <span class="keyword">this</span>.refreshForceState();
+};
+
+btn.addEventListener(<span class="string">'pointerdown'</span>,   press);
+btn.addEventListener(<span class="string">'pointerup'</span>,     release);
+btn.addEventListener(<span class="string">'pointercancel'</span>, release);
+btn.addEventListener(<span class="string">'pointerleave'</span>,  release);</pre>
+
+<div class="note">
+    <strong>Decision de diseno.</strong> Los listeners cubren <code>pointerup</code>,
+    <code>pointercancel</code> y <code>pointerleave</code>: si el operador desliza el dedo fuera del boton
+    sin levantarlo, el override tambien se libera. Esto evita estados <em>colgados</em> donde el boton
+    visualmente se ve pulsado pero el sistema ya no recibe eventos.
+</div>
+
+<h2>1.4 Silenciamiento del Handler de Alertas en Frontend</h2>
+<p>
+    El handler <code>onProximityAlert</code> hacia <code>stopMovement()</code> sin condicion, lo que
+    anulaba el <em>force</em> al primer tick del sensor porque reseteaba el estado del teclado. Ahora el
+    handler retorna de inmediato si <code>forceActive</code> es <code>true</code>:
+</p>
+<pre><span class="keyword">onProximityAlert</span>(data) {
+    <span class="comment">// Modo FORCE (Shift, Override o doble tap): el operador acepto el riesgo.</span>
+    <span class="comment">// Ignoramos la alerta completa: nada de stopMovement, ni stop_command,</span>
+    <span class="comment">// ni banner. El robot sigue caminando como si el sensor estuviera apagado.</span>
+    <span class="keyword">if</span> (<span class="keyword">this</span>.movement.forceActive) <span class="keyword">return</span>;
+
+    <span class="comment">// ... flujo normal: dedup TTS, stopMovement, emit('stop_command'), banner</span>
+}</pre>
+
+<h2>1.5 Ventana de Gracia en Backend &mdash; <code>_force_until</code></h2>
+<p>
+    En el backend se agrego un campo <code>_force_until</code> al diccionario <code>proximity_sensor</code>.
+    Cada <code>move_command</code> con <code>force=true</code> renueva la ventana a
+    <code>time.time() + 0.8</code>. El trigger de alertas de proximidad consulta esta marca como primer
+    filtro: si la ventana esta abierta, el trigger descarta la alerta sin emitir, sin flipear
+    <code>_alert_active</code> y sin publicar <code>Move=0</code>.
+</p>
+<pre><span class="comment"># app.py &mdash; _trigger_proximity_alert()</span>
+<span class="keyword">def</span> <span class="cmd">_trigger_proximity_alert</span>(distance_m, direction, source):
+    <span class="comment"># Si la ventana de FORCE esta abierta, descartamos todo: el operador</span>
+    <span class="comment"># pidio explicitamente caminar normal pese al obstaculo.</span>
+    <span class="keyword">if</span> time.time() &lt; proximity_sensor.get(<span class="string">"_force_until"</span>, 0.0):
+        <span class="keyword">return</span>
+
+    <span class="keyword">if</span> proximity_sensor[<span class="string">"_alert_active"</span>]:
+        <span class="keyword">return</span>
+
+    proximity_sensor[<span class="string">"_alert_active"</span>] = <span class="keyword">True</span>
+    socketio.emit(<span class="string">"proximity_alert"</span>, { ... })
+    run_async_no_wait(robot_send_command(<span class="string">"Move"</span>, {<span class="string">"x"</span>: 0.0, <span class="string">"y"</span>: 0.0, <span class="string">"z"</span>: 0.0}))</pre>
+
+<h2>1.6 Cierre Inmediato al Soltar</h2>
+<p>
+    Version iniciaol dejaba 0.8 s de inercia tras soltar la combinacion, pero el operador pidio que el
+    sensor volviera a proteger <em>de inmediato</em>. Ahora, cualquier <code>move_command</code> sin
+    <code>force=true</code> y cualquier <code>stop_command</code> cierran la ventana explicitamente:
+</p>
+<pre><span class="comment"># app.py &mdash; handle_move_command()</span>
+<span class="keyword">if</span> force:
+    proximity_sensor[<span class="string">"_force_until"</span>] = time.time() + 0.8
+    <span class="keyword">if</span> proximity_sensor[<span class="string">"_alert_active"</span>]:
+        proximity_sensor[<span class="string">"_alert_active"</span>] = <span class="keyword">False</span>
+        proximity_sensor[<span class="string">"_clear_since"</span>] = 0.0
+<span class="keyword">else</span>:
+    <span class="comment"># Operador solto: cerramos la ventana en seco para que el sensor proteja.</span>
+    proximity_sensor[<span class="string">"_force_until"</span>] = 0.0
+
+<span class="comment"># app.py &mdash; handle_stop_command()</span>
+proximity_sensor[<span class="string">"_force_until"</span>] = 0.0
+proximity_sensor[<span class="string">"_last_cmd_x"</span>] = 0.0</pre>
+
+<h2>1.7 Tabla de Comportamientos Resultantes</h2>
+<table>
+    <tr><th>Situacion del operador</th><th>Sensor</th><th>Robot</th></tr>
+    <tr><td>Ninguna tecla pulsada</td><td>Activo</td><td>Detenido (<code>stop_command</code> enviado)</td></tr>
+    <tr><td>WASD sin Shift, obstaculo cercano</td><td>Activa alerta, frena</td><td>Se detiene, banner rojo, stop cooperativo</td></tr>
+    <tr><td>WASD sin Shift, via libre</td><td>Silencioso</td><td>Camina normal</td></tr>
+    <tr><td>Shift + WASD, obstaculo cercano</td><td>Ventana de gracia abierta, sin alertas</td><td>Camina sin friccion</td></tr>
+    <tr><td>Suelta Shift manteniendo W</td><td>Ventana cierra en siguiente tick (200 ms)</td><td>Sigue caminando, sensor vuelve a vigilar</td></tr>
+    <tr><td>Suelta todas las teclas</td><td>Ventana cerrada por <code>stop_command</code></td><td>Detenido</td></tr>
+</table>
+
+<!-- ========================== SECCION B - MAPA 2.5D ========================== -->
+<h1>2. Mapa de Calor 2.5D del Entorno</h1>
+
+<h2>2.1 Persistencia del Heatmap entre Paginas</h2>
+<p>
+    Antes, al guardar una ruta en el Control Remoto, solo se serializaban los waypoints y la distancia
+    recorrida. La Auto-Ruta leia esa ruta y la dibujaba sobre un canvas vacio, perdiendo todo el contexto
+    visual que el operador habia construido al caminar el entorno. Ahora el heatmap (grid de densidad
+    derivado del lidar L1) tambien se persiste:
+</p>
+<pre><span class="comment">// controlRemoto.js &mdash; setupSaveRoute()</span>
+<span class="keyword">const</span> heatArr = [];
+<span class="keyword">for</span> (<span class="keyword">const</span> [k, v] <span class="keyword">of</span> <span class="keyword">this</span>.trace.heat) {
+    <span class="keyword">const</span> [ix, iy] = k.split(<span class="string">','</span>).map(<span class="cmd">Number</span>);
+    heatArr.push([ix, iy, v]);
+}
+localStorage.setItem(<span class="string">'daiver:lastRoute'</span>, <span class="cmd">JSON</span>.stringify({
+    savedAt: <span class="cmd">Date</span>.now(),
+    points: sampled,
+    totalMeters: <span class="keyword">this</span>.trace.totalMeters,
+    heatCellSize: <span class="keyword">this</span>.trace.heatCellSize,
+    heat: heatArr,
+}));</pre>
+
+<h2>2.2 Proyeccion 2.5D (Cavalier Simplificado)</h2>
+<p>
+    La Auto-Ruta renderiza el mundo XY proyectandolo sobre la pantalla con compresion en Y (foreshortening).
+    Las constantes <code>TILT_KY</code> y <code>COLUMN_HEIGHT_PX</code> gobiernan la inclinacion y la altura
+    maxima de las columnas de heatmap. La transformacion es afin y admite inversa exacta, lo cual es
+    esencial porque el editor de waypoints necesita convertir clicks de pantalla a coordenadas de mundo.
+</p>
+
+<pre><span class="keyword">const</span> TILT_KY = 0.62;
+<span class="keyword">const</span> COLUMN_HEIGHT_PX = 28;
+
+<span class="keyword">worldToScreen</span>(x, y) {
+    <span class="keyword">return</span> [
+        <span class="keyword">this</span>.view.originX + x * <span class="keyword">this</span>.view.scale,
+        <span class="keyword">this</span>.view.originY - y * <span class="keyword">this</span>.view.scale * TILT_KY,
+    ];
+},
+
+<span class="keyword">screenToWorld</span>(sx, sy) {
+    <span class="keyword">return</span> [
+        (sx - <span class="keyword">this</span>.view.originX) / <span class="keyword">this</span>.view.scale,
+        (<span class="keyword">this</span>.view.originY - sy) / (<span class="keyword">this</span>.view.scale * TILT_KY),
+    ];
+},</pre>
+
+<h2>2.3 Render de Columnas con Volumen</h2>
+<p>
+    Cada celda activa del heatmap se dibuja como una columna vertical cuya altura es proporcional a la
+    intensidad acumulada (cantidad de veces que el lidar vio esa celda). Para dar impresion de volumen real
+    (y no un parche plano), cada columna compone cuatro elementos:
+</p>
+<ol>
+    <li><strong>Sombra eliptica</strong> en el suelo (opacidad proporcional a intensidad), siempre tras la celda.</li>
+    <li><strong>Cara frontal</strong> con un <code>linearGradient</code> vertical: color mas saturado arriba,
+        oscurecido abajo (simula iluminacion cenital).</li>
+    <li><strong>Cara superior</strong> como paralelogramo con desplazamiento en Y proporcional a
+        <code>cellPxYGround * 0.35</code>, color mas brillante y alpha mayor (vista isometrica).</li>
+    <li><strong>Arista luminosa</strong> amarillenta en el borde superior para dar <em>hot rim</em> y
+        separacion visual entre columnas contiguas.</li>
+</ol>
+
+<p>
+    El color del gradiente va de azul profundo (intensidad baja) a rojo anaranjado (intensidad alta),
+    reforzando el codigo visual &ldquo;mas calor = mas obstaculo visto&rdquo;. Las columnas se ordenan
+    de atras hacia adelante (mayor <code>y</code> primero) para que el painter&rsquo;s algorithm resuelva
+    oclusiones entre vecinas.
+</p>
+<pre><span class="comment">// Reduccion del cuerpo principal del renderer &mdash; drawHeatColumns()</span>
+<span class="keyword">const</span> sorted = heat.slice().sort((a, b) =&gt; b[1] - a[1]);
+
+<span class="keyword">for</span> (<span class="keyword">const</span> h <span class="keyword">of</span> sorted) {
+    <span class="keyword">const</span> [gx, gy] = <span class="keyword">this</span>.worldToScreen(h[0] * cell, h[1] * cell);
+    <span class="keyword">const</span> intensity = <span class="cmd">Math</span>.pow(h[2] / maxHits, 0.5);
+    <span class="keyword">const</span> colH = COLUMN_HEIGHT_PX * intensity;
+    <span class="keyword">const</span> topY = gy - colH;
+
+    <span class="comment">// 1) Sombra en el suelo</span>
+    ctx.fillStyle = <span class="string">`rgba(0,0,0,${0.35 * intensity})`</span>;
+    ctx.ellipse(gx, gy + cellPxYGround * 0.25, cellPxX * 0.5, cellPxYGround * 0.5, ...);
+
+    <span class="comment">// 2) Cara frontal con gradiente vertical</span>
+    <span class="keyword">const</span> grd = ctx.createLinearGradient(gx, topY, gx, gy);
+    grd.addColorStop(0, <span class="string">`rgba(${rT},${gT},${bT},${0.45 + intensity * 0.5})`</span>);
+    grd.addColorStop(1, <span class="string">`rgba(...)`</span>);
+    ctx.fillRect(gx - cellPxX/2, topY, cellPxX, colH + 1);
+
+    <span class="comment">// 3) Cara superior (paralelogramo)</span>
+    ctx.moveTo(...); ctx.lineTo(...); ctx.closePath(); ctx.fill();
+
+    <span class="comment">// 4) Arista superior luminosa</span>
+    ctx.strokeStyle = <span class="string">`rgba(255,240,200,${0.25 * intensity})`</span>;
+}</pre>
+
+<h2>2.4 Grilla en Perspectiva y Fondo</h2>
+<p>
+    Sobre el suelo se dibuja una grilla de 1 m x 1 m con lineas proyectadas una a una a traves de
+    <code>worldToScreen</code>, lo cual respeta la inclinacion. Los ejes X = 0 e Y = 0 se pintan en
+    <em>cian tenue</em> (<code>rgba(90, 168, 255, 0.35)</code>) como referencia de origen. El fondo usa
+    dos gradientes lineales &mdash; uno del &ldquo;cielo&rdquo; (hasta el 18% superior) y otro del
+    &ldquo;suelo&rdquo; &mdash; para reforzar sensacion de horizonte sin ser intrusivo.
+</p>
+
+<h2>2.5 Trayectoria, Waypoints y Robot sobre el Terreno</h2>
+<p>
+    Sobre la proyeccion se superponen:
+</p>
+<ul>
+    <li><strong>Sombra de la ruta</strong> (linea negra gruesa ligeramente desplazada en Y).</li>
+    <li><strong>Linea neon verde</strong> con <code>shadowBlur</code> para dar glow.</li>
+    <li><strong>Flechas direccionales</strong> cada tramo &gt; 40 px para indicar sentido de recorrido.</li>
+    <li><strong>Waypoints con poste vertical + cabeza coloreada</strong>. Origen en verde (etiqueta
+        <em>ORIGEN</em>), intermedios en azul, ultimo en rojo, waypoint activo durante ejecucion en
+        ambar. Cuando hay &le; 40 waypoints, se pinta el numero centrado dentro de la cabeza.</li>
+    <li><strong>Robot</strong> como circulo azul con sombra y flecha de heading (<code>yaw</code>)
+        tambien foreshortened.</li>
+</ul>
+
+<!-- ========================== SECCION C - EDITOR MANUAL ========================== -->
+<h1>3. Editor Manual de Waypoints</h1>
+
+<h2>3.1 Modelo de Estado</h2>
+<p>
+    El editor mantiene su propio sub-estado <code>edit</code> dentro de <code>AutoRoute</code>:
+</p>
+<pre>edit: {
+    on: <span class="keyword">false</span>,         <span class="comment">// modo edicion activo</span>
+    history: [],       <span class="comment">// pila de snapshots (max 40) para undo</span>
+    draggingIdx: -1,   <span class="comment">// waypoint actualmente arrastrado (-1 = ninguno)</span>
+    dragStart: <span class="keyword">null</span>,   <span class="comment">// coords iniciales del arrastre</span>
+    dirty: <span class="keyword">false</span>      <span class="comment">// hay cambios sin guardar =&gt; habilita "Guardar ruta"</span>
+}</pre>
+
+<h2>3.2 Interacciones</h2>
+<table>
+    <tr><th>Gesto</th><th>Accion</th></tr>
+    <tr><td>Click en toolbar &rarr; <em>Editar</em></td><td>Toggle de <code>edit.on</code> y cursor <code>copy</code></td></tr>
+    <tr><td>Click en area vacia del mapa</td><td><code>screenToWorld</code> + <code>addWaypointAt(wx, wy)</code></td></tr>
+    <tr><td>Click sobre waypoint (dentro de 14 px)</td><td>Inicia arrastre con <code>setPointerCapture</code></td></tr>
+    <tr><td>Shift + click sobre waypoint</td><td><code>removeWaypoint(idx)</code></td></tr>
+    <tr><td><em>Deshacer</em></td><td><code>route.points = edit.history.pop()</code></td></tr>
+    <tr><td><em>Limpiar</em></td><td>Confirm + <code>route.points = []</code></td></tr>
+    <tr><td><em>Guardar ruta</em></td><td>Serializa a <code>localStorage</code>, reset <code>history</code> y <code>dirty</code></td></tr>
+</table>
+
+<h2>3.3 Prueba de Invariantes</h2>
+<div class="note">
+    <strong>Invariante 1.</strong> Cualquier mutacion destructiva (add, remove, drag inicial, clear)
+    llama a <code>pushHistory()</code> <em>antes</em> de modificar. Esto garantiza que <em>Deshacer</em>
+    siempre retrocede un paso coherente.
+</div>
+<div class="note">
+    <strong>Invariante 2.</strong> <code>edit.draggingIdx</code> se pone a -1 en <code>pointerup</code>,
+    <code>pointercancel</code> y en <code>pointerdown</code> si el click no cae sobre un waypoint.
+    No hay rutas donde el estado quede &ldquo;arrastrando&rdquo; sin pointer asociado.
+</div>
+<div class="note">
+    <strong>Invariante 3.</strong> Boton <em>Iniciar ruta</em> queda deshabilitado si hay &lt; 2
+    waypoints o si <code>state.running</code> es true. <code>refreshEditorButtons()</code> sincroniza
+    los botones tras cada mutacion.
+</div>
+
+<!-- ========================== SECCION D - AUTO-RUTA ROBUSTA ========================== -->
+<h1>4. Robustez del Seguidor de Auto-Ruta</h1>
+
+<h2>4.1 Diagnostico del Problema Reportado</h2>
+<p>
+    El operador reporto que al pulsar <em>Iniciar ruta</em>, el robot no recibia la senal. Analisis:
+</p>
+<ol>
+    <li>El seguidor dependia de <code>proximity_sensor["_pose_valid"]</code> y entraba en bucle de espera
+        infinito si el sensor no estaba suscrito al lidar.</li>
+    <li>No habia llamado a <code>BalanceStand</code> previo al primer <code>Move</code>: si el robot
+        estaba sentado o en cualquier estado que no fuera <em>balance stand</em>, el Go2 descartaba los
+        comandos de velocidad silenciosamente.</li>
+    <li>Los waypoints guardados desde el Control Remoto podian estar en un frame de coordenadas distinto
+        al del pose actual del lidar (especialmente si la ruta se grabo con <em>dead reckoning</em> y la
+        sesion de Auto-Ruta inicia con el sensor recien activado en otra pose inicial).</li>
+</ol>
+
+<h2>4.2 Remedio &mdash; Flujo Endurecido</h2>
+<pre><span class="keyword">async def</span> _autoroute_follow_loop():
+    state = autoroute_state
+    <span class="keyword">try</span>:
+        <span class="comment"># 1) BalanceStand previo: sin esto el Go2 ignora Move.</span>
+        emit_log(<span class="string">'info'</span>, <span class="string">'Auto-Ruta: pidiendo BalanceStand'</span>)
+        <span class="keyword">try</span>:
+            <span class="keyword">await</span> robot_send_command(<span class="string">"BalanceStand"</span>)
+        <span class="keyword">except Exception as</span> exc:
+            emit_log(<span class="string">'warning'</span>, <span class="string">f'BalanceStand fallo: {exc}'</span>)
+
+        <span class="comment"># 2) Espera de pose valida con timeout explicito.</span>
+        <span class="keyword">if not await</span> _autoroute_wait_for_pose(5.0):
+            emit_log(<span class="string">'error'</span>, <span class="string">'Lidar no reporto pose en 5 s. Activa el sensor.'</span>)
+            state[<span class="string">"_cancel"</span>] = <span class="keyword">True</span>
+            <span class="keyword">return</span>
+
+        <span class="comment"># 3) Traslado automatico: el primer waypoint queda bajo el robot.</span>
+        pose_x = proximity_sensor[<span class="string">"_pose_x"</span>]
+        pose_y = proximity_sensor[<span class="string">"_pose_y"</span>]
+        ox = <span class="cmd">float</span>(waypoints[0][<span class="string">"x"</span>]) - pose_x
+        oy = <span class="cmd">float</span>(waypoints[0][<span class="string">"y"</span>]) - pose_y
+        translated = [
+            {<span class="string">"x"</span>: <span class="cmd">float</span>(w[<span class="string">"x"</span>]) - ox, <span class="string">"y"</span>: <span class="cmd">float</span>(w[<span class="string">"y"</span>]) - oy}
+            <span class="keyword">for</span> w <span class="keyword">in</span> waypoints
+        ]
+        state[<span class="string">"waypoints"</span>] = translated
+        emit_log(<span class="string">'info'</span>, <span class="string">f'Ruta trasladada (offset {ox:+.2f}, {oy:+.2f})'</span>)
+
+        <span class="comment"># 4) Loop normal por ciclos y waypoints.</span>
+        <span class="keyword">for</span> cycle <span class="keyword">in range</span>(1, state[<span class="string">"cycles_total"</span>] + 1):
+            <span class="keyword">for</span> i, wp <span class="keyword">in enumerate</span>(state[<span class="string">"waypoints"</span>]):
+                <span class="keyword">await</span> _autoroute_go_to(wp)</pre>
+
+<h2>4.3 <code>_autoroute_wait_for_pose</code> &mdash; Espera con Deadline</h2>
+<pre><span class="keyword">async def</span> _autoroute_wait_for_pose(timeout_s=5.0):
+    deadline = asyncio.get_running_loop().time() + timeout_s
+    <span class="keyword">while not</span> proximity_sensor[<span class="string">"_pose_valid"</span>]:
+        <span class="keyword">if</span> asyncio.get_running_loop().time() &gt; deadline:
+            <span class="keyword">return False</span>
+        <span class="keyword">await</span> asyncio.sleep(0.15)
+    <span class="keyword">return True</span></pre>
+
+<div class="success">
+    <strong>Resultado.</strong> El loop ya nunca queda pegado esperando una pose que no llega.
+    Si el timeout vence, se emite un error explicito al frontend indicando que el operador debe activar
+    el sensor en el Control Remoto y verificar que el robot publique <code>utlidar/robot_pose</code>.
+</div>
+
+<h2>4.4 Traslado Automatico al Origen del Robot</h2>
+<p>
+    El primer waypoint guardado se alinea con la pose actual del robot y todos los subsiguientes se
+    trasladan por el mismo offset. Esto es robusto frente a tres escenarios frecuentes:
+</p>
+<ul>
+    <li><strong>Rutas grabadas con dead-reckoning</strong> (sensor apagado durante la grabacion): el
+        frame arranca en (0, 0) relativo al lidar actual tras el traslado.</li>
+    <li><strong>Rutas manuales puestas por click</strong> sobre un canvas sin heatmap: el origen del
+        usuario se convierte automaticamente en donde esta el robot.</li>
+    <li><strong>Rutas grabadas en otra sesion</strong>: aunque los numeros absolutos hayan derivado,
+        la forma relativa del recorrido se preserva.</li>
+</ul>
+
+<div class="warning">
+    <strong>Consecuencia conocida.</strong> El traslado ignora la diferencia de <em>yaw</em>: si el robot
+    empezo la grabacion mirando al norte y al iniciar Auto-Ruta mira al este, el recorrido se ejecutara
+    rotado 90&deg;. Para el caso de uso actual (laboratorio, rutas cortas) esto es aceptable; si se
+    requiere consistencia absoluta, se puede extender el traslado a <em>affine 2D</em> (traslacion +
+    rotacion) capturando tambien el yaw al momento de guardado.
+</div>
+
+<!-- ========================== SECCION E - UI ========================== -->
+<h1>5. Nuevos Componentes de UI</h1>
+
+<h2>5.1 Control Remoto</h2>
+<ul>
+    <li>Nuevo boton <strong>Forzar</strong> (<code>#cr-mobile-override</code>) en la barra <code>cr-mobile-actions</code>,
+        estilizado con el ambar del badge <em>FORCE</em>.</li>
+    <li>Nueva pista de teclado <strong><code>Forzar sensor: Shift + WASD</code></strong>
+        (<code>.cr-hint-group.cr-hint-force</code>) visible solo en escritorio.</li>
+    <li>Texto del panel de controles actualizado para mencionar el nuevo metodo preferido
+        (sostener Shift) y el boton movil.</li>
+</ul>
+
+<h2>5.2 Auto-Ruta</h2>
+<p>
+    Se rediseno el layout. El mapa, antes relegado al panel lateral con un <code>aspect-ratio</code> fijo,
+    ahora ocupa la columna principal con canvas a pantalla completa del area. Sobre el canvas flotan tres
+    elementos con <code>backdrop-filter: blur(6px)</code>:
+</p>
+<ul>
+    <li><strong>Toolbar superior-izquierda</strong> con los botones de edicion (Editar/Deshacer/Limpiar/Guardar).</li>
+    <li><strong>Hint contextual superior-derecha</strong> con instrucciones: modo edicion actual, como
+        colocar waypoints y como borrarlos.</li>
+    <li><strong>Leyenda inferior-izquierda</strong> con codigo de color (recorrido, origen, waypoint,
+        obstaculos).</li>
+</ul>
+<p>
+    El panel lateral derecho compacta camara, metadata de ruta, contador de ciclos y botones de control
+    (Iniciar/Detener/Camara). En &le; 900 px de ancho, el layout colapsa a vertical: mapa arriba (55 vh)
+    y panel abajo.
+</p>
+
+<!-- ========================== ESTADO AL CIERRE ========================== -->
+<h1>6. Estado al Cierre de la Sesion</h1>
+<table>
+    <tr><th>Componente</th><th>Estado</th><th>Observacion</th></tr>
+    <tr><td>Force Shift sostenido (escritorio)</td><td>Operativo</td><td>Badge FORCE aparece/desaparece con la tecla</td></tr>
+    <tr><td>Boton Override movil (hold)</td><td>Operativo</td><td>Cubre pointerup/cancel/leave</td></tr>
+    <tr><td>Doble-tap como fallback</td><td>Operativo</td><td>Se limpia al soltar todas las teclas</td></tr>
+    <tr><td>Ventana <code>_force_until</code> en backend</td><td>Operativo</td><td>Cierre inmediato al soltar</td></tr>
+    <tr><td>Silencio de <code>onProximityAlert</code> con force</td><td>Operativo</td><td>Sin banner ni stopMovement</td></tr>
+    <tr><td>Persistencia de heatmap en save-route</td><td>Operativo</td><td>Serializado como array de triples</td></tr>
+    <tr><td>Render 2.5D con columnas</td><td>Operativo</td><td>Sombras, gradientes, cara superior, arista luminosa</td></tr>
+    <tr><td>Editor de waypoints (click/drag/shift-click)</td><td>Operativo</td><td>Undo limitado a 40 niveles</td></tr>
+    <tr><td>BalanceStand previo en Auto-Ruta</td><td>Operativo</td><td>Log emitido al inicio del loop</td></tr>
+    <tr><td>Espera de pose con timeout 5 s</td><td>Operativo</td><td>Aborta con error claro si no llega</td></tr>
+    <tr><td>Traslado automatico de waypoints</td><td>Operativo</td><td>Sin correccion de yaw (pendiente)</td></tr>
+</table>
+
+<!-- ========================== RECOMENDACIONES ========================== -->
+<h1 style="background: #303f9f; color: white; padding: 12px 18px; border-radius: 6px; border-bottom: none;">
+    Recomendaciones de Desarrollo desde este Punto
+</h1>
+
+<h2>Linea 1 &mdash; Correccion de Yaw en Traslado de Waypoints (prioridad alta)</h2>
+<p>
+    Extender el traslado actual a una transformacion afin 2D completa: guardar tambien el <code>yaw</code>
+    al momento de grabar la ruta (o al colocar el primer waypoint manual) y, al iniciar la Auto-Ruta,
+    aplicar una rotacion igual a <code>yaw_actual - yaw_grabacion</code> sobre el plano. Elimina la
+    dependencia de que el operador inicie el seguidor con el robot orientado igual que al guardar.
+</p>
+
+<h2>Linea 2 &mdash; Heatmap Incremental Durante la Ejecucion (prioridad media)</h2>
+<p>
+    Actualmente la Auto-Ruta renderiza el heatmap <em>estatico</em> que se guardo. Se podria re-suscribir
+    al canal <code>lidar_points</code> durante el seguimiento para enriquecer el mapa en vivo, mostrando
+    al operador obstaculos nuevos que no estaban cuando se grabo la ruta. Caso de uso claro: ambientes
+    dinamicos (personas, muebles que se movieron).
+</p>
+
+<h2>Linea 3 &mdash; Tests Unitarios de la Proyeccion (prioridad media)</h2>
+<p>
+    El par <code>worldToScreen</code> / <code>screenToWorld</code> debe ser inverso exacto para que el
+    click-para-waypoint caiga donde el usuario espera. Hoy se valida solo visualmente. Se sugiere un test
+    de propiedad: para una muestra aleatoria de puntos mundo, aplicar ida y vuelta y verificar que el error
+    es &lt; 1e-6. Idem para puntos pantalla.
+</p>
+
+<h2>Linea 4 &mdash; Indicador Visible de &ldquo;Pose Lista&rdquo; en Auto-Ruta (prioridad baja)</h2>
+<p>
+    El boton <em>Iniciar ruta</em> hoy solo se deshabilita si faltan waypoints, pero no si falta pose del
+    lidar. Agregar un pill en el encabezado (&ldquo;Pose OK&rdquo; verde / &ldquo;Sin pose&rdquo; gris) leido
+    del mismo stream <code>lidar_points</code> evita que el operador pulse Iniciar cuando el sensor aun no
+    esta listo, ahorrando los 5 s de timeout.
+</p>
+
+<h2>Linea 5 &mdash; Soporte de Multiples Rutas Guardadas (prioridad baja)</h2>
+<p>
+    La clave <code>daiver:lastRoute</code> solo conserva la ultima ruta. Extender a un listado
+    (<code>daiver:routes[]</code>) con nombre editable permitiria guardar ambientes distintos (p. ej.
+    &ldquo;laboratorio&rdquo;, &ldquo;pasillo&rdquo;, &ldquo;recorrido demo&rdquo;) y cambiar entre ellos
+    sin volver a caminar.
+</p>
+
+<h2>Consideraciones Transversales</h2>
+<div class="note">
+    <strong>Seguridad operativa.</strong> El Force Mode transfiere explicitamente la responsabilidad del
+    bypass del sensor al operador. Es importante conservar el badge <em>FORCE</em> visible para que nunca
+    haya confusion sobre si la proteccion esta activa. La boton de <code>PARADA</code> (Damp) sigue siendo
+    corte incondicional y debe respetarse en cualquier rutina autonoma.
+</div>
+<div class="note">
+    <strong>Rendimiento de renderizado.</strong> El redibujado del canvas 2.5D se ejecuta cada 200 ms
+    (<code>setInterval</code>). En mapas muy poblados (&gt;5000 celdas activas) podria requerir o bien
+    <em>downsampling</em> visual (decimar celdas por intensidad antes de dibujar) o bien migrar a
+    <code>OffscreenCanvas</code> + <code>requestAnimationFrame</code> con <em>budget</em> de frame.
+</div>
+<div class="note">
+    <strong>Documentacion para el operador.</strong> Se recomienda actualizar el README del proyecto con
+    la tabla de comportamientos resultantes (seccion 1.7) y capturas de pantalla de los tres componentes
+    nuevos: badge FORCE, boton Override movil y toolbar del editor de Auto-Ruta.
+</div>
+
+<!-- ========================== APENDICES ========================== -->
+<h1>Apendice A &mdash; Diff Resumido por Archivo</h1>
+
+<h2>A.1 <code>app.py</code></h2>
+<ul>
+    <li>Diccionario <code>proximity_sensor</code>: +1 campo (<code>_force_until</code>).</li>
+    <li><code>_trigger_proximity_alert()</code>: guard al inicio que retorna si la ventana esta abierta.</li>
+    <li><code>handle_move_command()</code>: rama <code>if force / else</code> que abre o cierra la ventana.</li>
+    <li><code>handle_stop_command()</code>: cierre explicito de la ventana y del cmd_x registrado.</li>
+    <li>Nuevo helper <code>_autoroute_wait_for_pose()</code>.</li>
+    <li><code>_autoroute_follow_loop()</code>: <code>BalanceStand</code> &rarr; espera pose &rarr; traslado
+        de waypoints &rarr; loop.</li>
+</ul>
+
+<h2>A.2 <code>website/js/controlRemoto.js</code></h2>
+<ul>
+    <li>Estado <code>movement</code>: <code>forceActive</code> reemplazado por 3 flags + <code>forceActive</code>
+        computado.</li>
+    <li><code>refreshForceState()</code> centraliza badge y logica de OR logico.</li>
+    <li><code>setupKeyboard()</code>: listeners dedicados de <code>Shift</code> keydown/keyup, abort
+        en blur limpia tambien <code>forceShift</code>.</li>
+    <li><code>setupMobileOverride()</code>: nuevo setup con <code>pointerdown/up/cancel/leave</code> +
+        accesibilidad por teclado (Space/Enter).</li>
+    <li><code>stopLoop()</code>: solo limpia <code>forceDoubleTap</code>, preserva sostenidos.</li>
+    <li><code>onProximityAlert()</code>: early-return si <code>forceActive</code>.</li>
+    <li><code>setupSaveRoute()</code>: serializa <code>heatCellSize</code> y <code>heat</code> como array.</li>
+</ul>
+
+<h2>A.3 <code>website/js/autoroute.js</code></h2>
+<ul>
+    <li>Constantes <code>TILT_KY = 0.62</code>, <code>COLUMN_HEIGHT_PX = 28</code>.</li>
+    <li>Transformaciones <code>worldToScreen</code> / <code>screenToWorld</code> inversas exactas.</li>
+    <li><code>computeView()</code> que absorbe extremos de ruta + heatmap + pose y fija escala + origen.</li>
+    <li>Sub-render modularizado: <code>drawSkyAndFloor</code>, <code>drawGrid</code>,
+        <code>drawHeatColumns</code>, <code>drawRouteLine</code>, <code>drawWaypoints</code>,
+        <code>drawRobot</code>.</li>
+    <li>Estado <code>edit</code> con <code>on</code>, <code>history</code>, <code>draggingIdx</code>,
+        <code>dirty</code>.</li>
+    <li><code>onPointerDown/Move/Up</code> con <code>setPointerCapture</code> para arrastre suave.</li>
+</ul>
+
+<h2>A.4 <code>website/autoroute.html</code> y <code>website/css/autoroute.css</code></h2>
+<ul>
+    <li>Reestructuracion del layout: mapa 1fr, side 340 px.</li>
+    <li>Nuevo toolbar flotante <code>.ar-map-toolbar</code> con <code>backdrop-filter</code>.</li>
+    <li>Hint contextual <code>.ar-map-hint</code> arriba a la derecha.</li>
+    <li>Leyenda <code>.ar-map-legend</code> abajo a la izquierda.</li>
+    <li>Responsive &le; 900 px: colapso vertical; &le; 560 px: se oculta el cuerpo del hint y se compacta
+        la leyenda.</li>
+</ul>
+
+<div class="footer">
+    Informe generado a partir del trabajo realizado el 21/04/2026 sobre la rama <code>aplicacion</code>.<br>
+    Daiver Control CUN &mdash; Laboratorio 2 &mdash; Corporacion Unificada Nacional.
+</div>
+
+</body>
+</html>

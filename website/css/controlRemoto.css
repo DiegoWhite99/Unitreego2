@@ -213,6 +213,84 @@ body.control-remoto-body {
     pointer-events: auto;
 }
 
+/* Crosshair estilo HUD de avión — referencia del centro de la cámara.
+   Se compone de dos barras (vertical/horizontal) con un hueco en medio y
+   un puntito central, todo en verde translúcido con glow. No intercepta
+   clicks gracias a pointer-events: none. */
+.cr-crosshair {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 140px;
+    height: 140px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 4;           /* sobre el video, debajo del HUD/botones */
+    filter: drop-shadow(0 0 4px rgba(0, 230, 118, 0.55));
+    mix-blend-mode: screen;
+}
+
+.cr-crosshair .ch-v,
+.cr-crosshair .ch-h {
+    position: absolute;
+    background: linear-gradient(
+        to var(--ch-dir, bottom),
+        rgba(0, 230, 118, 0) 0%,
+        rgba(0, 230, 118, 0.85) 18%,
+        rgba(0, 230, 118, 0.85) 40%,
+        transparent 48%,
+        transparent 52%,
+        rgba(0, 230, 118, 0.85) 60%,
+        rgba(0, 230, 118, 0.85) 82%,
+        rgba(0, 230, 118, 0) 100%
+    );
+}
+
+.cr-crosshair .ch-v {
+    --ch-dir: bottom;
+    top: 0; bottom: 0;
+    left: 50%;
+    width: 2px;
+    transform: translateX(-50%);
+}
+
+.cr-crosshair .ch-h {
+    --ch-dir: right;
+    left: 0; right: 0;
+    top: 50%;
+    height: 2px;
+    transform: translateY(-50%);
+    background: linear-gradient(
+        to right,
+        rgba(0, 230, 118, 0) 0%,
+        rgba(0, 230, 118, 0.85) 18%,
+        rgba(0, 230, 118, 0.85) 40%,
+        transparent 48%,
+        transparent 52%,
+        rgba(0, 230, 118, 0.85) 60%,
+        rgba(0, 230, 118, 0.85) 82%,
+        rgba(0, 230, 118, 0) 100%
+    );
+}
+
+.cr-crosshair .ch-dot {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(0, 230, 118, 0.95);
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 8px rgba(0, 230, 118, 0.9);
+}
+
+/* En pantallas muy chicas reducimos el tamaño del crosshair. */
+@media (max-width: 680px), (max-height: 480px) {
+    .cr-crosshair { width: 96px; height: 96px; }
+    .cr-crosshair .ch-dot { width: 4px; height: 4px; }
+}
+
 .cr-emergency-float {
     position: absolute;
     right: 12px;
@@ -685,6 +763,24 @@ body.control-remoto-body {
     cursor: not-allowed;
 }
 
+/* Override / Forzar: boton de mantener que ignora el sensor mientras se
+   presiona. Color ambar para distinguirlo de las acciones normales. */
+.cr-mob-override {
+    border-color: rgba(249, 171, 0, 0.55);
+    color: #fff3d6;
+}
+.cr-mob-override .lbl { color: #f9ab00; }
+.cr-mob-override.pressed,
+.cr-mob-override:active,
+.cr-mob-override[aria-pressed="true"] {
+    background: rgba(249, 171, 0, 0.82);
+    border-color: rgba(249, 171, 0, 1);
+    color: #1a1400;
+    transform: scale(0.94);
+    box-shadow: 0 0 14px rgba(249, 171, 0, 0.55);
+}
+.cr-mob-override[aria-pressed="true"] .lbl { color: #1a1400; }
+
 /* On desktop: hide joystick, show keyboard hints instead */
 .cr-gamepad { display: none; }
 .cr-desktop-hints {
@@ -724,6 +820,15 @@ body.control-remoto-body {
     border-radius: 6px;
     font-size: 0.7rem;
     color: #cfd2d6;
+}
+
+.cr-hint-group.cr-hint-force {
+    background: rgba(249, 171, 0, 0.18);
+    color: #f9ab00;
+}
+.cr-hint-group.cr-hint-force .cr-keycap {
+    border-color: rgba(249, 171, 0, 0.55);
+    color: #fff3d6;
 }
 
 /* Responsive behavior: mobile removes the topbar entirely and shows only

@@ -1,0 +1,282 @@
+/* ========================================
+   Daiver Auto-Ruta - mapa 2.5D + editor de waypoints
+   ======================================== */
+
+.ar-body {
+    background: #05070b;
+    color: #e8eaed;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.ar-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 1rem;
+    background: rgba(10, 16, 24, 0.88);
+    border-bottom: 1px solid var(--cr-border, rgba(255,255,255,0.08));
+}
+
+.ar-brand { display: flex; align-items: center; gap: 0.6rem; }
+.ar-brand h1 { font-size: 1rem; font-weight: 700; letter-spacing: 0.5px; }
+
+.ar-brand .badge {
+    background: #f9ab00;
+    color: #1a1400;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+}
+
+.ar-status-group { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+.ar-stage {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    min-height: 0;
+}
+
+/* ===== Mapa 2.5D (main area) ===== */
+.ar-map-section {
+    position: relative;
+    background:
+        radial-gradient(ellipse at 50% 35%, rgba(26, 115, 232, 0.14), transparent 55%),
+        linear-gradient(180deg, #060a12 0%, #02040a 60%, #000 100%);
+    overflow: hidden;
+}
+
+.ar-map-wrap {
+    position: absolute;
+    inset: 0;
+}
+
+.ar-map-wrap canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: crosshair;
+    touch-action: none;
+}
+
+.ar-map-wrap canvas.ar-editing {
+    cursor: copy;
+}
+
+.ar-map-wrap canvas.ar-dragging {
+    cursor: grabbing;
+}
+
+/* Toolbar flotante superior-izquierda */
+.ar-map-toolbar {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    z-index: 4;
+    background: rgba(0, 0, 0, 0.55);
+    padding: 0.4rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(6px);
+}
+
+.ar-map-toolbar .cr-btn {
+    font-size: 0.78rem;
+    padding: 0.4rem 0.65rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.ar-map-toolbar .cr-btn[aria-pressed="true"] {
+    background: #f9ab00;
+    color: #1a1400;
+    border-color: #f9ab00;
+    box-shadow: 0 0 14px rgba(249, 171, 0, 0.55);
+}
+
+.ar-map-toolbar .cr-btn .ico { font-size: 0.9rem; line-height: 1; }
+
+/* Panel de instrucciones arriba-derecha */
+.ar-map-hint {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    max-width: 280px;
+    padding: 0.55rem 0.7rem;
+    background: rgba(0, 0, 0, 0.55);
+    color: #cfd2d6;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(6px);
+    font-size: 0.72rem;
+    line-height: 1.35;
+    z-index: 4;
+}
+
+.ar-map-hint strong { color: #e8eaed; }
+.ar-map-hint em {
+    font-style: normal;
+    color: #f9ab00;
+    font-weight: 700;
+}
+.ar-map-hint-body { margin-top: 0.3rem; color: #9aa0a6; }
+.ar-map-hint-body p { margin: 0 0 0.2rem 0; }
+
+/* Leyenda inferior */
+.ar-map-legend {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.4rem 0.7rem;
+    background: rgba(0, 0, 0, 0.55);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(6px);
+    font-size: 0.72rem;
+    color: #cfd2d6;
+    z-index: 4;
+}
+
+.ar-map-legend .lg {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 4px;
+    margin-right: 0.25rem;
+    vertical-align: -2px;
+}
+
+.ar-map-legend .lg-route  { background: linear-gradient(180deg, #3effa0, #00c853); box-shadow: 0 0 8px rgba(0, 200, 83, 0.6); }
+.ar-map-legend .lg-origin { background: #00c853; border-radius: 50%; box-shadow: 0 0 8px rgba(0, 200, 83, 0.8); }
+.ar-map-legend .lg-wp     { background: #5aa8ff; border-radius: 50%; }
+.ar-map-legend .lg-heat   { background: linear-gradient(180deg, #ffb74d, #ff5252); }
+
+/* ===== Panel lateral ===== */
+.ar-side {
+    background: linear-gradient(180deg, rgba(18, 27, 38, 0.95), rgba(10, 16, 24, 0.95));
+    border-left: 1px solid var(--cr-border, rgba(255,255,255,0.08));
+    padding: 0.75rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+}
+
+.ar-video-panel .ar-video-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.ar-video-panel .ar-video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+}
+
+.ar-video-panel .ar-video-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0.8rem;
+    color: #bbb;
+    gap: 0.2rem;
+}
+
+.ar-video-panel .ar-video-placeholder h3 { font-size: 0.9rem; margin: 0; }
+.ar-video-panel .ar-video-placeholder p { font-size: 0.75rem; color: #999; margin: 0; }
+
+.ar-route-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    color: #cfd2d6;
+}
+
+.ar-cycles label {
+    font-size: 0.78rem;
+    color: #cfd2d6;
+    display: block;
+    margin-bottom: 0.35rem;
+}
+
+.ar-cycles-row { display: flex; gap: 0.4rem; align-items: center; }
+
+.ar-cycles-row input {
+    flex: 1;
+    padding: 0.45rem 0.6rem;
+    border-radius: 6px;
+    border: 1px solid var(--cr-border, rgba(255,255,255,0.08));
+    background: rgba(0, 0, 0, 0.45);
+    color: #e8eaed;
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.ar-cycles-row input::-webkit-outer-spin-button,
+.ar-cycles-row input::-webkit-inner-spin-button {
+    -webkit-appearance: none; margin: 0;
+}
+
+.ar-cycles-row button { min-width: 40px; font-size: 1.1rem; }
+
+.ar-progress {
+    margin-top: 0.55rem;
+    font-size: 0.82rem;
+    color: #cfd2d6;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.5rem 0.6rem;
+    border-radius: 8px;
+    border: 1px solid var(--cr-border, rgba(255,255,255,0.08));
+}
+
+.ar-progress strong { color: #00c853; font-weight: 700; }
+
+.ar-controls { display: flex; flex-direction: column; gap: 0.4rem; }
+.ar-controls button { padding: 0.55rem 0.9rem; font-size: 0.88rem; }
+
+.ar-hint {
+    margin-top: 0.55rem;
+    font-size: 0.72rem;
+    color: #9aa0a6;
+    line-height: 1.4;
+}
+
+/* Responsive: apilado vertical en mobile. Mapa arriba, panel abajo. */
+@media (max-width: 900px) {
+    .ar-stage { grid-template-columns: 1fr; grid-template-rows: 55vh 1fr; }
+    .ar-side { border-left: none; border-top: 1px solid var(--cr-border, rgba(255,255,255,0.08)); }
+    .ar-map-hint { max-width: 200px; font-size: 0.68rem; }
+    .ar-map-toolbar .cr-btn { font-size: 0.72rem; padding: 0.35rem 0.5rem; }
+}
+
+@media (max-width: 560px) {
+    .ar-map-hint-body { display: none; }
+    .ar-map-legend { font-size: 0.66rem; gap: 0.4rem; }
+}

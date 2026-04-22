@@ -39,11 +39,17 @@ const ControlRemoto = {
         keyboard: { x: 0, y: 0, z: 0 },
         joyMove: { x: 0, y: 0 },
         joyRotate: { z: 0 },
-        // Doble tap de WASD/QE activa "force": los comandos se marcan con
-        // force=true y el backend salta el bloqueo del sensor. Dura MIENTRAS
-        // el operador siga conduciendo; se apaga solo cuando suelta todas
-        // las teclas (stopLoop) o se desconecta el robot.
+        // Fuentes de "force" (bypass del sensor de proximidad):
+        //   - forceShift:     Shift mantenido en teclado (preferido)
+        //   - forceButton:    boton Override en movil mantenido
+        //   - forceDoubleTap: doble tap WASD/QE (fallback legado)
+        // forceActive es el OR logico de las tres y se recalcula por
+        // refreshForceState(). El doble tap se resetea en stopLoop; los
+        // sostenidos dependen de sus propios eventos de keyup/pointerup.
         forceActive: false,
+        forceShift: false,
+        forceButton: false,
+        forceDoubleTap: false,
         lastKeyTap: {},
     },
 
@@ -79,9 +85,11 @@ const ControlRemoto = {
         this.setupJoysticks();
         this.setupActionBar();
         this.setupMobileActions();
+        this.setupMobileOverride();
         this.setupSensorToggle();
         this.setupTts();
         this.setupAutoRotate();
+        this.setupSaveRoute();
         this.setupKeyboard();
         this.setupSidePanelToggle();
         this.initTraceCanvas();
@@ -272,6 +280,16 @@ const ControlRemoto = {
         document.addEventListener('keydown', (e) => {
             if (e.target.tagName === 'INPUT') return;
 
+            // Shift mantenido = modo FORCE sostenido. Ideal para entornos
+            // con muchas detecciones: no hay que doble-tapear cada vez.
+            if (e.key === 'Shift') {
+                if (!this.movement.forceShift) {
+                    this.movement.forceShift = true;
+                    this.refreshForceState();
+                }
+                return;
+            }
+
             const cross = KEY_TO_CROSS[e.key];
             if (cross) {
                 e.preventDefault();
@@ -281,16 +299,15 @@ const ControlRemoto = {
 
             if (/^[wWsSaAdDqQeE]$/.test(e.key)) {
                 e.preventDefault();
-                // Doble tap de la misma tecla en <350 ms activa el modo FORCE.
-                // Una vez activo, el movimiento es libre hasta que sueltes
-                // todas las teclas (ver stopLoop).
+                // Doble tap de la misma tecla en <350 ms activa FORCE como
+                // fallback (compatibilidad). Se limpia en stopLoop.
                 if (!keys.has(e.key)) {
                     const now = Date.now();
                     const k = e.key.toLowerCase();
                     const last = this.movement.lastKeyTap[k] || 0;
                     if (now - last < 350) {
-                        this.movement.forceActive = true;
-                        this.showForceBadge();
+                        this.movement.forceDoubleTap = true;
+                        this.refreshForceState();
                     }
                     this.movement.lastKeyTap[k] = now;
                 }
@@ -300,6 +317,13 @@ const ControlRemoto = {
         });
 
         document.addEventListener('keyup', (e) => {
+            if (e.key === 'Shift') {
+                if (this.movement.forceShift) {
+                    this.movement.forceShift = false;
+                    this.refreshForceState();
+                }
+                return;
+            }
             if (!keys.has(e.key)) return;
             keys.delete(e.key);
             if (KEY_TO_CROSS[e.key]) { this.releaseCross(KEY_TO_CROSS[e.key]); return; }
@@ -308,7 +332,11 @@ const ControlRemoto = {
 
         // If the window loses focus, treat every key as released and force-stop.
         // Without this, holding W and alt-tabbing away would leave the robot moving.
-        const abort = () => { keys.clear(); this.stopMovement(); };
+        const abort = () => {
+            keys.clear();
+            this.movement.forceShift = false;
+            this.stopMovement();
+        };
         window.addEventListener('blur', abort);
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'hidden') abort();
@@ -408,17 +436,27 @@ const ControlRemoto = {
         if (el) el.classList.remove('visible');
     },
 
+    refreshForceState() {
+        const m = this.movement;
+        const active = m.forceShift || m.forceButton || m.forceDoubleTap;
+        m.forceActive = active;
+        if (active) this.showForceBadge();
+        else this.hideForceBadge();
+    },
+
     stopLoop() {
         if (this.movement.interval) {
             clearInterval(this.movement.interval);
             this.movement.interval = null;
         }
-        // Al soltar todas las teclas, apagamos el modo FORCE: la próxima
-        // conducción pedirá un nuevo doble tap para forzar.
-        if (this.movement.forceActive) {
-            this.movement.forceActive = false;
-            this.hideForceBadge();
+        // Al soltar todas las teclas se limpia solo el fallback de doble tap.
+        // Shift y el boton Override siguen controlados por sus propios eventos,
+        // asi que si el operador los mantiene, la siguiente conduccion sigue
+        // forzada sin repetir el gesto.
+        if (this.movement.forceDoubleTap) {
+            this.movement.forceDoubleTap = false;
         }
+        this.refreshForceState();
         if (this.socket) this.socket.emit('stop_command');
     },
 
@@ -559,6 +597,44 @@ const ControlRemoto = {
         });
     },
 
+    /* ============ Mobile Override (hold-to-force) ============
+       Mientras se mantiene, los comandos de movimiento se marcan con
+       force=true: el backend saltara el bloqueo del sensor. Equivalente
+       movil a sostener Shift en teclado. */
+    setupMobileOverride() {
+        const btn = document.getElementById('cr-mobile-override');
+        if (!btn) return;
+
+        const press = (e) => {
+            if (e) e.preventDefault();
+            if (this.movement.forceButton) return;
+            this.movement.forceButton = true;
+            btn.classList.add('pressed');
+            btn.setAttribute('aria-pressed', 'true');
+            this.refreshForceState();
+        };
+        const release = () => {
+            if (!this.movement.forceButton) return;
+            this.movement.forceButton = false;
+            btn.classList.remove('pressed');
+            btn.setAttribute('aria-pressed', 'false');
+            this.refreshForceState();
+        };
+
+        btn.addEventListener('pointerdown', press);
+        btn.addEventListener('pointerup', release);
+        btn.addEventListener('pointercancel', release);
+        btn.addEventListener('pointerleave', release);
+        // Accesibilidad: Space/Enter con el boton enfocado tambien fuerzan.
+        btn.addEventListener('keydown', (e) => {
+            if (e.key === ' ' || e.key === 'Enter') press(e);
+        });
+        btn.addEventListener('keyup', (e) => {
+            if (e.key === ' ' || e.key === 'Enter') release();
+        });
+        btn.addEventListener('blur', release);
+    },
+
     /* ============ Sensor de proximidad ============
        Toggle ON: backend arranca un watcher que mira detecciones YOLO
        "near" y emite `proximity_alert`. Aquí respondemos con TTS + stop.
@@ -627,6 +703,12 @@ const ControlRemoto = {
     },
 
     onProximityAlert(data) {
+        // Modo FORCE (Shift sostenido, boton Override o doble tap): el
+        // operador ha aceptado el riesgo. Ignoramos la alerta completa:
+        // nada de stopMovement, nada de stop_command, nada de banner.
+        // El robot sigue caminando como si el sensor estuviera apagado.
+        if (this.movement.forceActive) return;
+
         const now = Date.now();
         if (now - this.tts.lastAlertTs < 2000) return;
         this.tts.lastAlertTs = now;
@@ -649,6 +731,44 @@ const ControlRemoto = {
         el.classList.add('visible');
         clearTimeout(this._banTimer);
         this._banTimer = setTimeout(() => el.classList.remove('visible'), 1600);
+    },
+
+    /* ============ Guardar ruta y abrir Auto-Ruta ============
+       Serializa la trayectoria registrada y la deja en localStorage para
+       que la página de auto-ruta la cargue. Si hay menos de 4 puntos,
+       avisa y no navega. */
+    setupSaveRoute() {
+        const btn = document.getElementById('cr-save-route');
+        if (!btn) return;
+        btn.addEventListener('click', () => {
+            const pts = this.trace.history.filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+            if (pts.length < 4) {
+                alert('Camina primero un poco con el robot para registrar una ruta (mínimo 4 puntos).');
+                return;
+            }
+            // Muestreamos: un waypoint cada ~40 cm para que el seguidor no
+            // se atasque persiguiendo puntos cada 5 cm.
+            const sampled = [pts[0]];
+            for (const p of pts) {
+                const last = sampled.at(-1);
+                if (Math.hypot(p.x - last.x, p.y - last.y) >= 0.40) sampled.push(p);
+            }
+            // Serializa el heatmap (Map -> array de [ix, iy, v]) para que la
+            // pagina de Auto-Ruta pueda redibujarlo como terreno.
+            const heatArr = [];
+            for (const [k, v] of this.trace.heat) {
+                const [ix, iy] = k.split(',').map(Number);
+                heatArr.push([ix, iy, v]);
+            }
+            localStorage.setItem('daiver:lastRoute', JSON.stringify({
+                savedAt: Date.now(),
+                points: sampled,
+                totalMeters: this.trace.totalMeters,
+                heatCellSize: this.trace.heatCellSize,
+                heat: heatArr,
+            }));
+            window.location.href = '/autoroute';
+        });
     },
 
     /* ============ Auto-rotar a landscape ============

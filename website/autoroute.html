@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daiver Auto Ruta</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/controlRemoto.css">
+    <link rel="stylesheet" href="css/autoroute.css">
+</head>
+<body class="ar-body">
+    <header class="ar-topbar">
+        <div class="ar-brand">
+            <a class="cr-back" href="/controlRemoto">&larr;</a>
+            <h1>Daiver Auto-Ruta</h1>
+            <span class="badge">Autonomo</span>
+        </div>
+        <div class="ar-status-group">
+            <span id="ar-status-server" class="cr-pill disconnected">
+                <span class="dot"></span><span class="txt">Offline</span>
+            </span>
+            <span id="ar-status-robot" class="cr-pill disconnected">
+                <span class="dot"></span><span class="txt">Sin robot</span>
+            </span>
+            <span id="ar-run-status" class="cr-pill disconnected">
+                <span class="dot"></span><span class="txt">Detenido</span>
+            </span>
+        </div>
+    </header>
+
+    <main class="ar-stage">
+        <!-- Mapa 2.5D: heatmap del lidar + waypoints editables -->
+        <section class="ar-map-section">
+            <div class="ar-map-wrap">
+                <canvas id="ar-route-canvas"></canvas>
+
+                <!-- Toolbar flotante superior-izquierda -->
+                <div class="ar-map-toolbar" role="toolbar" aria-label="Edicion de ruta">
+                    <button id="ar-edit-toggle" class="cr-btn ghost" aria-pressed="false">
+                        <span class="ico">&#x270E;</span> Editar
+                    </button>
+                    <button id="ar-edit-undo" class="cr-btn ghost" disabled>&#x21A9; Deshacer</button>
+                    <button id="ar-edit-clear" class="cr-btn ghost" disabled>&#x1F5D1; Limpiar</button>
+                    <button id="ar-edit-save" class="cr-btn" disabled>&#x1F4BE; Guardar ruta</button>
+                </div>
+
+                <!-- Instrucciones contextuales, esquina superior derecha -->
+                <div class="ar-map-hint">
+                    <div><strong>Modo edicion:</strong> <span id="ar-edit-mode-label">OFF</span></div>
+                    <div class="ar-map-hint-body">
+                        <p>Activa <em>Editar</em> y haz click para poner el <strong>origen</strong> (verde) y los siguientes waypoints.</p>
+                        <p>Arrastra un waypoint para moverlo. Shift+click para borrar uno.</p>
+                    </div>
+                </div>
+
+                <!-- Leyenda inferior -->
+                <div class="ar-map-legend">
+                    <span class="lg lg-route"></span>Recorrido
+                    <span class="lg lg-origin"></span>Origen
+                    <span class="lg lg-wp"></span>Waypoint
+                    <span class="lg lg-heat"></span>Obstaculos
+                </div>
+            </div>
+        </section>
+
+        <!-- Panel lateral: video + metadatos + ciclos + control -->
+        <aside class="ar-side">
+            <section class="cr-panel ar-video-panel">
+                <h4>Camara</h4>
+                <div class="ar-video-wrap">
+                    <img id="ar-video" class="ar-video" alt="Camara del robot" style="display:none;">
+                    <div id="ar-video-placeholder" class="ar-video-placeholder">
+                        <h3>Sin camara</h3>
+                        <p>Inicia YOLO para ver el stream.</p>
+                    </div>
+                    <div class="cr-crosshair" aria-hidden="true">
+                        <span class="ch-v"></span>
+                        <span class="ch-h"></span>
+                        <span class="ch-dot"></span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="cr-panel">
+                <h4>Ruta</h4>
+                <div class="ar-route-meta">
+                    <span id="ar-route-points">Sin ruta guardada</span>
+                    <span id="ar-route-length"></span>
+                </div>
+            </section>
+
+            <section class="cr-panel">
+                <h4>Ciclos</h4>
+                <div class="ar-cycles">
+                    <label for="ar-cycles-input">Cuantas veces repetir la ruta:</label>
+                    <div class="ar-cycles-row">
+                        <button id="ar-cyc-minus" class="cr-btn ghost">&minus;</button>
+                        <input id="ar-cycles-input" type="number" min="1" max="99" value="1">
+                        <button id="ar-cyc-plus" class="cr-btn ghost">+</button>
+                    </div>
+                </div>
+                <div class="ar-progress">
+                    Ciclo <strong id="ar-cycle-now">0</strong>/<strong id="ar-cycle-total">0</strong>
+                    &nbsp;&middot;&nbsp; Waypoint <strong id="ar-wp-now">0</strong>/<strong id="ar-wp-total">0</strong>
+                </div>
+            </section>
+
+            <section class="cr-panel">
+                <h4>Control</h4>
+                <div class="ar-controls">
+                    <button id="ar-start" class="cr-btn">&#9654; Iniciar ruta</button>
+                    <button id="ar-stop" class="cr-btn danger" disabled>&#9632; Detener</button>
+                    <button id="ar-yolo-toggle" class="cr-btn ghost">Camara ON/OFF</button>
+                </div>
+                <p class="ar-hint">El robot seguira los waypoints usando el lidar. Asegurate de que este de pie y con espacio libre antes de iniciar.</p>
+            </section>
+        </aside>
+    </main>
+
+    <script src="js/socket.io.min.js"></script>
+    <script src="js/autoroute.js"></script>
+</body>
+</html>

@@ -65,6 +65,10 @@ proximity_sensor = {
     # Último comando de movimiento conocido.
     "_last_cmd_x": 0.0,
     "_last_cmd_ts": 0.0,
+    # Ventana de gracia de FORCE: mientras time.time() < _force_until,
+    # el sensor no emite alertas ni manda Move=0 — el operador ya aceptó
+    # el riesgo sosteniendo Shift / boton Override en el frontend.
+    "_force_until": 0.0,
     # Pose del robot en el frame del mapa del lidar.
     "_pose_x": 0.0,
     "_pose_y": 0.0,
@@ -690,9 +694,17 @@ def user_end():
 
 
 @app.route('/control-remoto')
+@app.route('/controlRemoto')
 @app.route('/controlRemoto.html')
 def control_remoto():
     return send_from_directory('website', 'controlRemoto.html')
+
+
+@app.route('/autoroute')
+@app.route('/auto-ruta')
+@app.route('/autoroute.html')
+def autoroute_page():
+    return send_from_directory('website', 'autoroute.html')
 
 
 @app.route('/css/<path:filename>')
@@ -1167,7 +1179,14 @@ def _robot_is_moving_forward():
 def _trigger_proximity_alert(distance_m, direction, source):
     """Emite una ÚNICA alerta al entrar en zona peligrosa y frena el robot.
     No vuelve a emitir hasta que salga de la zona (histéresis gestionada
-    por el callback del lidar)."""
+    por el callback del lidar).
+
+    Si la ventana de FORCE está abierta (_force_until en el futuro), se
+    descarta todo: sin emit, sin Move=0, sin flip de _alert_active. El
+    operador pidió explícitamente caminar normal pese al obstáculo."""
+    if time.time() < proximity_sensor.get("_force_until", 0.0):
+        return
+
     if proximity_sensor["_alert_active"]:
         return  # ya avisamos; esperamos que salga del peligro
 
@@ -1501,6 +1520,260 @@ def api_sensor_toggle():
 
 
 # ════════════════════════════════════════════════════════
+#  AUTO-RUTA (seguidor de waypoints)
+# ════════════════════════════════════════════════════════
+#
+# Se recibe una lista de puntos [{x,y}] en el frame del mapa del lidar y un
+# número de ciclos. Un task asíncrono recorre cada waypoint:
+#   - lee la pose del robot (la misma que alimenta el sensor: _pose_*)
+#   - calcula heading y distancia al waypoint
+#   - manda Move(x=linear, z=angular) hasta estar <reach_radius del punto
+#   - pasa al siguiente; al terminar la lista, reinicia el ciclo.
+# Un watchdog del lidar (_alert_active) frena el avance si aparece algo
+# muy cerca; si el doble tap lo desbloqueó eso ya está manejado, aquí no.
+
+autoroute_state = {
+    "running": False,
+    "cycles_total": 0,
+    "cycle_now": 0,
+    "waypoints": [],
+    "wp_now": 0,
+    "_task": None,
+    "_cancel": False,
+    # Tuning
+    "linear_speed": 0.35,         # m/s hacia adelante máximo
+    "angular_speed": 0.75,        # rad/s máximo para girar
+    "reach_radius_m": 0.35,       # waypoint alcanzado si dist < 35 cm
+    "heading_align_rad": 0.35,    # si dy ángulo > esto, solo rota
+    "timeout_per_wp_s": 20.0,     # si no llega en 20s, pasa al siguiente
+}
+
+
+def _normalize_angle(a):
+    while a > math.pi:
+        a -= 2 * math.pi
+    while a < -math.pi:
+        a += 2 * math.pi
+    return a
+
+
+async def _autoroute_wait_for_pose(timeout_s=5.0):
+    """Espera a que el lidar reporte pose valida. Retorna True si llego a
+    tiempo. Si el sensor no esta suscrito o el lidar no publica, retorna
+    False para que el llamador aborte con mensaje claro."""
+    deadline = asyncio.get_running_loop().time() + timeout_s
+    while not proximity_sensor["_pose_valid"]:
+        if asyncio.get_running_loop().time() > deadline:
+            return False
+        await asyncio.sleep(0.15)
+    return True
+
+
+async def _autoroute_follow_loop():
+    """Consumir waypoints x ciclos hasta cancelación."""
+    state = autoroute_state
+    try:
+        # 1) Asegura que el robot este de pie y listo para caminar. Si esta
+        #    sentado, los Move se ignoran silenciosamente.
+        emit_log('info', 'Auto-Ruta: pidiendo BalanceStand…')
+        try:
+            await robot_send_command("BalanceStand")
+        except Exception as exc:
+            emit_log('warning', f'Auto-Ruta: BalanceStand fallo: {exc}')
+
+        # 2) Espera a que el lidar reporte pose. Sin pose el seguidor no
+        #    puede calcular errores de heading/distancia.
+        ok_pose = await _autoroute_wait_for_pose(5.0)
+        if not ok_pose:
+            emit_log('error',
+                     'Auto-Ruta: el lidar no reporto pose en 5 s. '
+                     'Activa el sensor en el Control Remoto y verifica '
+                     'que el robot publique utlidar/robot_pose.')
+            state["_cancel"] = True
+            return
+
+        # 3) Traslada los waypoints: que el primero coincida con la pose
+        #    actual del robot. Asi las rutas grabadas con dead-reckoning o
+        #    con origen absoluto distinto funcionan desde "donde esta".
+        pose_x = proximity_sensor["_pose_x"]
+        pose_y = proximity_sensor["_pose_y"]
+        waypoints = state["waypoints"]
+        if waypoints:
+            ox = float(waypoints[0]["x"]) - pose_x
+            oy = float(waypoints[0]["y"]) - pose_y
+            translated = [
+                {"x": float(w["x"]) - ox, "y": float(w["y"]) - oy}
+                for w in waypoints
+            ]
+            state["waypoints"] = translated
+            emit_log('info',
+                     f'Auto-Ruta: ruta trasladada al origen del robot '
+                     f'(offset {ox:+.2f}, {oy:+.2f}).')
+
+        for cycle in range(1, state["cycles_total"] + 1):
+            if state["_cancel"]:
+                break
+            state["cycle_now"] = cycle
+            for i, wp in enumerate(state["waypoints"]):
+                if state["_cancel"]:
+                    break
+                state["wp_now"] = i + 1
+                socketio.emit("autoroute_progress", {
+                    "running": True,
+                    "cycle": cycle,
+                    "cycle_total": state["cycles_total"],
+                    "waypoint": i + 1,
+                    "waypoint_total": len(state["waypoints"]),
+                })
+
+                await _autoroute_go_to(wp)
+
+        # Stop final
+        try:
+            await robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": 0.0})
+        except Exception:
+            pass
+        emit_log('success', 'Auto-Ruta: recorrido completo.')
+    except Exception as exc:
+        emit_log('error', f'Auto-Ruta: error en el loop: {exc}')
+    finally:
+        state["running"] = False
+        state["_task"] = None
+        socketio.emit("autoroute_done", {})
+
+
+async def _autoroute_go_to(wp):
+    """Conduce el robot hacia el waypoint hasta que entre en el radio o
+    se agote el timeout. Usa la pose del lidar (proximity_sensor)."""
+    state = autoroute_state
+    start_ts = asyncio.get_running_loop().time()
+
+    while not state["_cancel"]:
+        if (asyncio.get_running_loop().time() - start_ts) > state["timeout_per_wp_s"]:
+            emit_log('warning', f'Waypoint ({wp.get("x"):.2f},{wp.get("y"):.2f}) timeout, siguiente')
+            break
+
+        if not proximity_sensor["_pose_valid"]:
+            # Esperamos a tener pose del lidar
+            await asyncio.sleep(0.15)
+            continue
+
+        px = proximity_sensor["_pose_x"]
+        py = proximity_sensor["_pose_y"]
+        yaw = proximity_sensor["_pose_yaw"]
+
+        dx = float(wp.get("x", 0.0)) - px
+        dy = float(wp.get("y", 0.0)) - py
+        dist = math.hypot(dx, dy)
+        if dist < state["reach_radius_m"]:
+            break
+
+        target_heading = math.atan2(dy, dx)
+        heading_err = _normalize_angle(target_heading - yaw)
+
+        # Estrategia simple: gira primero, avanza después.
+        if abs(heading_err) > state["heading_align_rad"]:
+            z = max(-state["angular_speed"],
+                    min(state["angular_speed"], heading_err * 1.5))
+            x = 0.0
+        else:
+            # Avanza proporcional a la distancia (hasta el máximo).
+            x = max(0.0, min(state["linear_speed"], dist * 0.8))
+            # Correcciones de yaw suaves mientras camina
+            z = max(-0.4, min(0.4, heading_err * 1.2))
+
+        # Si el sensor disparó alerta y NO estamos forzando, detenemos
+        # este waypoint y pasamos al siguiente en la siguiente iteración.
+        if proximity_sensor["enabled"] and proximity_sensor["_alert_active"]:
+            try:
+                await robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": 0.0})
+            except Exception:
+                pass
+            emit_log('warning', 'Auto-Ruta: sensor bloqueó el avance, saltando waypoint')
+            break
+
+        try:
+            await robot_send_command("Move", {"x": x, "y": 0.0, "z": z})
+        except Exception as exc:
+            emit_log('error', f'Auto-Ruta move: {exc}')
+            break
+
+        await asyncio.sleep(0.2)
+
+    # Stop entre waypoints
+    try:
+        await robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": 0.0})
+    except Exception:
+        pass
+
+
+@app.route('/api/autoroute/start', methods=['POST'])
+def api_autoroute_start():
+    if not robot_state["connected"]:
+        return jsonify({"status": "error", "message": "Robot no conectado"}), 400
+    if autoroute_state["running"]:
+        return jsonify({"status": "error", "message": "Ya hay una ruta en curso"}), 409
+
+    data = request.get_json(silent=True) or {}
+    pts = data.get("points") or []
+    cycles = int(data.get("cycles", 1) or 1)
+
+    waypoints = [
+        {"x": float(p["x"]), "y": float(p["y"])}
+        for p in pts
+        if isinstance(p, dict) and "x" in p and "y" in p
+    ]
+    if len(waypoints) < 2:
+        return jsonify({"status": "error", "message": "Ruta vacía o incompleta"}), 400
+
+    # Activa el sensor si no lo está (para que el robot se autodetenga).
+    if not proximity_sensor["enabled"]:
+        try:
+            run_async(_proximity_enable_async())
+            proximity_sensor["enabled"] = True
+        except Exception as exc:
+            emit_log('warning', f'No se pudo activar sensor: {exc}')
+
+    autoroute_state["waypoints"] = waypoints
+    autoroute_state["cycles_total"] = max(1, cycles)
+    autoroute_state["cycle_now"] = 0
+    autoroute_state["wp_now"] = 0
+    autoroute_state["_cancel"] = False
+    autoroute_state["running"] = True
+    autoroute_state["_task"] = run_async_no_wait(_autoroute_follow_loop())
+
+    emit_log('success', f'Auto-Ruta iniciada: {len(waypoints)} waypoints × {cycles} ciclos')
+    return jsonify({
+        "status": "ok",
+        "waypoints": len(waypoints),
+        "cycles": autoroute_state["cycles_total"],
+    })
+
+
+@app.route('/api/autoroute/stop', methods=['POST'])
+def api_autoroute_stop():
+    autoroute_state["_cancel"] = True
+    try:
+        run_async(robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": 0.0}))
+    except Exception:
+        pass
+    emit_log('info', 'Auto-Ruta: detenida por el usuario')
+    return jsonify({"status": "ok"})
+
+
+@app.route('/api/autoroute/status', methods=['GET'])
+def api_autoroute_status():
+    return jsonify({
+        "status": "ok",
+        "running": autoroute_state["running"],
+        "cycle": autoroute_state["cycle_now"],
+        "cycle_total": autoroute_state["cycles_total"],
+        "waypoint": autoroute_state["wp_now"],
+        "waypoint_total": len(autoroute_state["waypoints"]),
+    })
+
+
+# ════════════════════════════════════════════════════════
 #  SOCKETIO EVENTS
 # ════════════════════════════════════════════════════════
 
@@ -1529,8 +1802,9 @@ def handle_move_command(data):
     proximity_sensor["_last_cmd_x"] = x
     proximity_sensor["_last_cmd_ts"] = time.time()
 
-    # El frontend marca `force=true` tras un doble tap WASD: el operador
-    # insiste, así que saltamos el bloqueo aunque el sensor esté en alerta.
+    # El frontend marca `force=true` cuando el operador sostiene Shift,
+    # el boton Override movil, o hace doble tap WASD. El operador insiste:
+    # saltamos TODO protocolo de stop del sensor de proximidad.
     force = bool(data.get("force"))
 
     # Si el sensor está activo y hay un obstáculo en alerta y el usuario
@@ -1542,11 +1816,22 @@ def handle_move_command(data):
         run_async(robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": z}))
         return
 
-    # Con force el operador acepta el riesgo: liberamos el estado de alerta
-    # para que pueda seguir hasta que el sensor vuelva a detectar peligro.
-    if force and proximity_sensor["_alert_active"]:
-        proximity_sensor["_alert_active"] = False
-        proximity_sensor["_clear_since"] = 0.0
+    # Con force el operador acepta el riesgo:
+    #   1) limpiamos el estado de alerta en curso,
+    #   2) abrimos una ventana de gracia (0.8 s) durante la cual el sensor
+    #      no volvera a disparar alerta ni Move=0. Como los comandos se
+    #      envian cada 200 ms, mientras el operador mantenga la tecla la
+    #      ventana se renueva y el robot camina sin interrupciones.
+    if force:
+        proximity_sensor["_force_until"] = time.time() + 0.8
+        if proximity_sensor["_alert_active"]:
+            proximity_sensor["_alert_active"] = False
+            proximity_sensor["_clear_since"] = 0.0
+    else:
+        # Si este comando NO trae force, el operador solto la combinacion:
+        # cerramos la ventana de gracia en seco para que el sensor vuelva a
+        # actuar normal desde ya (no dentro de 0.8 s).
+        proximity_sensor["_force_until"] = 0.0
 
     try:
         run_async(robot_send_command("Move", {"x": x, "y": y, "z": z}))
@@ -1557,6 +1842,11 @@ def handle_move_command(data):
 @socketio.on('stop_command')
 def handle_stop_command():
     """Detiene el robot via WebSocket."""
+    # Al pedir stop, el operador no esta tocando ninguna tecla: cerramos
+    # tambien la ventana de force para que el sensor vuelva a proteger
+    # desde ya.
+    proximity_sensor["_force_until"] = 0.0
+    proximity_sensor["_last_cmd_x"] = 0.0
     if not robot_state["connected"]:
         return
     try:

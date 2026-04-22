@@ -54,6 +54,13 @@
                 <p>Conecta el robot y presiona <strong>YOLO</strong> para ver la camara con deteccion en vivo.</p>
             </div>
 
+            <!-- Crosshair verde al centro (referencia de rumbo estilo HUD) -->
+            <div class="cr-crosshair" aria-hidden="true">
+                <span class="ch-v"></span>
+                <span class="ch-h"></span>
+                <span class="ch-dot"></span>
+            </div>
+
             <!-- HUD badges over video -->
             <div class="cr-hud">
                 <span class="cr-pill"><span class="dot"></span><span>FPS: <strong id="cr-m-fps">--</strong></span></span>
@@ -81,6 +88,12 @@
                     <span class="cr-keycap">J</span>
                     <span class="cr-keycap">K</span>
                     <span class="cr-keycap">L</span>
+                </div>
+                <div class="cr-hint-group cr-hint-force">
+                    Forzar sensor:
+                    <span class="cr-keycap">Shift</span>
+                    <span class="cr-keycap">+</span>
+                    <span class="cr-keycap">WASD</span>
                 </div>
             </div>
 
@@ -117,6 +130,10 @@
                 <button class="cr-mob-action-btn" data-action="recovery" aria-label="Recuperarse">
                     <span class="ico">&#x21BB;</span>
                     <span class="lbl">Recuperar</span>
+                </button>
+                <button id="cr-mobile-override" class="cr-mob-action-btn cr-mob-override" aria-label="Mantener para ignorar el sensor" aria-pressed="false">
+                    <span class="ico">&#x26A1;</span>
+                    <span class="lbl">Forzar</span>
                 </button>
             </div>
 
@@ -183,6 +200,9 @@
                         <span class="value" id="cr-m-steps">0</span>
                     </div>
                 </div>
+                <button id="cr-save-route" class="cr-btn" style="margin-top:0.6rem;width:100%;">
+                    Guardar ruta y abrir Auto-Ruta
+                </button>
             </section>
 
             <section class="cr-panel">
@@ -195,8 +215,8 @@
             <section class="cr-panel">
                 <h4>Controles</h4>
                 <div style="display:flex;flex-direction:column;gap:0.4rem;font-size:0.75rem;color:#cfd2d6;line-height:1.4;">
-                    <div><strong>Web:</strong> W·A·S·D mover &nbsp; Q·E girar &nbsp; I·J·K·L acciones</div>
-                    <div><strong>Movil:</strong> Joystick izquierdo mueve &nbsp; Cruceta derecha ejecuta A·B·X·Y</div>
+                    <div><strong>Web:</strong> W·A·S·D mover &nbsp; Q·E girar &nbsp; I·J·K·L acciones &nbsp; <em>Shift</em> mantiene FORCE (ignora sensor)</div>
+                    <div><strong>Movil:</strong> Joystick izquierdo mueve &nbsp; Cruceta derecha ejecuta A·B·X·Y &nbsp; Boton <em>Forzar</em> ignora sensor</div>
                 </div>
             </section>
 
