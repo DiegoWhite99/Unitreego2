@@ -3,142 +3,3026 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daiver Control CUN - WebRTC</title>
+    <title>Diver Control CUN - WebRTC</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/components.css">
+    <style>
+        /* ========================================
+           Estilo Divergente - Panel principal
+           Paleta: Dauntless (negro/rojo) + Erudite (azul)
+           ======================================== */
+        :root {
+            --dv-bg: #04070a;
+            --dv-bg-2: #080e14;
+            --dv-surface: #0c151e;
+            --dv-surface-2: #122030;
+            --dv-border: #1f3040;
+            --dv-aqua: #2dd4bf;
+            --dv-aqua-dark: #0d9488;
+            --dv-aqua-soft: rgba(45, 212, 191, 0.15);
+            --dv-cyan: #22d3ee;
+            --dv-blue: #38bdf8;
+            --dv-blue-dark: #0369a1;
+            --dv-green: #22c55e;
+            --dv-green-dark: #15803d;
+            --dv-green-bright: #4ade80;
+            --dv-amber: #f59e0b;
+            --dv-alert: #ef4444;
+            --dv-alert-dark: #b91c1c;
+            --dv-text: #e5f1f5;
+            --dv-text-dim: #7c95a6;
+        }
+
+        body {
+            background:
+                radial-gradient(ellipse at top, rgba(45, 212, 191, 0.10), transparent 60%),
+                radial-gradient(ellipse at bottom, rgba(56, 189, 248, 0.08), transparent 60%),
+                var(--dv-bg);
+            font-family: 'Segoe UI', 'Rajdhani', Tahoma, sans-serif;
+            letter-spacing: 0.3px;
+        }
+
+        /* ========================================
+           Login Overlay
+           ======================================== */
+        .login-overlay {
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at 30% 20%, rgba(45, 212, 191, 0.12), transparent 50%),
+                radial-gradient(circle at 70% 80%, rgba(59, 130, 246, 0.10), transparent 50%),
+                #05070a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .login-overlay.hidden {
+            display: none;
+        }
+
+        .login-box {
+            background: linear-gradient(180deg, var(--dv-surface), var(--dv-bg-2));
+            border: 1px solid var(--dv-border);
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 420px;
+            clip-path: polygon(
+                12px 0, 100% 0, 100% calc(100% - 12px),
+                calc(100% - 12px) 100%, 0 100%, 0 12px
+            );
+            position: relative;
+        }
+
+        .login-box::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, var(--dv-aqua), var(--dv-blue));
+        }
+
+        .login-logo {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .login-symbol {
+            display: inline-block;
+            width: 56px;
+            height: 56px;
+            border: 2px solid var(--dv-aqua);
+            transform: rotate(45deg);
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        .login-symbol::before,
+        .login-symbol::after {
+            content: '';
+            position: absolute;
+            inset: 8px;
+            border: 1px solid var(--dv-blue);
+        }
+
+        .login-symbol::after {
+            inset: 16px;
+            border-color: var(--dv-aqua);
+            background: var(--dv-aqua);
+        }
+
+        .login-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            color: var(--dv-text);
+            margin-bottom: 0.25rem;
+        }
+
+        .login-subtitle {
+            color: var(--dv-text-dim);
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .login-field {
+            margin-bottom: 1rem;
+        }
+
+        .login-field label {
+            display: block;
+            color: var(--dv-text-dim);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 0.4rem;
+        }
+
+        .login-field input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--dv-bg);
+            border: 1px solid var(--dv-border);
+            color: var(--dv-text);
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .login-field input:focus {
+            border-color: var(--dv-green);
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 0.85rem;
+            background: linear-gradient(90deg, var(--dv-green-dark), var(--dv-green));
+            color: white;
+            border: none;
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 0.5rem;
+            clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+        }
+
+        .login-btn:hover {
+            background: linear-gradient(90deg, var(--dv-green), var(--dv-green-bright));
+            transform: translateY(-1px);
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.45);
+        }
+
+        .login-hint {
+            text-align: center;
+            color: var(--dv-text-dim);
+            font-size: 0.75rem;
+            margin-top: 1.25rem;
+            padding-top: 1rem;
+            border-top: 1px dashed var(--dv-border);
+        }
+
+        .login-error {
+            color: var(--dv-alert);
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 3px solid var(--dv-alert);
+            padding: 0.6rem 0.8rem;
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .login-error.show {
+            display: block;
+        }
+
+        /* ========================================
+           Top bar (Divergente)
+           ======================================== */
+        .app-shell.hidden {
+            display: none;
+        }
+
+        .dv-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.85rem 1.5rem;
+            background: linear-gradient(180deg, var(--dv-bg-2), var(--dv-surface));
+            border-bottom: 1px solid var(--dv-border);
+            position: sticky;
+            top: 0;
+            z-index: 200;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+        }
+
+        .dv-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+        }
+
+        .dv-brand-mark {
+            width: 34px;
+            height: 34px;
+            border: 2px solid var(--dv-aqua);
+            transform: rotate(45deg);
+            position: relative;
+        }
+
+        .dv-brand-mark::after {
+            content: '';
+            position: absolute;
+            inset: 5px;
+            background: var(--dv-aqua);
+        }
+
+        .dv-brand h1 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--dv-text);
+            margin: 0;
+        }
+
+        .dv-brand .brand-sub {
+            display: block;
+            font-size: 0.65rem;
+            letter-spacing: 3px;
+            color: var(--dv-text-dim);
+            text-transform: uppercase;
+        }
+
+        .dv-telemetry {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+        }
+
+        .tm-chip {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.45rem 0.85rem;
+            background: var(--dv-bg);
+            border: 1px solid var(--dv-border);
+            font-size: 0.8rem;
+            color: var(--dv-text);
+            clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+        }
+
+        .tm-chip .tm-icon {
+            font-size: 1rem;
+        }
+
+        .tm-chip .tm-label {
+            color: var(--dv-text-dim);
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .tm-chip .tm-value {
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+        }
+
+        .tm-battery .tm-value.low { color: var(--dv-alert); }
+        .tm-battery .tm-value.mid { color: var(--dv-amber); }
+        .tm-battery .tm-value.high { color: var(--dv-green); }
+
+        /* Signal bars */
+        .signal-bars {
+            display: inline-flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 14px;
+        }
+
+        .signal-bars span {
+            width: 3px;
+            background: var(--dv-border);
+            transition: background 0.2s;
+        }
+
+        .signal-bars span:nth-child(1) { height: 4px; }
+        .signal-bars span:nth-child(2) { height: 7px; }
+        .signal-bars span:nth-child(3) { height: 10px; }
+        .signal-bars span:nth-child(4) { height: 14px; }
+
+        /* Nivel 3-4 = verde (buena/excelente) */
+        .signal-bars.level-3 span:nth-child(-n+3),
+        .signal-bars.level-4 span:nth-child(-n+4) {
+            background: var(--dv-green);
+        }
+
+        /* Nivel 2 = amber (regular), nivel 1 = alert (débil) */
+        .signal-bars.level-2 span:nth-child(-n+2) { background: var(--dv-amber); }
+        .signal-bars.level-1 span:nth-child(-n+1) { background: var(--dv-alert); }
+
+        /* Nivel 0 = sin señal (barras apagadas en rojo) */
+        .signal-bars.level-0 span { background: var(--dv-alert); opacity: 0.4; }
+
+        .menu-toggle {
+            background: linear-gradient(90deg, var(--dv-green-dark), var(--dv-green));
+            color: white;
+            border: 1px solid var(--dv-green);
+            padding: 0.6rem 1.2rem;
+            font-size: 0.88rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+            box-shadow: 0 0 18px rgba(34, 197, 94, 0.35);
+            position: relative;
+            animation: menuPulse 2.2s ease-in-out infinite;
+        }
+
+        .menu-toggle:hover {
+            background: linear-gradient(90deg, var(--dv-green), var(--dv-green-bright));
+            box-shadow: 0 0 24px rgba(34, 197, 94, 0.55);
+            animation: none;
+        }
+
+        @keyframes menuPulse {
+            0%, 100% { box-shadow: 0 0 12px rgba(34, 197, 94, 0.25); }
+            50% { box-shadow: 0 0 22px rgba(34, 197, 94, 0.55); }
+        }
+
+        /* Tema claro: pulso en azul */
+        body.theme-light .menu-toggle {
+            animation: menuPulseLight 2.2s ease-in-out infinite;
+        }
+        @keyframes menuPulseLight {
+            0%, 100% { box-shadow: 0 0 12px rgba(37, 99, 235, 0.30); }
+            50% { box-shadow: 0 0 22px rgba(37, 99, 235, 0.55); }
+        }
+
+        .menu-toggle .bars {
+            display: inline-block;
+            margin-right: 0.5rem;
+            font-size: 1rem;
+            vertical-align: middle;
+        }
+
+        /* Contenedor de acciones del nav (lang, tema, menú) */
+        .dv-nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-icon-btn {
+            background: var(--dv-bg);
+            color: var(--dv-text);
+            border: 1px solid var(--dv-border);
+            padding: 0.5rem 0.7rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+        }
+
+        .nav-icon-btn:hover {
+            background: var(--dv-green);
+            color: white;
+            border-color: var(--dv-green);
+        }
+
+        .nav-icon-btn .icon { font-size: 1rem; }
+        .nav-icon-btn .lbl { font-size: 0.75rem; font-weight: 700; }
+
+        /* ========================================
+           TEMA CLARO (body.theme-light)
+           Fondo blanco, acentos en azul y morado
+           ======================================== */
+        body.theme-light {
+            --dv-bg: #ffffff;
+            --dv-bg-2: #f7f9ff;
+            --dv-surface: #ffffff;
+            --dv-surface-2: #f3f4ff;
+            --dv-border: #d4daee;
+            --dv-text: #111633;
+            --dv-text-dim: #5d6784;
+            /* "verde" en dark = azul principal en light (estados activos) */
+            --dv-green: #2563eb;
+            --dv-green-dark: #1d4ed8;
+            --dv-green-bright: #3b82f6;
+            /* "aqua" en dark = morado en light (branding) */
+            --dv-aqua: #7c3aed;
+            --dv-aqua-dark: #5b21b6;
+            --dv-aqua-soft: rgba(124, 58, 237, 0.12);
+            --dv-cyan: #4338ca;
+            /* azules de apoyo */
+            --dv-blue: #3b82f6;
+            --dv-blue-dark: #1e40af;
+            --dv-amber: #d97706;
+            --dv-alert: #dc2626;
+            --dv-alert-dark: #991b1b;
+        }
+
+        body.theme-light {
+            background:
+                radial-gradient(ellipse at top, rgba(124, 58, 237, 0.10), transparent 60%),
+                radial-gradient(ellipse at bottom, rgba(37, 99, 235, 0.08), transparent 60%),
+                var(--dv-bg);
+            color: var(--dv-text);
+        }
+
+        /* Top bar claro */
+        body.theme-light .dv-topbar {
+            background: linear-gradient(180deg, #ffffff, #f5f7ff);
+            border-bottom: 1px solid var(--dv-border);
+            box-shadow: 0 2px 10px rgba(37, 99, 235, 0.08);
+        }
+
+        /* Tarjetas, menús, modales */
+        body.theme-light .dv-card,
+        body.theme-light .dv-menu,
+        body.theme-light .tutorial-card,
+        body.theme-light .modal-box,
+        body.theme-light .login-box {
+            background: var(--dv-surface);
+            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.10);
+        }
+
+        body.theme-light .dv-card-header {
+            background: linear-gradient(90deg, #f5f7ff, #fafbff);
+            color: var(--dv-text);
+        }
+
+        body.theme-light .modal-title {
+            color: var(--dv-text);
+        }
+
+        /* Inputs y tiles */
+        body.theme-light .status-tile,
+        body.theme-light .user-card,
+        body.theme-light .dv-input,
+        body.theme-light .login-field input,
+        body.theme-light .form-row select,
+        body.theme-light .tm-chip,
+        body.theme-light .nav-icon-btn,
+        body.theme-light .menu-toggle,
+        body.theme-light .icon-btn {
+            background: #ffffff;
+            color: var(--dv-text);
+        }
+
+        body.theme-light .status-tile .value { color: var(--dv-text); }
+        body.theme-light .tile-icon {
+            color: var(--dv-text-dim);
+        }
+        body.theme-light .status-tile:hover .tile-icon {
+            color: var(--dv-green);
+        }
+        body.theme-light .status-tile .label,
+        body.theme-light .tm-chip .tm-label { color: var(--dv-text-dim); }
+
+        /* Textos de ayuda y labels */
+        body.theme-light .dv-help,
+        body.theme-light .dv-menu-label,
+        body.theme-light .tutorial-body,
+        body.theme-light .login-field label,
+        body.theme-light .form-row label {
+            color: var(--dv-text-dim);
+        }
+
+        body.theme-light .tutorial-body { color: var(--dv-text); }
+        body.theme-light .tutorial-title,
+        body.theme-light .dv-section-title,
+        body.theme-light .dv-card-header h3,
+        body.theme-light .login-title,
+        body.theme-light .dv-brand h1 {
+            color: var(--dv-text);
+        }
+
+        /* Tutorial / step count */
+        body.theme-light .tutorial-visual {
+            background: #f3f4ff;
+            color: var(--dv-text-dim);
+        }
+
+        body.theme-light .tutorial-step-count {
+            background: rgba(37, 99, 235, 0.10);
+            color: var(--dv-green);
+            border: 1px solid rgba(37, 99, 235, 0.35);
+        }
+
+        /* Login overlay: fondo muy claro con halos morado/azul */
+        body.theme-light .login-overlay {
+            background:
+                radial-gradient(circle at 30% 20%, rgba(124, 58, 237, 0.14), transparent 50%),
+                radial-gradient(circle at 70% 80%, rgba(37, 99, 235, 0.10), transparent 50%),
+                #f0f2fb;
+        }
+
+        body.theme-light .login-hint,
+        body.theme-light .login-subtitle {
+            color: var(--dv-text-dim);
+        }
+
+        /* Menu drawer */
+        body.theme-light .dv-menu-header {
+            border-bottom-color: var(--dv-border);
+        }
+        body.theme-light .user-pill {
+            background: #f5f7ff;
+            border-color: var(--dv-border);
+        }
+        body.theme-light .dv-menu a.nav-link {
+            color: var(--dv-text);
+        }
+        body.theme-light .dv-menu a.nav-link:hover {
+            background: #eef1ff;
+            color: var(--dv-green-dark);
+        }
+        body.theme-light .dv-menu a.nav-link.active {
+            background: rgba(37, 99, 235, 0.10);
+            color: var(--dv-green-dark);
+        }
+
+        body.theme-light .menu-backdrop { background: rgba(17, 22, 51, 0.35); }
+
+        /* Tooltips claros con borde morado */
+        body.theme-light [data-tip]::before {
+            background: linear-gradient(180deg, #ffffff, #f5f7ff);
+            color: var(--dv-text);
+            border-color: var(--dv-aqua);
+            box-shadow: 0 6px 18px rgba(17, 22, 51, 0.15);
+        }
+        body.theme-light [data-tip]::after {
+            border-top-color: var(--dv-aqua);
+        }
+        body.theme-light [data-tip-pos="bottom"]::after {
+            border-top-color: transparent;
+            border-bottom-color: var(--dv-aqua);
+        }
+
+        /* Footer */
+        body.theme-light .dv-footer {
+            background: #ffffff;
+            border-top-color: var(--dv-border);
+            color: var(--dv-text-dim);
+        }
+
+        /* Backdrops de tutorial / modal */
+        body.theme-light .tutorial-backdrop {
+            background: rgba(17, 22, 51, 0.45);
+            backdrop-filter: blur(4px);
+        }
+        body.theme-light .modal-backdrop {
+            background: rgba(17, 22, 51, 0.50);
+        }
+
+        /* Status connected/disconnected en tema claro */
+        body.theme-light .status-indicator.connected {
+            background-color: rgba(37, 99, 235, 0.12);
+            color: var(--dv-green);
+        }
+        body.theme-light .status-indicator.connected::before {
+            background-color: var(--dv-green);
+            box-shadow: 0 0 6px var(--dv-green);
+        }
+        body.theme-light .status-indicator.disconnected {
+            background-color: rgba(220, 38, 38, 0.10);
+            color: var(--dv-alert);
+        }
+        body.theme-light .status-indicator.disconnected::before {
+            background-color: var(--dv-alert);
+        }
+
+        /* Brand mark geométrico (marca con borde morado en claro) */
+        body.theme-light .dv-brand-mark {
+            border-color: var(--dv-aqua);
+        }
+        body.theme-light .dv-brand-mark::after {
+            background: var(--dv-aqua);
+        }
+
+        body.theme-light .login-symbol {
+            border-color: var(--dv-aqua);
+        }
+        body.theme-light .login-symbol::before {
+            border-color: var(--dv-green);
+        }
+        body.theme-light .login-symbol::after {
+            border-color: var(--dv-aqua);
+            background: var(--dv-aqua);
+        }
+
+        /* Card strips (bordes decorativos izquierdos) → morado */
+        body.theme-light .dv-card::before,
+        body.theme-light .login-box::before,
+        body.theme-light .modal-box::before {
+            background: var(--dv-aqua);
+            opacity: 0.85;
+        }
+
+        /* tutorial-card strip: gradient morado→azul */
+        body.theme-light .tutorial-card::before {
+            background: linear-gradient(180deg, var(--dv-aqua), var(--dv-green));
+        }
+
+        /* Role badges legibles en claro */
+        body.theme-light .role-badge.admin {
+            background: rgba(124, 58, 237, 0.12);
+            color: var(--dv-aqua);
+            border-color: var(--dv-aqua);
+        }
+        body.theme-light .role-badge.operador {
+            background: rgba(37, 99, 235, 0.12);
+            color: var(--dv-green);
+            border-color: var(--dv-green);
+        }
+        body.theme-light .role-badge.observador {
+            background: rgba(93, 103, 132, 0.12);
+            color: var(--dv-text-dim);
+            border-color: var(--dv-text-dim);
+        }
+
+        /* user-card.admin: borde morado */
+        body.theme-light .user-card.admin {
+            border-left-color: var(--dv-aqua);
+        }
+
+        /* Avatar gradiente azul→morado */
+        body.theme-light .user-avatar,
+        body.theme-light .user-card-avatar {
+            background: linear-gradient(135deg, var(--dv-aqua), var(--dv-green));
+        }
+
+        /* Botones primarios en azul (en claro el "activo" es azul) */
+        body.theme-light .dv-btn.primary {
+            background: linear-gradient(90deg, var(--dv-green-dark), var(--dv-green));
+            color: white;
+        }
+        body.theme-light .dv-btn.primary:hover:not(:disabled) {
+            background: linear-gradient(90deg, var(--dv-green), var(--dv-green-bright));
+            box-shadow: 0 0 18px rgba(37, 99, 235, 0.35);
+        }
+
+        /* Login button azul */
+        body.theme-light .login-btn {
+            background: linear-gradient(90deg, var(--dv-green-dark), var(--dv-green));
+            color: white;
+        }
+        body.theme-light .login-btn:hover {
+            background: linear-gradient(90deg, var(--dv-green), var(--dv-green-bright));
+            box-shadow: 0 0 20px rgba(37, 99, 235, 0.4);
+        }
+
+        /* Tutorial button (siguiente) azul, color texto blanco */
+        body.theme-light .tutorial-btn.next {
+            background: linear-gradient(90deg, var(--dv-green-dark), var(--dv-green));
+            color: white;
+        }
+        body.theme-light .tutorial-btn.next:hover {
+            background: linear-gradient(90deg, var(--dv-green), var(--dv-green-bright));
+        }
+
+        /* Nav icon buttons hover azul */
+        body.theme-light .nav-icon-btn:hover,
+        body.theme-light .menu-toggle:hover {
+            background: var(--dv-green);
+            color: white;
+            border-color: var(--dv-green);
+        }
+
+        body.theme-light .icon-btn:hover {
+            background: var(--dv-green);
+            color: white;
+            border-color: var(--dv-green);
+        }
+
+        /* Highlight del tutorial azul */
+        body.theme-light .tutorial-highlight {
+            box-shadow: 0 0 0 3px var(--dv-green), 0 0 30px rgba(37, 99, 235, 0.5) !important;
+        }
+        body.theme-light .tutorial-dot.done { background: var(--dv-blue-dark); }
+        body.theme-light .tutorial-dot.active {
+            background: var(--dv-green);
+            box-shadow: 0 0 10px var(--dv-green);
+        }
+
+        /* Section title en azul */
+        body.theme-light .dv-section-title {
+            border-bottom-color: var(--dv-green);
+        }
+        body.theme-light .dv-section-title::before {
+            color: var(--dv-green);
+        }
+
+        body.theme-light .tutorial-body strong {
+            color: var(--dv-green);
+        }
+
+        /* Footer "DIVER CONTROL" → morado */
+        body.theme-light .dv-footer .fact {
+            color: var(--dv-aqua);
+        }
+
+        /* Tiles .value.online en azul */
+        body.theme-light .status-tile .value.online { color: var(--dv-green); }
+        body.theme-light .status-tile .value.offline { color: var(--dv-alert); }
+
+        /* Parada de emergencia en tema claro: rojo suave (no agresivo) */
+        body.theme-light .dv-btn.warning {
+            background: linear-gradient(90deg, #f87171, #ef4444);
+            color: #ffffff;
+            border: 1px solid rgba(220, 38, 38, 0.4);
+        }
+        body.theme-light .dv-btn.warning:hover:not(:disabled) {
+            background: linear-gradient(90deg, #ef4444, #dc2626);
+            box-shadow: 0 0 16px rgba(239, 68, 68, 0.35);
+        }
+
+        /* Tm-battery low/mid/high no aplican, queda para consistencia */
+        body.theme-light .battery-fill {
+            background: linear-gradient(90deg, var(--dv-green), var(--dv-green-bright));
+        }
+
+        /* ========================================
+           Menú desplegable (drawer lateral)
+           ======================================== */
+        .menu-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(3px);
+            z-index: 300;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s;
+        }
+
+        .menu-backdrop.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .dv-menu {
+            position: fixed;
+            top: 0;
+            right: -360px;
+            width: 320px;
+            height: 100vh;
+            background: linear-gradient(180deg, var(--dv-bg-2), var(--dv-surface));
+            border-left: 2px solid var(--dv-aqua);
+            box-shadow: -10px 0 40px rgba(0, 0, 0, 0.6);
+            z-index: 310;
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem 0;
+        }
+
+        .dv-menu.open {
+            right: 0;
+        }
+
+        .dv-menu-header {
+            padding: 0 1.5rem 1rem;
+            border-bottom: 1px solid var(--dv-border);
+            margin-bottom: 0.5rem;
+        }
+
+        .dv-menu-header .user-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.6rem;
+            background: var(--dv-bg);
+            padding: 0.5rem 0.85rem;
+            border: 1px solid var(--dv-border);
+            font-size: 0.85rem;
+        }
+
+        .user-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--dv-aqua), var(--dv-blue));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: white;
+            font-size: 0.85rem;
+        }
+
+        .user-role {
+            display: block;
+            font-size: 0.65rem;
+            letter-spacing: 1.5px;
+            color: var(--dv-text-dim);
+            text-transform: uppercase;
+        }
+
+        .dv-menu-section {
+            padding: 0.75rem 0;
+        }
+
+        .dv-menu-label {
+            color: var(--dv-text-dim);
+            font-size: 0.65rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 0 1.5rem 0.5rem;
+        }
+
+        .dv-menu a.nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            padding: 0.85rem 1.5rem;
+            color: var(--dv-text);
+            text-decoration: none;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .dv-menu a.nav-link:hover {
+            background: var(--dv-surface-2);
+            border-left-color: var(--dv-green);
+            color: white;
+        }
+
+        .dv-menu a.nav-link.active {
+            background: rgba(34, 197, 94, 0.10);
+            border-left-color: var(--dv-green);
+            color: white;
+        }
+
+        .dv-menu a.nav-link .icon {
+            width: 20px;
+            text-align: center;
+            font-size: 1rem;
+        }
+
+        .dv-menu .logout {
+            margin-top: auto;
+            border-top: 1px solid var(--dv-border);
+            padding-top: 0.5rem;
+        }
+
+        .dv-menu .logout a {
+            color: var(--dv-alert);
+        }
+        .dv-menu .logout a:hover {
+            background: rgba(239, 68, 68, 0.1);
+            border-left-color: var(--dv-alert);
+            color: #fca5a5;
+        }
+
+        /* ========================================
+           Sections / cards override (Divergente)
+           ======================================== */
+        .dv-section-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--dv-text);
+            margin-bottom: 1.25rem;
+            padding-bottom: 0.6rem;
+            border-bottom: 2px solid var(--dv-green);
+            display: inline-block;
+        }
+
+        .dv-section-title::before {
+            content: '▸ ';
+            color: var(--dv-green);
+        }
+
+        .dv-card {
+            background: linear-gradient(180deg, var(--dv-surface), var(--dv-bg-2));
+            border: 1px solid var(--dv-border);
+            border-radius: 0;
+            overflow: visible;
+            position: relative;
+        }
+
+        .dv-card-body { overflow: visible; }
+
+        .dv-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 3px;
+            height: 100%;
+            background: var(--dv-aqua);
+            opacity: 0.5;
+        }
+
+        .dv-card-header {
+            padding: 0.9rem 1.2rem;
+            background: rgba(0, 0, 0, 0.25);
+            border-bottom: 1px solid var(--dv-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .dv-card-header h3 {
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--dv-text);
+            margin: 0;
+        }
+
+        .dv-card-body {
+            padding: 1.25rem;
+        }
+
+        .dv-help {
+            font-size: 0.8rem;
+            color: var(--dv-text-dim);
+            margin-bottom: 0.85rem;
+            line-height: 1.5;
+        }
+
+        /* Big telemetry gauges */
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+        }
+
+        .status-tile {
+            background: var(--dv-bg);
+            border: 1px solid var(--dv-border);
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .status-tile .label {
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--dv-text-dim);
+            margin-bottom: 0.5rem;
+        }
+
+        .status-tile {
+            position: relative;
+        }
+
+        .tile-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            margin-bottom: 0.6rem;
+            color: var(--dv-text-dim);
+            transition: color 0.25s ease, transform 0.25s ease;
+        }
+        .tile-icon svg {
+            display: block;
+            width: 28px;
+            height: 28px;
+        }
+
+        .status-tile:hover .tile-icon {
+            color: var(--dv-green);
+            transform: translateY(-1px);
+        }
+
+        .status-tile .value {
+            font-size: 1.6rem;
+            font-weight: 700;
+            font-family: 'Consolas', monospace;
+            color: var(--dv-text);
+        }
+
+        .status-tile .value.online { color: var(--dv-green); }
+        .status-tile .value.offline { color: var(--dv-alert); }
+        .status-tile .value.warn { color: var(--dv-amber); }
+
+        /* Battery bar */
+        .battery-shell {
+            width: 100%;
+            height: 22px;
+            background: var(--dv-bg);
+            border: 1px solid var(--dv-border);
+            position: relative;
+            margin-top: 0.75rem;
+            overflow: hidden;
+        }
+
+        .battery-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--dv-green), #16a34a);
+            transition: width 0.4s, background 0.3s;
+        }
+
+        .battery-fill.mid {
+            background: linear-gradient(90deg, var(--dv-amber), #d97706);
+        }
+
+        .battery-fill.low {
+            background: linear-gradient(90deg, var(--dv-alert), var(--dv-alert-dark));
+        }
+
+        /* Batería estimada: rayado + color menos saturado + tilde en el texto */
+        .battery-fill.estimated {
+            background-image: repeating-linear-gradient(
+                45deg,
+                rgba(255, 255, 255, 0.08) 0 8px,
+                transparent 8px 16px
+            ), linear-gradient(90deg, var(--dv-amber), #d97706);
+        }
+
+        .tm-value.estimated,
+        .status-tile .value.estimated {
+            color: var(--dv-amber);
+            font-style: italic;
+        }
+
+        /* Connection form */
+        .dv-input {
+            width: 100%;
+            padding: 0.7rem 1rem;
+            background: var(--dv-bg);
+            border: 1px solid var(--dv-border);
+            color: var(--dv-text);
+            font-size: 0.9rem;
+            outline: none;
+            font-family: 'Consolas', monospace;
+        }
+
+        .dv-input:focus {
+            border-color: var(--dv-green);
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+        }
+
+        .dv-btn {
+            padding: 0.7rem 1.2rem;
+            border: none;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: white;
+            clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+        }
+
+        .dv-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .dv-btn.primary {
+            background: linear-gradient(90deg, var(--dv-green-dark), var(--dv-green));
+        }
+
+        .dv-btn.primary:hover:not(:disabled) {
+            background: linear-gradient(90deg, var(--dv-green), var(--dv-green-bright));
+            box-shadow: 0 0 18px rgba(34, 197, 94, 0.4);
+        }
+
+        .dv-btn.danger {
+            background: linear-gradient(90deg, var(--dv-alert-dark), var(--dv-alert));
+        }
+
+        .dv-btn.danger:hover:not(:disabled) {
+            background: linear-gradient(90deg, var(--dv-alert), #f87171);
+        }
+
+        .dv-btn.warning {
+            background: linear-gradient(90deg, #b45309, var(--dv-amber));
+            color: #1a1a1a;
+        }
+
+        .dv-btn.warning:hover:not(:disabled) {
+            background: linear-gradient(90deg, var(--dv-amber), #fbbf24);
+        }
+
+        .dv-btn.full {
+            width: 100%;
+            margin-top: 0.75rem;
+        }
+
+        .dv-row {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .dv-row > * { flex: 1; }
+
+        /* Users section */
+        .user-card {
+            background: var(--dv-bg);
+            border: 1px solid var(--dv-border);
+            padding: 1.1rem;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .user-card.admin {
+            border-left: 3px solid var(--dv-aqua);
+        }
+
+        .user-card.empty {
+            border-style: dashed;
+            opacity: 0.8;
+        }
+
+        .user-card-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--dv-aqua), var(--dv-blue));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: white;
+            font-size: 1.1rem;
+        }
+
+        .user-card.empty .user-card-avatar {
+            background: var(--dv-surface-2);
+            color: var(--dv-text-dim);
+        }
+
+        .user-card-info .name {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--dv-text);
+        }
+
+        .user-card-info .meta {
+            font-size: 0.75rem;
+            color: var(--dv-text-dim);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-top: 0.2rem;
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 0.15rem 0.55rem;
+            font-size: 0.65rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-left: 0.5rem;
+        }
+
+        .role-badge.admin {
+            background: rgba(45, 212, 191, 0.15);
+            color: var(--dv-aqua);
+            border: 1px solid var(--dv-aqua);
+        }
+
+        .role-badge.operador {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--dv-blue);
+            border: 1px solid var(--dv-blue);
+        }
+
+        .role-badge.observador {
+            background: rgba(139, 149, 163, 0.15);
+            color: var(--dv-text-dim);
+            border: 1px solid var(--dv-text-dim);
+        }
+
+        .user-card-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .icon-btn {
+            background: var(--dv-surface-2);
+            border: 1px solid var(--dv-border);
+            color: var(--dv-text);
+            padding: 0.45rem 0.75rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            background: var(--dv-green);
+            color: white;
+            border-color: var(--dv-green);
+        }
+
+        /* Help CTA: tarjeta grande "¿Necesitas ayuda?" */
+        .help-cta {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 1.25rem;
+            padding: 1.35rem 1.5rem;
+            margin-top: 1.25rem;
+            background: linear-gradient(90deg, var(--dv-surface), var(--dv-surface-2));
+            border: 1px solid var(--dv-border);
+            border-left: 4px solid var(--dv-aqua);
+            position: relative;
+        }
+
+        .help-cta-icon {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: var(--dv-aqua-soft);
+            color: var(--dv-aqua);
+            flex-shrink: 0;
+        }
+
+        .help-cta-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--dv-text);
+            margin-bottom: 0.25rem;
+        }
+
+        .help-cta-desc {
+            color: var(--dv-text-dim);
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        body.theme-light .help-cta {
+            border-left-color: var(--dv-aqua);
+            background: linear-gradient(90deg, #ffffff, #faf7ff);
+        }
+
+        body.theme-light .help-cta-icon {
+            background: rgba(124, 58, 237, 0.12);
+            color: var(--dv-aqua);
+        }
+
+        @media (max-width: 560px) {
+            .help-cta {
+                grid-template-columns: auto 1fr;
+                gap: 0.85rem;
+                padding: 1rem 1.1rem;
+            }
+            .help-cta > .dv-btn {
+                grid-column: 1 / -1;
+                width: 100%;
+            }
+            .help-cta-icon { width: 48px; height: 48px; }
+            .help-cta-title { font-size: 0.95rem; }
+            .help-cta-desc { font-size: 0.82rem; }
+        }
+
+        /* User form modal */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            z-index: 500;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-backdrop.open {
+            display: flex;
+        }
+
+        .modal-box {
+            background: linear-gradient(180deg, var(--dv-surface), var(--dv-bg-2));
+            border: 1px solid var(--dv-border);
+            width: 100%;
+            max-width: 460px;
+            padding: 2rem;
+            position: relative;
+            clip-path: polygon(
+                12px 0, 100% 0, 100% calc(100% - 12px),
+                calc(100% - 12px) 100%, 0 100%, 0 12px
+            );
+        }
+
+        .modal-box::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--dv-aqua);
+        }
+
+        .modal-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--dv-text);
+            margin-bottom: 1.25rem;
+            padding-bottom: 0.6rem;
+            border-bottom: 1px solid var(--dv-border);
+        }
+
+        .form-row {
+            margin-bottom: 1rem;
+        }
+
+        .form-row label {
+            display: block;
+            color: var(--dv-text-dim);
+            font-size: 0.72rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 0.35rem;
+        }
+
+        .form-row select {
+            width: 100%;
+            padding: 0.7rem 1rem;
+            background: var(--dv-bg);
+            border: 1px solid var(--dv-border);
+            color: var(--dv-text);
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        /* Hidden log container (addLog seguirá funcionando en background) */
+        .dv-hidden {
+            position: absolute !important;
+            left: -9999px !important;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+        }
+
+        /* Footer */
+        .dv-footer {
+            text-align: center;
+            padding: 1.25rem 2rem;
+            border-top: 1px solid var(--dv-border);
+            color: var(--dv-text-dim);
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-top: 3rem;
+        }
+
+        .dv-footer .fact {
+            color: var(--dv-aqua);
+            font-weight: 700;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* ========================================
+           Tooltips (hover explicativo)
+           ======================================== */
+        [data-tip] { position: relative; }
+
+        [data-tip]::before,
+        [data-tip]::after {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s, transform 0.2s;
+            z-index: 400;
+        }
+
+        [data-tip]::before {
+            content: attr(data-tip);
+            bottom: calc(100% + 10px);
+            left: 50%;
+            transform: translateX(-50%) translateY(4px);
+            background: linear-gradient(180deg, #0a1820, #05101a);
+            color: var(--dv-text);
+            border: 1px solid var(--dv-aqua);
+            padding: 0.55rem 0.85rem;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+            text-transform: none;
+            white-space: normal;
+            width: max-content;
+            max-width: 260px;
+            line-height: 1.45;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(45, 212, 191, 0.1);
+        }
+
+        [data-tip]::after {
+            content: '';
+            bottom: calc(100% + 4px);
+            left: 50%;
+            transform: translateX(-50%) translateY(4px);
+            border: 6px solid transparent;
+            border-top-color: var(--dv-aqua);
+        }
+
+        [data-tip]:hover::before,
+        [data-tip]:hover::after,
+        [data-tip]:focus-visible::before,
+        [data-tip]:focus-visible::after {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        [data-tip-pos="bottom"]::before {
+            bottom: auto;
+            top: calc(100% + 10px);
+        }
+        [data-tip-pos="bottom"]::after {
+            bottom: auto;
+            top: calc(100% + 4px);
+            border-top-color: transparent;
+            border-bottom-color: var(--dv-aqua);
+        }
+
+        [data-tip-pos="left"]::before {
+            bottom: 50%;
+            left: auto;
+            right: calc(100% + 10px);
+            transform: translateY(50%) translateX(4px);
+        }
+        [data-tip-pos="left"]:hover::before {
+            transform: translateY(50%) translateX(0);
+        }
+        [data-tip-pos="left"]::after { display: none; }
+
+        /* top-right: tooltip arriba pero anclado al borde derecho del elemento
+           (evita que se salga del viewport cuando el elemento está a la derecha) */
+        [data-tip-pos="top-right"]::before {
+            left: auto;
+            right: 0;
+            transform: translateX(0) translateY(4px);
+        }
+        [data-tip-pos="top-right"]:hover::before {
+            transform: translateX(0) translateY(0);
+        }
+        [data-tip-pos="top-right"]::after {
+            left: auto;
+            right: 14px;
+            transform: translateX(0) translateY(4px);
+        }
+        [data-tip-pos="top-right"]:hover::after {
+            transform: translateX(0) translateY(0);
+        }
+
+        /* ========================================
+           Tutorial de primeros pasos (solo primera vez)
+           ======================================== */
+        .tutorial-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.82);
+            backdrop-filter: blur(5px);
+            z-index: 800;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tutorial-backdrop.open { display: flex; }
+
+        .tutorial-card {
+            background: linear-gradient(180deg, var(--dv-surface), var(--dv-bg-2));
+            border: 1px solid var(--dv-aqua);
+            max-width: 520px;
+            width: 100%;
+            position: relative;
+            clip-path: polygon(
+                16px 0, 100% 0, 100% calc(100% - 16px),
+                calc(100% - 16px) 100%, 0 100%, 0 16px
+            );
+            box-shadow: 0 0 40px rgba(45, 212, 191, 0.25);
+        }
+
+        .tutorial-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 5px;
+            height: 100%;
+            background: linear-gradient(180deg, var(--dv-aqua), var(--dv-blue));
+        }
+
+        .tutorial-head { padding: 1.5rem 1.75rem 0.5rem; }
+
+        .tutorial-step-count {
+            display: inline-block;
+            font-size: 0.7rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--dv-aqua);
+            font-family: 'Consolas', monospace;
+            padding: 0.25rem 0.6rem;
+            background: rgba(45, 212, 191, 0.1);
+            border: 1px solid rgba(45, 212, 191, 0.4);
+        }
+
+        .tutorial-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--dv-text);
+            margin: 0.85rem 0 0.35rem;
+        }
+
+        .tutorial-body {
+            padding: 0 1.75rem 1.5rem;
+            color: var(--dv-text);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .tutorial-body strong { color: var(--dv-green); font-weight: 600; }
+
+        .tutorial-visual {
+            margin: 1.25rem 0;
+            padding: 1rem;
+            background: var(--dv-bg);
+            border: 1px dashed var(--dv-border);
+            text-align: center;
+            color: var(--dv-text-dim);
+            font-size: 0.85rem;
+            letter-spacing: 1.5px;
+        }
+
+        .tutorial-visual .big-icon {
+            display: block;
+            font-size: 2.4rem;
+            margin-bottom: 0.3rem;
+            color: var(--dv-green);
+        }
+
+        .tutorial-foot {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.75rem 1.5rem;
+            border-top: 1px solid var(--dv-border);
+            gap: 1rem;
+        }
+
+        .tutorial-progress { display: flex; gap: 6px; }
+
+        .tutorial-dot {
+            width: 10px;
+            height: 10px;
+            background: var(--dv-border);
+            border-radius: 50%;
+            transition: background 0.25s;
+        }
+
+        .tutorial-dot.done { background: var(--dv-green-dark); }
+
+        .tutorial-dot.active {
+            background: var(--dv-green);
+            box-shadow: 0 0 10px var(--dv-green);
+        }
+
+        .tutorial-actions { display: flex; gap: 0.5rem; }
+
+        .tutorial-btn {
+            padding: 0.55rem 1.1rem;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+        }
+
+        .tutorial-btn.skip {
+            background: transparent;
+            color: var(--dv-text-dim);
+            border: 1px solid var(--dv-border);
+        }
+
+        .tutorial-btn.skip:hover {
+            color: var(--dv-text);
+            border-color: var(--dv-text-dim);
+        }
+
+        .tutorial-btn.next {
+            background: linear-gradient(90deg, var(--dv-green-dark), var(--dv-green));
+            color: #04270e;
+        }
+
+        .tutorial-btn.next:hover {
+            background: linear-gradient(90deg, var(--dv-green), var(--dv-green-bright));
+            box-shadow: 0 0 18px rgba(34, 197, 94, 0.45);
+        }
+
+        .tutorial-highlight {
+            position: relative;
+            z-index: 801 !important;
+            box-shadow: 0 0 0 3px var(--dv-green), 0 0 30px rgba(34, 197, 94, 0.6) !important;
+            animation: pulseHL 1.4s ease-in-out infinite;
+            border-radius: 4px;
+        }
+
+        @keyframes pulseHL {
+            0%, 100% { box-shadow: 0 0 0 3px var(--dv-green), 0 0 20px rgba(34, 197, 94, 0.4); }
+            50% { box-shadow: 0 0 0 5px var(--dv-green), 0 0 35px rgba(34, 197, 94, 0.75); }
+        }
+
+        /* ========================================
+           RESPONSIVE — diseño mobile-first progresivo
+           ======================================== */
+
+        /* ---------- Tablet / laptop pequeña (<= 960 px) ---------- */
+        @media (max-width: 960px) {
+            .container { padding: 1.25rem 1.5rem; }
+            .cards-grid { grid-template-columns: 1fr; }
+            .status-grid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+            .dv-section-title { font-size: 1.25rem; letter-spacing: 2px; }
+        }
+
+        /* ---------- Móvil grande / tablet portrait (<= 720 px) ---------- */
+        @media (max-width: 720px) {
+            .dv-topbar {
+                flex-wrap: wrap;
+                gap: 0.6rem;
+                padding: 0.7rem 0.9rem;
+            }
+            .dv-brand { gap: 0.55rem; }
+            .dv-brand h1 { font-size: 0.95rem; letter-spacing: 1.5px; }
+            .dv-brand .brand-sub { font-size: 0.6rem; letter-spacing: 2px; }
+            .dv-brand-mark { width: 28px; height: 28px; }
+
+            .dv-telemetry {
+                order: 3;
+                width: 100%;
+                justify-content: center;
+                gap: 0.45rem;
+                flex-wrap: wrap;
+            }
+            .tm-chip .tm-label { display: none; }
+            .tm-chip {
+                padding: 0.35rem 0.65rem;
+                font-size: 0.75rem;
+            }
+
+            .menu-toggle { padding: 0.45rem 0.8rem; font-size: 0.78rem; letter-spacing: 1px; }
+
+            .dv-menu { width: 85vw; right: -90vw; }
+            .dv-menu-header,
+            .dv-menu a.nav-link { padding-left: 1.1rem; padding-right: 1.1rem; }
+
+            .container { padding: 1rem 1rem 2rem; }
+            .dv-section-title { font-size: 1.1rem; letter-spacing: 1.5px; }
+            .dv-help { font-size: 0.8rem; }
+
+            .status-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.6rem;
+            }
+            .status-tile { padding: 0.75rem; }
+            .status-tile .value { font-size: 1.3rem; }
+            .status-tile .label { font-size: 0.65rem; }
+            .tile-icon { margin-bottom: 0.4rem; }
+            .tile-icon svg { width: 24px; height: 24px; }
+
+            .dv-card-body { padding: 0.95rem; }
+            .dv-card-header { padding: 0.65rem 0.95rem; }
+
+            .user-card { grid-template-columns: auto 1fr; padding: 0.85rem; gap: 0.75rem; }
+            .user-card-actions { grid-column: 1 / -1; justify-content: flex-end; }
+
+            /* Botones con altura mínima de 44 px (accesibilidad táctil) */
+            .dv-btn, .login-btn, .tutorial-btn, .icon-btn, .menu-toggle {
+                min-height: 42px;
+            }
+
+            /* Tooltips: reducir ancho y evitar desborde horizontal */
+            [data-tip]::before { max-width: 220px; font-size: 0.72rem; }
+
+            /* Login más compacto */
+            .login-box { padding: 1.75rem 1.5rem; }
+            .login-title { font-size: 1.3rem; letter-spacing: 3px; }
+            .login-subtitle { font-size: 0.7rem; }
+
+            /* Tutorial card */
+            .tutorial-head { padding: 1.2rem 1.3rem 0.4rem; }
+            .tutorial-body { padding: 0 1.3rem 1.2rem; font-size: 0.88rem; }
+            .tutorial-foot { padding: 0.8rem 1.3rem 1.2rem; flex-wrap: wrap; }
+            .tutorial-title { font-size: 1.2rem; letter-spacing: 1.5px; }
+            .tutorial-visual { padding: 0.7rem; }
+            .tutorial-visual .big-icon { font-size: 2rem; }
+
+            /* Modal de usuarios */
+            .modal-box { padding: 1.5rem 1.3rem; max-width: 100%; }
+        }
+
+        /* ---------- Móvil medio (<= 560 px) ---------- */
+        @media (max-width: 560px) {
+            .dv-brand h1 { font-size: 0.85rem; }
+            .dv-brand .brand-sub { display: none; }
+
+            .dv-telemetry { gap: 0.35rem; }
+            .tm-chip { padding: 0.3rem 0.55rem; font-size: 0.7rem; }
+            .tm-chip .tm-icon { font-size: 0.85rem; }
+
+            #connection-status {
+                font-size: 0.72rem;
+                padding: 0.3rem 0.6rem;
+            }
+
+            .menu-toggle .bars { margin-right: 0.3rem; }
+            .menu-toggle { padding: 0.4rem 0.7rem; letter-spacing: 0.5px; }
+
+            .status-grid { grid-template-columns: 1fr 1fr; }
+            .status-tile .value { font-size: 1.15rem; }
+            .status-tile .value[style*="1rem"] { font-size: 0.9rem !important; }
+
+            .dv-row { flex-wrap: wrap; }
+            .dv-row > * { flex: 1 1 100%; }
+            .dv-row > * + * { margin-top: 0.5rem; }
+            .action-buttons .btn, .dv-btn { margin: 0; }
+
+            .dv-section-title { font-size: 1rem; padding-bottom: 0.4rem; }
+
+            .user-card .role-badge { display: block; margin: 0.3rem 0 0; }
+            .user-card-info .name { font-size: 0.95rem; }
+
+            /* Tutorial a pantalla casi completa */
+            .tutorial-backdrop { padding: 0.75rem; }
+            .tutorial-title { font-size: 1.05rem; letter-spacing: 1px; }
+            .tutorial-btn { padding: 0.5rem 0.85rem; font-size: 0.72rem; letter-spacing: 1.5px; }
+            .tutorial-progress { order: 2; width: 100%; justify-content: center; margin-top: 0.5rem; }
+            .tutorial-actions { order: 1; width: 100%; justify-content: space-between; }
+
+            /* Modal a pantalla casi completa */
+            .modal-backdrop { padding: 0.75rem; }
+            .modal-title { font-size: 0.95rem; letter-spacing: 1.5px; }
+        }
+
+        /* ---------- Móvil pequeño (<= 400 px) ---------- */
+        @media (max-width: 400px) {
+            .dv-topbar { padding: 0.6rem 0.7rem; gap: 0.5rem; }
+            .dv-brand-mark { width: 24px; height: 24px; }
+            .dv-brand h1 { font-size: 0.78rem; }
+
+            .tm-chip {
+                padding: 0.28rem 0.45rem;
+                font-size: 0.65rem;
+                gap: 0.35rem;
+            }
+            .signal-bars { height: 12px; }
+            .signal-bars span:nth-child(4) { height: 12px; }
+
+            .menu-toggle { padding: 0.35rem 0.55rem; font-size: 0.7rem; }
+            .menu-toggle .bars { font-size: 0.9rem; margin-right: 0.2rem; }
+
+            .status-grid { grid-template-columns: 1fr; }
+            .status-tile { padding: 0.7rem; }
+
+            .container { padding: 0.85rem 0.75rem 1.5rem; }
+            .dv-card-body { padding: 0.8rem; }
+            .dv-card-header { padding: 0.6rem 0.8rem; }
+            .dv-card-header h3 { font-size: 0.78rem; letter-spacing: 1.5px; }
+
+            .dv-menu { width: 100vw; right: -100vw; border-left: none; }
+
+            .login-box { padding: 1.4rem 1.1rem; }
+            .login-symbol { width: 46px; height: 46px; }
+            .login-title { font-size: 1.15rem; letter-spacing: 2px; }
+            .login-btn { padding: 0.75rem; letter-spacing: 2px; font-size: 0.82rem; }
+
+            /* Inputs más grandes para teclado móvil (evita zoom en iOS) */
+            .dv-input, .login-field input {
+                font-size: 16px;
+                padding: 0.7rem 0.9rem;
+            }
+
+            .user-card {
+                grid-template-columns: auto 1fr;
+                padding: 0.75rem;
+                gap: 0.6rem;
+            }
+            .user-card-avatar { width: 38px; height: 38px; font-size: 0.95rem; }
+
+            [data-tip]::before { max-width: 180px; font-size: 0.68rem; padding: 0.45rem 0.65rem; }
+
+            .dv-footer { padding: 1rem 0.75rem; font-size: 0.68rem; letter-spacing: 1px; }
+        }
+
+        /* ---------- Landscape muy bajo (móvil acostado) ---------- */
+        @media (max-height: 480px) and (orientation: landscape) {
+            .login-box { padding: 1.2rem 1.5rem; }
+            .login-logo { margin-bottom: 0.75rem; }
+            .login-symbol { width: 38px; height: 38px; margin-bottom: 0.5rem; }
+            .login-title { font-size: 1.1rem; margin-bottom: 0; }
+            .login-subtitle { font-size: 0.65rem; }
+            .login-field { margin-bottom: 0.6rem; }
+
+            .tutorial-card { max-height: 95vh; overflow-y: auto; }
+            .tutorial-visual { padding: 0.6rem; margin: 0.7rem 0; }
+            .tutorial-visual .big-icon { font-size: 1.6rem; }
+        }
+
+        /* ---------- Mejoras táctiles generales (hover condicionado) ---------- */
+        @media (hover: none) {
+            /* En táctil, tooltip solo al tap-hold: los evitamos para no estorbar */
+            [data-tip]:hover::before,
+            [data-tip]:hover::after {
+                opacity: 0;
+            }
+            /* Permitir que aparezcan cuando el elemento reciba focus (tap) */
+            [data-tip]:focus-visible::before,
+            [data-tip]:focus-visible::after {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+    </style>
 </head>
 <body>
-    <!-- Header / Navbar -->
-    <header class="navbar">
-        <div class="navbar-brand">
-            <h1>Daiver Control CUN</h1>
-            <span class="badge">WebRTC Control</span>
-        </div>
-        <nav class="navbar-links">
-            <a href="#dashboard" class="nav-link active">Dashboard</a>
-            <a href="#control" class="nav-link">Control</a>
-            <a href="#actions" class="nav-link">Acciones</a>
-            <a href="#routines" class="nav-link">Rutinas</a>
-            <a href="#logs" class="nav-link">Logs</a>
-            <a href="/user-end" class="nav-link">User End</a>
-            <a href="/control-remoto" class="nav-link">Control Remoto</a>
-        </nav>
-        <div class="navbar-status">
-            <span id="connection-status" class="status-indicator disconnected">Desconectado</span>
-        </div>
-    </header>
 
-    <!-- Main Content -->
-    <main class="container">
-      
-       <!-- Estado de conecccion-->     
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Estado de Conexión</h3>
+    <!-- ============ LOGIN ============ -->
+    <div id="login-overlay" class="login-overlay">
+        <form id="login-form" class="login-box" autocomplete="off">
+            <div class="login-logo">
+                <div class="login-symbol"></div>
+                <div class="login-title">Daiver</div>
+                <div class="login-subtitle" data-i18n="login.subtitle">Control CUN</div>
+            </div>
+
+            <div id="login-error" class="login-error" data-i18n="login.error">
+                Usuario o contraseña incorrectos
+            </div>
+
+            <div class="login-field">
+                <label for="login-user" data-i18n="login.user">Usuario</label>
+                <input type="text" id="login-user" name="user" required autocomplete="off" placeholder="admin">
+            </div>
+
+            <div class="login-field">
+                <label for="login-pass" data-i18n="login.pass">Contraseña</label>
+                <input type="password" id="login-pass" name="pass" required placeholder="••••••••">
+            </div>
+
+            <button type="submit" class="login-btn" data-i18n="login.submit">Ingresar</button>
+
+            <div class="login-hint" data-i18n-html="login.hint">
+                Usuario por defecto: <strong>admin</strong> / <strong>admin123</strong>
+            </div>
+        </form>
+    </div>
+
+    <!-- ============ APP (oculta hasta iniciar sesión) ============ -->
+    <div id="app-root" class="app-shell hidden">
+
+        <!-- Top bar: marca + telemetría + botón menú -->
+        <header class="dv-topbar">
+            <div class="dv-brand">
+                <div class="dv-brand-mark"></div>
+                <div>
+                    <h1 data-i18n="brand.title">Diver Control</h1>
+                    <span class="brand-sub">Unitree Go2 · WebRTC</span>
+                </div>
+            </div>
+
+            <div class="dv-telemetry">
+                <div class="tm-chip" data-tip="Calidad de la conexión (ping). Más barras = mejor. El número en ms es la latencia real. Para saber si el robot está conectado, mira el indicador 'Conectado' de al lado." data-i18n-tip="tip.signal">
+                    <span class="tm-icon">📶</span>
+                    <div>
+                        <div class="tm-label" data-i18n="label.signal">Señal</div>
+                        <div class="tm-value" id="network-text" data-i18n="signal.measuring">Midiendo...</div>
                     </div>
-                    <div class="card-body">
-                        <div class="connect-form">
-                            <label for="ip-input">IP del Robot:</label>
-                            <input type="text" id="ip-input" class="input-field" placeholder="10.3.16.11">
+                    <span class="signal-bars level-0" id="signal-bars">
+                        <span></span><span></span><span></span><span></span>
+                    </span>
+                </div>
+
+                <span id="connection-status" class="status-indicator disconnected" data-tip="Indica si el robot está conectado al sistema." data-i18n-tip="tip.connection-status">Desconectado</span>
+            </div>
+
+            <div class="dv-nav-actions">
+                <button class="nav-icon-btn" id="btn-lang" type="button" aria-label="Cambiar idioma" data-tip="Cambiar idioma / Change language" data-tip-pos="left">
+                    <span class="icon">🌐</span>
+                    <span class="lbl" id="lang-label">ES</span>
+                </button>
+                <button class="nav-icon-btn" id="btn-theme" type="button" aria-label="Cambiar tema" data-tip="Cambiar tema claro / oscuro" data-tip-pos="left">
+                    <span class="icon" id="theme-icon">🌙</span>
+                </button>
+                <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menú" data-tip="Abre el menú para navegar entre secciones" data-tip-pos="left">
+                    <span class="bars">☰</span><span data-i18n="nav.menu">Menú</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Menú desplegable lateral -->
+        <div class="menu-backdrop" id="menu-backdrop"></div>
+        <aside class="dv-menu" id="dv-menu" aria-hidden="true">
+            <div class="dv-menu-header">
+                <div class="user-pill">
+                    <div class="user-avatar" id="user-avatar">A</div>
+                    <div>
+                        <div id="user-display-name">admin</div>
+                        <span class="user-role" id="user-display-role">Administrador</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dv-menu-section">
+                <div class="dv-menu-label" data-i18n="menu.navigation">Navegación</div>
+                <a href="#dashboard" class="nav-link active" data-target="dashboard" data-tip="Configuraciones: conexión y estado del robot." data-tip-pos="left">
+                    <span class="icon">▣</span> <span data-i18n="menu.home">Configuraciones</span>
+                </a>
+                <a href="/user-end" class="nav-link" data-tip="Accede a funciones adicionales del sistema." data-tip-pos="left">
+                    <span class="icon">▸</span> <span data-i18n="menu.more">Más funciones</span>
+                </a>
+                <a href="/control-remoto" class="nav-link" data-tip="Control en vivo: joystick, video y comandos del robot." data-tip-pos="left">
+                    <span class="icon">▸</span> <span data-i18n="menu.remote">Control Remoto</span>
+                </a>
+                <a href="/help" class="nav-link" data-tip="¿Tienes un problema? Aquí puedes enviarnos un mensaje." data-tip-pos="left">
+                    <span class="icon">?</span> <span data-i18n="menu.help">Ayuda</span>
+                </a>
+            </div>
+
+            <div class="dv-menu-section admin-only" id="menu-admin-section">
+                <div class="dv-menu-label" data-i18n="menu.config">Configuración</div>
+                <a href="#usuarios" class="nav-link" data-target="usuarios" data-tip="Administrar cuentas de usuario del sistema (solo admin)." data-tip-pos="left">
+                    <span class="icon">◆</span> <span data-i18n="menu.users">Usuarios</span>
+                </a>
+            </div>
+
+            <div class="logout">
+                <a href="#" id="btn-logout" class="nav-link" data-tip="Cierra tu sesión y vuelve a la pantalla de ingreso." data-tip-pos="left">
+                    <span class="icon">⎋</span> <span data-i18n="menu.logout">Cerrar sesión</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Contenido principal -->
+        <main class="container">
+
+            <!-- ===== DASHBOARD ===== -->
+            <section id="dashboard" class="section">
+                <h2 class="dv-section-title" data-i18n="dashboard.title">Configuraciones</h2>
+                <p class="dv-help" data-i18n-html="dashboard.welcome">
+                    Bienvenido. Desde aquí puedes conectar el robot, ver su estado y acceder
+                    al control remoto. Si no sabes por dónde empezar, usa el botón
+                    <strong>Conectar</strong> y luego abre el menú con
+                    <strong>☰ Menú</strong> arriba a la derecha.
+                </p>
+
+                <div class="cards-grid">
+
+                    <!-- Conexión -->
+                    <div class="dv-card">
+                        <div class="dv-card-header">
+                            <h3 data-i18n="conn.title">Conexión del Robot</h3>
                         </div>
-                        <div class="action-buttons">
-                            <button id="btn-connect" class="btn btn-primary">Conectar</button>
-                            <button id="btn-disconnect" class="btn btn-danger" disabled>Desconectar</button>
+                        <div class="dv-card-body">
+                            <p class="dv-help" data-i18n-html="conn.help">
+                                Escribe la dirección IP del robot (por ejemplo
+                                <strong>10.3.16.11</strong>) y presiona <strong>Conectar</strong>.
+                            </p>
+
+                            <div class="connect-form">
+                                <label for="ip-input" style="color: var(--dv-text-dim); font-size: 0.7rem; letter-spacing: 1.5px; text-transform: uppercase;" data-i18n="conn.iplabel">IP del Robot</label>
+                                <input type="text" id="ip-input" class="dv-input" placeholder="10.3.16.11" data-tip="Dirección IP del robot en la red local. Pregunta al administrador si no la conoces." data-tip-pos="bottom">
+                            </div>
+
+                            <div class="dv-row" style="margin-top: 0.75rem;">
+                                <button id="btn-connect" class="dv-btn primary" data-tip="Inicia la conexión con el robot usando la IP indicada." data-tip-pos="bottom" data-i18n="conn.connect">Conectar</button>
+                                <button id="btn-disconnect" class="dv-btn danger" disabled data-tip="Cierra la conexión con el robot de forma segura." data-tip-pos="bottom" data-i18n="conn.disconnect">Desconectar</button>
+                            </div>
+
+                            <button id="btn-emergency" class="dv-btn warning full" data-tip="Detiene todos los movimientos del robot de inmediato. Úsalo si algo sale mal." data-tip-pos="bottom" data-i18n="conn.emergency">
+                                ⚠ Parada de Emergencia
+                            </button>
                         </div>
-                        <button id="btn-emergency" class="btn btn-warning btn-full">PARADA DE EMERGENCIA</button>
                     </div>
+
+                    <!-- Estado del robot -->
+                    <div class="dv-card">
+                        <div class="dv-card-header">
+                            <h3 data-i18n="status.title">Estado del Robot</h3>
+                        </div>
+                        <div class="dv-card-body">
+                            <p class="dv-help" data-i18n="status.help">
+                                Información en vivo de la red y el estado del robot.
+                            </p>
+
+                            <div class="status-grid">
+                                <div class="status-tile" data-tip="Latencia medida (ms) al servidor: Excelente <100, Buena <300, Regular <700, Débil <2000. Rojo = sin conexión al servidor." data-tip-pos="bottom">
+                                    <span class="tile-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                            <rect x="2.5" y="16" width="3" height="5" rx="0.5"/>
+                                            <rect x="8" y="12" width="3" height="9" rx="0.5"/>
+                                            <rect x="13.5" y="8" width="3" height="13" rx="0.5"/>
+                                            <rect x="19" y="3" width="3" height="18" rx="0.5"/>
+                                        </svg>
+                                    </span>
+                                    <div class="label" data-i18n="label.signal">Señal</div>
+                                    <div class="value" id="network-status-big" data-i18n="signal.measuring">Midiendo...</div>
+                                    <div style="margin-top: 0.6rem;">
+                                        <span class="signal-bars level-0" id="signal-bars-big">
+                                            <span></span><span></span><span></span><span></span>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="status-tile" data-tip="Estado del canal de video/audio en tiempo real (WebRTC)." data-tip-pos="bottom">
+                                    <span class="tile-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                            <rect x="2" y="6" width="14" height="12" rx="1.5"/>
+                                            <path d="M16 10 L22 6.5 V17.5 L16 14 Z"/>
+                                        </svg>
+                                    </span>
+                                    <div class="label" data-i18n="label.webrtc">WebRTC</div>
+                                    <div class="value offline" id="webrtc-state" data-i18n="status.noconn">Sin conexión</div>
+                                </div>
+
+                                <div class="status-tile" data-tip="Modo actual del robot (de pie, sentado, en movimiento, etc.)." data-tip-pos="bottom">
+                                    <span class="tile-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                            <rect x="5" y="5" width="14" height="14" rx="1.5"/>
+                                            <rect x="9" y="9" width="6" height="6" rx="0.5"/>
+                                            <path d="M9 2 v3 M15 2 v3 M9 19 v3 M15 19 v3 M2 9 h3 M2 15 h3 M19 9 h3 M19 15 h3"/>
+                                        </svg>
+                                    </span>
+                                    <div class="label" data-i18n="label.mode">Modo</div>
+                                    <div class="value" id="robot-mode">--</div>
+                                </div>
+
+                                <div class="status-tile" data-tip="Dirección IP a la que está conectado actualmente el sistema." data-tip-pos="top-right">
+                                    <span class="tile-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="12" cy="12" r="9.5"/>
+                                            <path d="M2.5 12 H21.5"/>
+                                            <path d="M12 2.5 C 15.5 6.5 15.5 17.5 12 21.5"/>
+                                            <path d="M12 2.5 C 8.5 6.5 8.5 17.5 12 21.5"/>
+                                        </svg>
+                                    </span>
+                                    <div class="label" data-i18n="label.ip">IP Activa</div>
+                                    <div class="value" style="font-size: 1rem;" id="robot-ip">--</div>
+                                </div>
+
+                                <div class="status-tile" data-tip="Conexión con el servidor interno (Flask) que maneja las señales." data-tip-pos="top-right">
+                                    <span class="tile-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                            <rect x="3" y="3.5" width="18" height="6" rx="1"/>
+                                            <rect x="3" y="14.5" width="18" height="6" rx="1"/>
+                                            <circle cx="7" cy="6.5" r="0.9" fill="currentColor" stroke="none"/>
+                                            <circle cx="7" cy="17.5" r="0.9" fill="currentColor" stroke="none"/>
+                                            <path d="M11 6.5 h7 M11 17.5 h7"/>
+                                        </svg>
+                                    </span>
+                                    <div class="label" data-i18n="label.server">Servidor</div>
+                                    <div class="value" style="font-size: 1rem;" id="flask-status">--</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- ===== USUARIOS (solo admin) ===== -->
+            <section id="usuarios" class="section admin-only" hidden>
+                <h2 class="dv-section-title" data-i18n="users.title">Usuarios del sistema</h2>
+                <p class="dv-help" data-i18n-html="users.help">
+                    Aquí puedes ver y administrar los usuarios que pueden acceder al sistema.
+                    El usuario <strong>admin</strong> es la cuenta principal (super root) y
+                    no se puede eliminar. Puedes añadir hasta <strong>2 usuarios</strong>
+                    adicionales con los siguientes roles:
+                </p>
+                <ul style="color: var(--dv-text-dim); font-size: 0.85rem; margin: 0 0 1rem 1.2rem; line-height: 1.8;" data-i18n-html="users.roles">
+                    <li><strong style="color: var(--dv-blue);">Operador</strong> — puede conectar y controlar el robot.</li>
+                    <li><strong style="color: var(--dv-text-dim);">Observador</strong> — solo puede ver el estado del robot.</li>
+                </ul>
+
+                <div class="dv-card">
+                    <div class="dv-card-header">
+                        <h3 data-i18n="users.cards">Cuentas registradas</h3>
+                    </div>
+                    <div class="dv-card-body">
+                        <div id="users-list"></div>
+                    </div>
+                </div>
+
+                <div class="help-cta">
+                    <div class="help-cta-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M9.5 9 a2.5 2.5 0 1 1 3.5 2.3 c-1 0.4-1.5 1-1.5 2.2"/>
+                            <circle cx="12" cy="17.3" r="0.8" fill="currentColor" stroke="none"/>
+                        </svg>
+                    </div>
+                    <div class="help-cta-text">
+                        <div class="help-cta-title" data-i18n="helpcta.title">¿Necesitas ayuda?</div>
+                        <div class="help-cta-desc" data-i18n="helpcta.desc">Cuéntanos qué problema tienes o contacta a un asesor.</div>
+                    </div>
+                    <a href="/help" class="dv-btn primary" data-i18n="helpcta.btn">Ir al centro de ayuda</a>
+                </div>
+            </section>
+
+        </main>
+
+        <footer class="dv-footer">
+            <p data-i18n-html="footer.text">
+                <span class="fact">DIVER CONTROL</span> · Unitree Go2 Air · Laboratorio 2 · CUN
+            </p>
+        </footer>
+    </div>
+
+    <!-- Modal: añadir / editar usuario -->
+    <div class="modal-backdrop" id="user-modal">
+        <form class="modal-box" id="user-form" autocomplete="off">
+            <div class="modal-title" id="user-modal-title" data-i18n="userform.new">Nuevo usuario</div>
+
+            <div class="form-row">
+                <label for="new-user-name" data-i18n="userform.name">Nombre de usuario</label>
+                <input type="text" id="new-user-name" class="dv-input" required minlength="3" placeholder="ej. operador1">
+            </div>
+
+            <div class="form-row">
+                <label for="new-user-pass" data-i18n="userform.pass">Contraseña</label>
+                <input type="password" id="new-user-pass" class="dv-input" required minlength="4" placeholder="mínimo 4 caracteres">
+            </div>
+
+            <div class="form-row">
+                <label for="new-user-role" data-i18n="userform.role">Rol</label>
+                <select id="new-user-role" required>
+                    <option value="operador" data-i18n="userform.operador">Operador — puede controlar el robot</option>
+                    <option value="observador" data-i18n="userform.observador">Observador — solo ver</option>
+                </select>
+            </div>
+
+            <div class="dv-row" style="margin-top: 1.25rem;">
+                <button type="button" class="dv-btn" id="user-cancel" style="background: var(--dv-surface-2); border: 1px solid var(--dv-border);" data-i18n="userform.cancel">Cancelar</button>
+                <button type="submit" class="dv-btn primary" data-i18n="userform.save">Guardar</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tutorial de primeros pasos (se muestra solo la primera vez por usuario) -->
+    <div class="tutorial-backdrop" id="tutorial-backdrop">
+        <div class="tutorial-card">
+            <div class="tutorial-head">
+                <span class="tutorial-step-count" id="tutorial-step-count">Paso 1 de 5</span>
+                <div class="tutorial-title" id="tutorial-title">Bienvenido</div>
+            </div>
+            <div class="tutorial-body">
+                <div id="tutorial-text">...</div>
+                <div class="tutorial-visual" id="tutorial-visual">
+                    <span class="big-icon">✦</span>
+                    <span id="tutorial-visual-text">Primeros pasos</span>
                 </div>
             </div>
-        </section>
-
-        <!-- Control Section -->
-        <section id="control" class="section">
-            <h2 class="section-title">Control de Movimiento</h2>
-            <div class="control-layout">
-                
-                <!-- Posture Controls -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Posturas</h3>
-                        <img src="/website/img/" alt="">
-                    </div>
-                    <div class="card-body actions-grid">
-                        <button class="btn btn-secondary" data-action="stand">De Pie</button>
-                        <button class="btn btn-secondary" data-action="sit">Sentarse</button>
-                        <button class="btn btn-secondary" data-action="lie">Acostarse</button>
-                        <button class="btn btn-secondary" data-action="rise">Levantarse</button>
-                        <button class="btn btn-secondary" data-action="recovery">Recuperarse</button>
-                    </div>
+            <div class="tutorial-foot">
+                <div class="tutorial-progress" id="tutorial-progress"></div>
+                <div class="tutorial-actions">
+                    <button type="button" class="tutorial-btn skip" id="tutorial-skip">Saltar</button>
+                    <button type="button" class="tutorial-btn next" id="tutorial-next">Siguiente</button>
                 </div>
             </div>
-        </section>
+        </div>
+    </div>
 
-        <!-- Actions Section -->
-        <section id="actions" class="section">
-            <h2 class="section-title">Acciones y Trucos</h2>
-            <div class="cards-grid">
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Saludos y Gestos</h3>
-                    </div>
-                    <div class="card-body actions-grid">
-                        <button class="btn btn-secondary" data-action="hello">Saludar</button>
-                        <button class="btn btn-secondary" data-action="stretch">Estirarse</button>
-                        <button class="btn btn-secondary" data-action="heart">Corazon</button>
-                        <button class="btn btn-secondary" data-action="wiggle">Meneo</button>
-                        <button class="btn btn-secondary" data-action="scrape">Raspar</button>
-                    </div>
-                </div>
+    <!-- Contenedor de logs oculto: mantiene compatibilidad con App.addLog -->
+    <div id="log-container" class="dv-hidden" aria-hidden="true"></div>
 
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Baile</h3>
-                    </div>
-                    <div class="card-body actions-grid">
-                        <button class="btn btn-accent" data-action="dance1">Baile 1</button>
-                        <button class="btn btn-accent" data-action="dance2">Baile 2</button>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Acrobacias</h3>
-                    </div>
-                    <div class="card-body actions-grid">
-                        <button class="btn btn-warning" data-action="frontjump">Salto Frontal</button>
-                        <button class="btn btn-warning" data-action="frontpounce">Salto Agresivo</button>
-                    </div>
-                </div>
-            </div>
-        </section>
-        <!-- Logs Section -->
-        <section id="logs" class="section">
-            <h2 class="section-title">Logs del Sistema</h2>
-            <div class="card">
-                <div class="card-header">
-                    <h3>Registro de Eventos</h3>
-                    <button id="btn-clear-logs" class="btn btn-small">Limpiar</button>
-                </div>
-                <div class="card-body">
-                    <div id="log-container" class="log-container">
-                        <div class="log-entry log-info">[INFO] Sistema iniciado - Esperando conexion al servidor Flask...</div>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <p>Daiver Control CUN - Unitree Go2 Air WebRTC | Laboratorio 2</p>
-    </footer>
-
-    <!-- Socket.IO (local) -->
+    <!-- Socket.IO y lógica original (sin modificar) -->
     <script src="js/socket.io.min.js"></script>
-
-    <!-- App Scripts -->
     <script src="js/app.js"></script>
     <script src="js/connection.js"></script>
-    <script src="js/controls.js"></script>
+
+    <!-- ============ Lógica específica del index Divergente ============ -->
+    <script>
+    (function () {
+        'use strict';
+
+        // ---------- i18n: traducciones ES / EN ----------
+        const I18N = {
+            es: {
+                'brand.title': 'Diver Control',
+                'login.subtitle': 'Control CUN',
+                'login.error': 'Usuario o contraseña incorrectos',
+                'login.user': 'Usuario',
+                'login.pass': 'Contraseña',
+                'login.submit': 'Ingresar',
+                'login.hint': 'Usuario por defecto: <strong>admin</strong> / <strong>admin123</strong>',
+                'nav.menu': 'Menú',
+                'label.signal': 'Señal',
+                'label.webrtc': 'WebRTC',
+                'label.mode': 'Modo',
+                'label.ip': 'IP Activa',
+                'label.server': 'Servidor',
+                'signal.measuring': 'Midiendo...',
+                'status.noconn': 'Sin conexión',
+                'menu.navigation': 'Navegación',
+                'menu.config': 'Configuración',
+                'menu.home': 'Configuraciones',
+                'menu.more': 'Más funciones',
+                'menu.remote': 'Control Remoto',
+                'menu.users': 'Usuarios',
+                'menu.help': 'Ayuda',
+                'menu.logout': 'Cerrar sesión',
+                'helpcta.title': '¿Necesitas ayuda?',
+                'helpcta.desc': 'Cuéntanos qué problema tienes o contacta a un asesor.',
+                'helpcta.btn': 'Ir al centro de ayuda',
+                'dashboard.title': 'Configuraciones',
+                'dashboard.welcome': 'Bienvenido. Desde aquí puedes conectar el robot, ver su estado y acceder al control remoto. Si no sabes por dónde empezar, usa el botón <strong>Conectar</strong> y luego abre el menú con <strong>☰ Menú</strong> arriba a la derecha.',
+                'conn.title': 'Conexión del Robot',
+                'conn.help': 'Escribe la dirección IP del robot (por ejemplo <strong>10.3.16.11</strong>) y presiona <strong>Conectar</strong>.',
+                'conn.iplabel': 'IP del Robot',
+                'conn.connect': 'Conectar',
+                'conn.disconnect': 'Desconectar',
+                'conn.emergency': '⚠ Parada de Emergencia',
+                'status.title': 'Estado del Robot',
+                'status.help': 'Información en vivo de la red y el estado del robot.',
+                'users.title': 'Usuarios del sistema',
+                'users.help': 'Aquí puedes ver y administrar los usuarios que pueden acceder al sistema. El usuario <strong>admin</strong> es la cuenta principal (super root) y no se puede eliminar. Puedes añadir hasta <strong>2 usuarios</strong> adicionales con los siguientes roles:',
+                'users.roles': '<li><strong style="color: var(--dv-blue);">Operador</strong> — puede conectar y controlar el robot.</li><li><strong style="color: var(--dv-text-dim);">Observador</strong> — solo puede ver el estado del robot.</li>',
+                'users.cards': 'Cuentas registradas',
+                'footer.text': '<span class="fact">DIVER CONTROL</span> · Unitree Go2 Air · Laboratorio 2 · CUN',
+                'tip.signal': 'Calidad de la conexión (ping). Más barras = mejor. El número en ms es la latencia real. Para saber si el robot está conectado, mira el indicador "Conectado" de al lado.',
+                'tip.connection-status': 'Indica si el robot está conectado al sistema.',
+                'userform.new': 'Nuevo usuario',
+                'userform.edit': 'Editar usuario',
+                'userform.name': 'Nombre de usuario',
+                'userform.pass': 'Contraseña',
+                'userform.role': 'Rol',
+                'userform.operador': 'Operador — puede controlar el robot',
+                'userform.observador': 'Observador — solo ver',
+                'userform.cancel': 'Cancelar',
+                'userform.save': 'Guardar',
+                'connected': 'Conectado',
+                'disconnected': 'Desconectado',
+                'role.admin': 'Administrador',
+                'role.operador': 'Operador',
+                'role.observador': 'Observador',
+                'user.main': 'Cuenta principal · no editable',
+                'user.secondary': 'Cuenta secundaria',
+                'user.empty': 'Espacio disponible',
+                'user.click_add': 'Haz clic en "Añadir" para crear un usuario',
+                'user.add': '+ Añadir',
+                'user.edit': 'Editar',
+                'user.delete': 'Eliminar',
+                'user.confirm_delete': '¿Eliminar al usuario "{name}"?',
+                'user.already_exists': 'Ya existe un usuario con ese nombre.',
+                'user.limit': 'Solo puedes tener {n} usuarios adicionales.',
+                'tut.step': 'Paso {current} de {total}',
+                'tut.skip': 'Saltar',
+                'tut.next': 'Siguiente',
+                'tut.start': 'Empezar',
+                'tut.s1.title': '¡Hola!',
+                'tut.s1.text': 'Este es el <strong>panel de control Diver</strong>. Te voy a mostrar cómo usarlo en <strong>6 pasitos rápidos</strong>. No te preocupes, es muy sencillo.',
+                'tut.s1.visual': 'Primeros pasos',
+                'tut.s2.title': 'Antes de conectar: WiFi',
+                'tut.s2.text': 'Muy importante: tu <strong>computador</strong> y el <strong>robot</strong> deben estar conectados a la <strong>misma red WiFi</strong>. Si están en redes diferentes, no se van a ver entre ellos y la conexión va a fallar.',
+                'tut.s2.visual': 'Misma red WiFi',
+                'tut.s3.title': 'Conectar el robot',
+                'tut.s3.text': 'Ahora escribe la <strong>IP del robot</strong> (por ejemplo 10.3.16.11) en la casilla blanca y pulsa el botón <strong>Conectar</strong>. Si no sabes la IP, pregúntale al administrador.',
+                'tut.s3.visual': 'IP + Conectar',
+                'tut.s4.title': 'Ver el estado de la señal',
+                'tut.s4.text': 'Arriba siempre verás las <strong>barras de señal</strong>. Verde = conexión buena, naranja = regular, rojo = sin conexión al servidor. El número en ms es la latencia real.',
+                'tut.s4.visual': 'Señal en vivo',
+                'tut.s5.title': 'Abrir el menú',
+                'tut.s5.text': 'Arriba a la derecha tienes el botón <strong>☰ Menú</strong>. Desde ahí puedes ir a <strong>Control Remoto</strong> o <strong>Más funciones</strong>.',
+                'tut.s5.visual': 'Menú desplegable',
+                'tut.s6.title': '¡Listo para empezar!',
+                'tut.s6.text': 'Ya sabes lo básico. Recuerda: si algo sale mal, usa el botón <strong>⚠ Parada de Emergencia</strong>. Además, si pasas el mouse sobre cualquier botón aparece una explicación. ¡Mucha suerte!',
+                'tut.s6.visual': 'Todo listo'
+            },
+            en: {
+                'brand.title': 'Diver Control',
+                'login.subtitle': 'CUN Control',
+                'login.error': 'Wrong username or password',
+                'login.user': 'Username',
+                'login.pass': 'Password',
+                'login.submit': 'Sign in',
+                'login.hint': 'Default user: <strong>admin</strong> / <strong>admin123</strong>',
+                'nav.menu': 'Menu',
+                'label.signal': 'Signal',
+                'label.webrtc': 'WebRTC',
+                'label.mode': 'Mode',
+                'label.ip': 'Active IP',
+                'label.server': 'Server',
+                'signal.measuring': 'Measuring...',
+                'status.noconn': 'Disconnected',
+                'menu.navigation': 'Navigation',
+                'menu.config': 'Settings',
+                'menu.home': 'Settings',
+                'menu.more': 'More features',
+                'menu.remote': 'Remote Control',
+                'menu.users': 'Users',
+                'menu.help': 'Help',
+                'menu.logout': 'Sign out',
+                'helpcta.title': 'Need help?',
+                'helpcta.desc': 'Tell us what\'s wrong or contact an advisor.',
+                'helpcta.btn': 'Open help center',
+                'dashboard.title': 'Settings',
+                'dashboard.welcome': 'Welcome. From here you can connect the robot, check its status and access the remote control. If you do not know where to start, press <strong>Connect</strong> and then open the menu with <strong>☰ Menu</strong> on the top right.',
+                'conn.title': 'Robot Connection',
+                'conn.help': 'Type the robot IP (e.g. <strong>10.3.16.11</strong>) and press <strong>Connect</strong>.',
+                'conn.iplabel': 'Robot IP',
+                'conn.connect': 'Connect',
+                'conn.disconnect': 'Disconnect',
+                'conn.emergency': '⚠ Emergency Stop',
+                'status.title': 'Robot Status',
+                'status.help': 'Live info about the network and state of the robot.',
+                'users.title': 'System users',
+                'users.help': 'Here you can view and manage the users that can access the system. The <strong>admin</strong> user is the main account (super root) and cannot be removed. You can add up to <strong>2 additional users</strong> with these roles:',
+                'users.roles': '<li><strong style="color: var(--dv-blue);">Operator</strong> — can connect and control the robot.</li><li><strong style="color: var(--dv-text-dim);">Observer</strong> — can only view the robot state.</li>',
+                'users.cards': 'Registered accounts',
+                'footer.text': '<span class="fact">DIVER CONTROL</span> · Unitree Go2 Air · Lab 2 · CUN',
+                'tip.signal': 'Connection quality (ping). More bars = better. The ms number is the real measured latency. To check if the robot is connected, look at the "Connected" chip next to it.',
+                'tip.connection-status': 'Indicates whether the robot is connected to the system.',
+                'userform.new': 'New user',
+                'userform.edit': 'Edit user',
+                'userform.name': 'Username',
+                'userform.pass': 'Password',
+                'userform.role': 'Role',
+                'userform.operador': 'Operator — can control the robot',
+                'userform.observador': 'Observer — view only',
+                'userform.cancel': 'Cancel',
+                'userform.save': 'Save',
+                'connected': 'Connected',
+                'disconnected': 'Disconnected',
+                'role.admin': 'Administrator',
+                'role.operador': 'Operator',
+                'role.observador': 'Observer',
+                'user.main': 'Main account · cannot edit',
+                'user.secondary': 'Secondary account',
+                'user.empty': 'Available slot',
+                'user.click_add': 'Click "Add" to create a user',
+                'user.add': '+ Add',
+                'user.edit': 'Edit',
+                'user.delete': 'Delete',
+                'user.confirm_delete': 'Delete user "{name}"?',
+                'user.already_exists': 'A user with that name already exists.',
+                'user.limit': 'You can only have {n} extra users.',
+                'tut.step': 'Step {current} of {total}',
+                'tut.skip': 'Skip',
+                'tut.next': 'Next',
+                'tut.start': 'Start',
+                'tut.s1.title': 'Hi there!',
+                'tut.s1.text': 'This is the <strong>Diver control panel</strong>. I will show you how to use it in <strong>6 quick steps</strong>. Don\'t worry, it\'s really simple.',
+                'tut.s1.visual': 'First steps',
+                'tut.s2.title': 'Before connecting: WiFi',
+                'tut.s2.text': 'Very important: your <strong>computer</strong> and the <strong>robot</strong> must be on the <strong>same WiFi network</strong>. If they are on different networks they won\'t see each other and the connection will fail.',
+                'tut.s2.visual': 'Same WiFi',
+                'tut.s3.title': 'Connect the robot',
+                'tut.s3.text': 'Now type the <strong>robot IP</strong> (e.g. 10.3.16.11) in the white box and press <strong>Connect</strong>. If you don\'t know the IP, ask the administrator.',
+                'tut.s3.visual': 'IP + Connect',
+                'tut.s4.title': 'Check the signal',
+                'tut.s4.text': 'On top you will always see the <strong>signal bars</strong>. Green = good connection, amber = regular, red = no connection to the server. The ms number is the real latency.',
+                'tut.s4.visual': 'Live signal',
+                'tut.s5.title': 'Open the menu',
+                'tut.s5.text': 'Top right you have the <strong>☰ Menu</strong> button. From there you can go to <strong>Remote Control</strong> or <strong>More features</strong>.',
+                'tut.s5.visual': 'Dropdown menu',
+                'tut.s6.title': 'You\'re ready!',
+                'tut.s6.text': 'You know the basics now. Remember: if anything goes wrong, hit the <strong>⚠ Emergency Stop</strong> button. Also, if you hover over any button you\'ll see an explanation. Good luck!',
+                'tut.s6.visual': 'All set'
+            }
+        };
+
+        const LANG_KEY = 'dv_lang';
+        const THEME_KEY = 'dv_theme';
+
+        function getLang() {
+            return localStorage.getItem(LANG_KEY) || 'es';
+        }
+        function setLang(lang) {
+            localStorage.setItem(LANG_KEY, lang);
+            applyLanguage();
+        }
+
+        function t(key) {
+            const lang = getLang();
+            return (I18N[lang] && I18N[lang][key]) || (I18N.es[key] || key);
+        }
+
+        function applyLanguage() {
+            const lang = getLang();
+            document.documentElement.setAttribute('lang', lang);
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                const txt = t(key);
+                if (txt) el.textContent = txt;
+            });
+            document.querySelectorAll('[data-i18n-html]').forEach(el => {
+                const key = el.getAttribute('data-i18n-html');
+                const html = t(key);
+                if (html) el.innerHTML = html;
+            });
+            document.querySelectorAll('[data-i18n-tip]').forEach(el => {
+                const key = el.getAttribute('data-i18n-tip');
+                const txt = t(key);
+                if (txt) el.setAttribute('data-tip', txt);
+            });
+            // Actualizar label del botón de idioma
+            const langLabel = document.getElementById('lang-label');
+            if (langLabel) langLabel.textContent = lang === 'es' ? 'ES' : 'EN';
+
+            // Re-render dinámicos que dependen del idioma
+            if (typeof renderUsers === 'function') renderUsers();
+            if (typeof renderTutorialStep === 'function'
+                && document.getElementById('tutorial-backdrop').classList.contains('open')) {
+                renderTutorialStep();
+            }
+            // Applicar traducción al status indicator (app.js lo actualiza pero
+            // nosotros sincronizamos el idioma visible)
+            syncConnectionLabel();
+        }
+
+        function syncConnectionLabel() {
+            const ind = document.getElementById('connection-status');
+            if (!ind) return;
+            const isConnected = ind.classList.contains('connected');
+            ind.textContent = isConnected ? t('connected') : t('disconnected');
+        }
+
+        // ---------- Tema (oscuro / claro) ----------
+        function getTheme() {
+            return localStorage.getItem(THEME_KEY) || 'dark';
+        }
+        function setTheme(theme) {
+            localStorage.setItem(THEME_KEY, theme);
+            applyTheme();
+        }
+        function applyTheme() {
+            const theme = getTheme();
+            if (theme === 'light') document.body.classList.add('theme-light');
+            else document.body.classList.remove('theme-light');
+            const icon = document.getElementById('theme-icon');
+            if (icon) icon.textContent = theme === 'light' ? '☀️' : '🌙';
+        }
+
+        // Botones del nav: lang + theme
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnLang = document.getElementById('btn-lang');
+            if (btnLang) btnLang.addEventListener('click', () => {
+                setLang(getLang() === 'es' ? 'en' : 'es');
+            });
+            const btnTheme = document.getElementById('btn-theme');
+            if (btnTheme) btnTheme.addEventListener('click', () => {
+                setTheme(getTheme() === 'dark' ? 'light' : 'dark');
+            });
+            applyLanguage();
+            applyTheme();
+        });
+
+        // Aplicar de una vez (por si el script corre después de DOMContentLoaded)
+        applyTheme();
+
+        // ---------- Almacenamiento de usuarios ----------
+        const USERS_KEY = 'dv_users';
+        const SESSION_KEY = 'dv_session';
+        const MAX_EXTRA_USERS = 2;
+
+        function loadUsers() {
+            try {
+                const raw = localStorage.getItem(USERS_KEY);
+                if (raw) return JSON.parse(raw);
+            } catch (e) { /* ignore */ }
+            // Usuarios por defecto
+            const defaults = [
+                { username: 'admin', password: 'admin123', role: 'admin', fixed: true }
+            ];
+            saveUsers(defaults);
+            return defaults;
+        }
+
+        function saveUsers(users) {
+            localStorage.setItem(USERS_KEY, JSON.stringify(users));
+        }
+
+        function currentUser() {
+            try {
+                const raw = sessionStorage.getItem(SESSION_KEY);
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) { return null; }
+        }
+
+        function setCurrentUser(u) {
+            if (u) sessionStorage.setItem(SESSION_KEY, JSON.stringify(u));
+            else sessionStorage.removeItem(SESSION_KEY);
+        }
+
+        // ---------- Login ----------
+        const loginOverlay = document.getElementById('login-overlay');
+        const loginForm = document.getElementById('login-form');
+        const loginError = document.getElementById('login-error');
+        const appRoot = document.getElementById('app-root');
+
+        function showLogin() {
+            loginOverlay.classList.remove('hidden');
+            appRoot.classList.add('hidden');
+        }
+
+        function showApp() {
+            loginOverlay.classList.add('hidden');
+            appRoot.classList.remove('hidden');
+            applyUserToUI(currentUser());
+            if (typeof maybeShowTutorial === 'function') maybeShowTutorial();
+        }
+
+        loginForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const user = document.getElementById('login-user').value.trim();
+            const pass = document.getElementById('login-pass').value;
+            const users = loadUsers();
+            const found = users.find(u => u.username === user && u.password === pass);
+            if (found) {
+                setCurrentUser({ username: found.username, role: found.role });
+                loginError.classList.remove('show');
+                loginForm.reset();
+                showApp();
+            } else {
+                loginError.classList.add('show');
+            }
+        });
+
+        // ---------- Aplicar usuario a la UI ----------
+        function applyUserToUI(user) {
+            if (!user) { showLogin(); return; }
+
+            document.getElementById('user-display-name').textContent = user.username;
+            document.getElementById('user-display-role').textContent = t('role.' + user.role) || user.role;
+            document.getElementById('user-avatar').textContent = user.username.charAt(0).toUpperCase();
+
+            // Mostrar/ocultar secciones solo-admin
+            const isAdmin = user.role === 'admin';
+            document.querySelectorAll('.admin-only').forEach(el => {
+                if (el.tagName === 'SECTION') {
+                    el.hidden = !isAdmin;
+                } else {
+                    el.style.display = isAdmin ? '' : 'none';
+                }
+            });
+
+            // Si observador: desactivar botones de acción del robot
+            const readOnly = user.role === 'observador';
+            ['btn-connect', 'btn-disconnect', 'btn-emergency'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && readOnly) { el.disabled = true; el.title = 'Solo lectura'; }
+            });
+
+            renderUsers();
+        }
+
+        // ---------- Menú desplegable ----------
+        const menuToggle = document.getElementById('menu-toggle');
+        const dvMenu = document.getElementById('dv-menu');
+        const menuBackdrop = document.getElementById('menu-backdrop');
+
+        function openMenu() {
+            dvMenu.classList.add('open');
+            menuBackdrop.classList.add('open');
+            dvMenu.setAttribute('aria-hidden', 'false');
+        }
+        function closeMenu() {
+            dvMenu.classList.remove('open');
+            menuBackdrop.classList.remove('open');
+            dvMenu.setAttribute('aria-hidden', 'true');
+        }
+
+        menuToggle.addEventListener('click', openMenu);
+        menuBackdrop.addEventListener('click', closeMenu);
+
+        // Cerrar menú al hacer clic en un enlace interno
+        dvMenu.querySelectorAll('a.nav-link').forEach(link => {
+            link.addEventListener('click', () => setTimeout(closeMenu, 150));
+        });
+
+        // Logout
+        document.getElementById('btn-logout').addEventListener('click', function (e) {
+            e.preventDefault();
+            setCurrentUser(null);
+            closeMenu();
+            showLogin();
+        });
+
+        // ---------- Gestión de usuarios ----------
+        const usersList = document.getElementById('users-list');
+        const userModal = document.getElementById('user-modal');
+        const userForm = document.getElementById('user-form');
+        const userModalTitle = document.getElementById('user-modal-title');
+        let editingIndex = null; // null = nuevo usuario
+
+        function renderUsers() {
+            if (!usersList) return;
+            const users = loadUsers();
+            usersList.innerHTML = '';
+
+            // Render cuentas existentes
+            users.forEach((u, idx) => {
+                const card = document.createElement('div');
+                card.className = 'user-card' + (u.role === 'admin' ? ' admin' : '');
+                const roleLabel = t('role.' + u.role) || u.role;
+                card.innerHTML = `
+                    <div class="user-card-avatar">${u.username.charAt(0).toUpperCase()}</div>
+                    <div class="user-card-info">
+                        <div class="name">
+                            ${u.username}
+                            <span class="role-badge ${u.role}">${roleLabel}</span>
+                        </div>
+                        <div class="meta">${u.fixed ? t('user.main') : t('user.secondary')}</div>
+                    </div>
+                    <div class="user-card-actions"></div>
+                `;
+                const actions = card.querySelector('.user-card-actions');
+                if (!u.fixed) {
+                    const editBtn = document.createElement('button');
+                    editBtn.className = 'icon-btn';
+                    editBtn.textContent = t('user.edit');
+                    editBtn.addEventListener('click', () => openUserModal(idx));
+                    actions.appendChild(editBtn);
+
+                    const delBtn = document.createElement('button');
+                    delBtn.className = 'icon-btn';
+                    delBtn.textContent = t('user.delete');
+                    delBtn.addEventListener('click', () => removeUser(idx));
+                    actions.appendChild(delBtn);
+                }
+                usersList.appendChild(card);
+            });
+
+            // Render slots vacíos para añadir
+            const extra = users.filter(u => !u.fixed).length;
+            const slotsFree = MAX_EXTRA_USERS - extra;
+            for (let i = 0; i < slotsFree; i++) {
+                const empty = document.createElement('div');
+                empty.className = 'user-card empty';
+                empty.innerHTML = `
+                    <div class="user-card-avatar">+</div>
+                    <div class="user-card-info">
+                        <div class="name">${t('user.empty')}</div>
+                        <div class="meta">${t('user.click_add')}</div>
+                    </div>
+                    <div class="user-card-actions">
+                        <button class="icon-btn" style="background: var(--dv-green); border-color: var(--dv-green); color: white;">${t('user.add')}</button>
+                    </div>
+                `;
+                empty.querySelector('button').addEventListener('click', () => openUserModal(null));
+                usersList.appendChild(empty);
+            }
+        }
+
+        function openUserModal(index) {
+            editingIndex = index;
+            const users = loadUsers();
+            if (index !== null && users[index]) {
+                userModalTitle.textContent = t('userform.edit');
+                document.getElementById('new-user-name').value = users[index].username;
+                document.getElementById('new-user-pass').value = '';
+                document.getElementById('new-user-pass').placeholder = 'Dejar vacío para no cambiar';
+                document.getElementById('new-user-pass').required = false;
+                document.getElementById('new-user-role').value = users[index].role;
+            } else {
+                userModalTitle.textContent = t('userform.new');
+                userForm.reset();
+                document.getElementById('new-user-pass').required = true;
+                document.getElementById('new-user-pass').placeholder = 'mínimo 4 caracteres';
+            }
+            userModal.classList.add('open');
+        }
+
+        function closeUserModal() {
+            userModal.classList.remove('open');
+            userForm.reset();
+            editingIndex = null;
+        }
+
+        document.getElementById('user-cancel').addEventListener('click', closeUserModal);
+        userModal.addEventListener('click', function (e) {
+            if (e.target === userModal) closeUserModal();
+        });
+
+        userForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const name = document.getElementById('new-user-name').value.trim();
+            const pass = document.getElementById('new-user-pass').value;
+            const role = document.getElementById('new-user-role').value;
+            const users = loadUsers();
+
+            if (editingIndex !== null) {
+                users[editingIndex].username = name;
+                if (pass) users[editingIndex].password = pass;
+                users[editingIndex].role = role;
+            } else {
+                // Verificar límite
+                const extra = users.filter(u => !u.fixed).length;
+                if (extra >= MAX_EXTRA_USERS) {
+                    alert(t('user.limit').replace('{n}', MAX_EXTRA_USERS));
+                    return;
+                }
+                // Verificar nombre único
+                if (users.some(u => u.username === name)) {
+                    alert(t('user.already_exists'));
+                    return;
+                }
+                users.push({ username: name, password: pass, role: role, fixed: false });
+            }
+            saveUsers(users);
+            renderUsers();
+            closeUserModal();
+        });
+
+        function removeUser(index) {
+            const users = loadUsers();
+            if (!users[index] || users[index].fixed) return;
+            if (!confirm(t('user.confirm_delete').replace('{name}', users[index].username))) return;
+            users.splice(index, 1);
+            saveUsers(users);
+            renderUsers();
+        }
+
+        // ---------- Detección de señal real (ping + frescura de datos) ----------
+        // Medimos la latencia cliente→servidor cada 3 s y el tiempo desde el
+        // último state_update. Combinamos ambos para estimar calidad de señal.
+        const SIGNAL_STATE = {
+            lastPingMs: null,      // última latencia medida en ms
+            lastPingTs: 0,         // cuándo se midió
+            lastStateUpdateTs: 0,  // último state_update recibido
+            pingFailing: false,
+        };
+
+        async function measurePing() {
+            const start = performance.now();
+            try {
+                const ctrl = new AbortController();
+                const timeoutId = setTimeout(() => ctrl.abort(), 4000);
+                const res = await fetch('/api/ping', { cache: 'no-store', signal: ctrl.signal });
+                clearTimeout(timeoutId);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                await res.json();
+                const latency = performance.now() - start;
+                SIGNAL_STATE.lastPingMs = latency;
+                SIGNAL_STATE.lastPingTs = Date.now();
+                SIGNAL_STATE.pingFailing = false;
+            } catch (e) {
+                SIGNAL_STATE.pingFailing = true;
+                SIGNAL_STATE.lastPingMs = null;
+            }
+            updateTelemetry();
+        }
+
+        // Ping cada 3 segundos
+        setInterval(measurePing, 3000);
+        measurePing();
+
+        function getSignalQuality(_robotConnected) {
+            // Sin ping o ping fallando → cliente no llega al servidor
+            if (SIGNAL_STATE.pingFailing || SIGNAL_STATE.lastPingMs === null) {
+                return { level: 0, label: 'Sin conexión' };
+            }
+            const ping = SIGNAL_STATE.lastPingMs;
+
+            // Calidad basada solo en latencia del ping. El estado de conexión
+            // del robot ya lo muestra el chip "Conectado/Desconectado" arriba,
+            // así que aquí no lo repetimos.
+            let level;
+            if (ping < 100) level = 4;
+            else if (ping < 300) level = 3;
+            else if (ping < 700) level = 2;
+            else if (ping < 2000) level = 1;
+            else level = 0;
+
+            const labels = {
+                0: 'Sin señal',
+                1: 'Débil',
+                2: 'Regular',
+                3: 'Buena',
+                4: 'Excelente'
+            };
+            const pingTxt = ping < 1000 ? Math.round(ping) + ' ms' : (ping / 1000).toFixed(1) + ' s';
+            return { level: level, label: labels[level] + ' · ' + pingTxt };
+        }
+
+        // ---------- Telemetría: señal (sobre app.js state) ----------
+        function updateTelemetry() {
+            const state = (window.App && window.App.state) || {};
+            const connected = !!state.connected;
+
+            // Mantener el label "Conectado/Desconectado" en el idioma activo
+            if (typeof syncConnectionLabel === 'function') syncConnectionLabel();
+
+            // Red: nivel real basado en ping + frescura del state_update
+            const sig = getSignalQuality(connected);
+            ['signal-bars', 'signal-bars-big'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.className = 'signal-bars level-' + sig.level;
+            });
+            const netText = document.getElementById('network-text');
+            const netBig = document.getElementById('network-status-big');
+            if (netText) netText.textContent = sig.label;
+            if (netBig) {
+                netBig.textContent = sig.label;
+                netBig.classList.remove('online', 'offline', 'warn');
+                if (sig.level >= 3) netBig.classList.add('online');
+                else if (sig.level >= 1) netBig.classList.add('warn');
+                else netBig.classList.add('offline');
+            }
+
+            // WebRTC tile color: si el texto dice "Activa" o el state dice
+            // conectado, pintamos verde. Si no, rojo.
+            const webrtc = document.getElementById('webrtc-state');
+            if (webrtc) {
+                const txt = (webrtc.textContent || '').toLowerCase();
+                const textSaysActive = txt.includes('activ') || txt.includes('online') || txt.includes('conect');
+                const isActive = connected || textSaysActive;
+                webrtc.classList.remove('online', 'offline');
+                webrtc.classList.add(isActive ? 'online' : 'offline');
+            }
+
+            // Servidor (Flask): verde si dice "Conectado"
+            const flask = document.getElementById('flask-status');
+            if (flask) {
+                const ftxt = (flask.textContent || '').toLowerCase();
+                const flaskActive = ftxt.includes('conect') && !ftxt.includes('desconect');
+                flask.classList.remove('online', 'offline');
+                flask.classList.add(flaskActive ? 'online' : 'offline');
+            }
+
+            // IP Activa: verde si tiene IP real (no "--")
+            const robotIp = document.getElementById('robot-ip');
+            if (robotIp) {
+                const ipTxt = (robotIp.textContent || '').trim();
+                const hasIp = ipTxt && ipTxt !== '--' && ipTxt.length > 3;
+                robotIp.classList.remove('online', 'offline');
+                if (hasIp) robotIp.classList.add('online');
+            }
+
+            // Modo: verde si está haciendo algo (no Standby/--)
+            const mode = document.getElementById('robot-mode');
+            if (mode) {
+                const mTxt = (mode.textContent || '').toLowerCase().trim();
+                const modeActive = mTxt && mTxt !== '--' && !mTxt.includes('standby');
+                mode.classList.remove('online', 'offline');
+                if (modeActive) mode.classList.add('online');
+            }
+        }
+
+        // Refrescar telemetría periódicamente (sin tocar la lógica de app.js)
+        setInterval(updateTelemetry, 1000);
+
+        // Además, repintar la telemetría justo después de cada state_update del socket
+        // y registrar el timestamp para calcular la calidad de la señal
+        (function hookSocket() {
+            if (!window.App || !window.App.socket) {
+                // App.init aún no corrió: reintenta en breve
+                return setTimeout(hookSocket, 150);
+            }
+            window.App.socket.on('state_update', function () {
+                SIGNAL_STATE.lastStateUpdateTs = Date.now();
+                // Da un tick para que App actualice su state primero
+                setTimeout(updateTelemetry, 0);
+            });
+            updateTelemetry();
+        })();
+
+        // ---------- Tutorial de primeros pasos ----------
+        // Se muestra solo la primera vez por usuario (persistido en localStorage).
+        // Al subir TUTORIAL_VERSION, se vuelve a mostrar para todos (una vez).
+        const TUTORIAL_FLAG_PREFIX = 'dv_tutorial_seen_';
+        const TUTORIAL_VERSION = 3;
+
+        const TUTORIAL_STEPS = [
+            { key: 'tut.s1', visual: '✦', highlight: null },
+            { key: 'tut.s2', visual: '📡', highlight: null },
+            { key: 'tut.s3', visual: '🔌', highlight: 'ip-input' },
+            { key: 'tut.s4', visual: '📶', highlightSelector: '.dv-telemetry' },
+            { key: 'tut.s5', visual: '☰', highlight: 'menu-toggle' },
+            { key: 'tut.s6', visual: '🚀', highlight: null }
+        ];
+
+        const tBackdrop = document.getElementById('tutorial-backdrop');
+        const tTitle = document.getElementById('tutorial-title');
+        const tText = document.getElementById('tutorial-text');
+        const tStepCount = document.getElementById('tutorial-step-count');
+        const tVisualIcon = document.querySelector('#tutorial-visual .big-icon');
+        const tVisualText = document.getElementById('tutorial-visual-text');
+        const tProgress = document.getElementById('tutorial-progress');
+        const tSkipBtn = document.getElementById('tutorial-skip');
+        const tNextBtn = document.getElementById('tutorial-next');
+
+        let tIndex = 0;
+        let tHighlightedEl = null;
+
+        function clearTutorialHighlight() {
+            if (tHighlightedEl) {
+                tHighlightedEl.classList.remove('tutorial-highlight');
+                tHighlightedEl = null;
+            }
+        }
+
+        function renderTutorialStep() {
+            const step = TUTORIAL_STEPS[tIndex];
+            tTitle.textContent = t(step.key + '.title');
+            tText.innerHTML = t(step.key + '.text');
+            tStepCount.textContent = t('tut.step')
+                .replace('{current}', (tIndex + 1))
+                .replace('{total}', TUTORIAL_STEPS.length);
+            tVisualIcon.textContent = step.visual || '✦';
+            tVisualText.textContent = t(step.key + '.visual');
+
+            // Progreso
+            tProgress.innerHTML = '';
+            TUTORIAL_STEPS.forEach((_, i) => {
+                const dot = document.createElement('span');
+                dot.className = 'tutorial-dot';
+                if (i < tIndex) dot.classList.add('done');
+                if (i === tIndex) dot.classList.add('active');
+                tProgress.appendChild(dot);
+            });
+
+            tNextBtn.textContent = (tIndex === TUTORIAL_STEPS.length - 1) ? t('tut.start') : t('tut.next');
+            tSkipBtn.textContent = t('tut.skip');
+
+            // Highlight
+            clearTutorialHighlight();
+            let target = null;
+            if (step.highlight) target = document.getElementById(step.highlight);
+            else if (step.highlightSelector) target = document.querySelector(step.highlightSelector);
+            if (target) {
+                target.classList.add('tutorial-highlight');
+                tHighlightedEl = target;
+            }
+        }
+
+        function openTutorial() {
+            tIndex = 0;
+            renderTutorialStep();
+            tBackdrop.classList.add('open');
+        }
+
+        function closeTutorial() {
+            clearTutorialHighlight();
+            tBackdrop.classList.remove('open');
+            const user = currentUser();
+            if (user) {
+                localStorage.setItem(TUTORIAL_FLAG_PREFIX + user.username, String(TUTORIAL_VERSION));
+            }
+        }
+
+        tNextBtn.addEventListener('click', function () {
+            if (tIndex < TUTORIAL_STEPS.length - 1) {
+                tIndex++;
+                renderTutorialStep();
+            } else {
+                closeTutorial();
+            }
+        });
+
+        tSkipBtn.addEventListener('click', closeTutorial);
+
+        function maybeShowTutorial() {
+            const user = currentUser();
+            if (!user) return;
+            const seen = localStorage.getItem(TUTORIAL_FLAG_PREFIX + user.username);
+            const seenVersion = seen ? parseInt(seen, 10) : 0;
+            if (!seen || seenVersion < TUTORIAL_VERSION) {
+                setTimeout(openTutorial, 400);
+            }
+        }
+
+        // ---------- Bootstrap ----------
+        if (currentUser()) {
+            showApp();
+        } else {
+            showLogin();
+        }
+    })();
+    </script>
 </body>
 </html>

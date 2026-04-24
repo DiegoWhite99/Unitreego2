@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centro de Ayuda - Diver Control</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/components.css">
+    <style>
+        :root {
+            --dv-bg: #04070a;
+            --dv-bg-2: #080e14;
+            --dv-surface: #0c151e;
+            --dv-surface-2: #122030;
+            --dv-border: #1f3040;
+            --dv-aqua: #2dd4bf;
+            --dv-aqua-dark: #0d9488;
+            --dv-aqua-soft: rgba(45, 212, 191, 0.15);
+            --dv-cyan: #22d3ee;
+            --dv-blue: #38bdf8;
+            --dv-blue-dark: #0369a1;
+            --dv-green: #22c55e;
+            --dv-green-dark: #15803d;
+            --dv-green-bright: #4ade80;
+            --dv-amber: #f59e0b;
+            --dv-alert: #ef4444;
+            --dv-alert-dark: #b91c1c;
+            --dv-text: #e5f1f5;
+            --dv-text-dim: #7c95a6;
+        }
+
+        body.theme-light {
+            --dv-bg: #ffffff;
+            --dv-bg-2: #f7f9ff;
+            --dv-surface: #ffffff;
+            --dv-surface-2: #f3f4ff;
+            --dv-border: #d4daee;
+            --dv-text: #111633;
+            --dv-text-dim: #5d6784;
+            --dv-green: #2563eb;
+            --dv-green-dark: #1d4ed8;
+            --dv-green-bright: #3b82f6;
+            --dv-aqua: #7c3aed;
+            --dv-aqua-dark: #5b21b6;
+            --dv-blue: #3b82f6;
+            --dv-blue-dark: #1e40af;
+            --dv-amber: #d97706;
+            --dv-alert: #dc2626;
+            --dv-alert-dark: #991b1b;
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background:
+                radial-gradient(ellipse at top, rgba(45, 212, 191, 0.10), transparent 60%),
+                radial-gradient(ellipse at bottom, rgba(56, 189, 248, 0.08), transparent 60%),
+                var(--dv-bg);
+            color: var(--dv-text);
+            min-height: 100vh;
+            letter-spacing: 0.3px;
+        }
+
+        body.theme-light {
+            background:
+                radial-gradient(ellipse at top, rgba(124, 58, 237, 0.10), transparent 60%),
+                radial-gradient(ellipse at bottom, rgba(37, 99, 235, 0.08), transparent 60%),
+                var(--dv-bg);
+        }
+
+        .help-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.85rem 1.5rem;
+            background: linear-gradient(180deg, var(--dv-bg-2), var(--dv-surface));
+            border-bottom: 1px solid var(--dv-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        body.theme-light .help-topbar {
+            background: linear-gradient(180deg, #ffffff, #f5f7ff);
+            box-shadow: 0 2px 10px rgba(37, 99, 235, 0.08);
+        }
+
+        .brand-row {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+        }
+
+        .brand-mark {
+            width: 34px;
+            height: 34px;
+            border: 2px solid var(--dv-aqua);
+            transform: rotate(45deg);
+            position: relative;
+        }
+        .brand-mark::after {
+            content: '';
+            position: absolute;
+            inset: 5px;
+            background: var(--dv-aqua);
+        }
+        body.theme-light .brand-mark,
+        body.theme-light .brand-mark::after { border-color: var(--dv-aqua); background: var(--dv-aqua); }
+
+        .brand-row h1 {
+            font-size: 1.05rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--dv-text);
+        }
+        .brand-row .sub {
+            display: block;
+            font-size: 0.65rem;
+            letter-spacing: 3px;
+            color: var(--dv-text-dim);
+            text-transform: uppercase;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.55rem 1.1rem;
+            background: var(--dv-bg);
+            color: var(--dv-text);
+            border: 1px solid var(--dv-border);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+        }
+        .back-btn:hover {
+            background: var(--dv-green);
+            color: white;
+            border-color: var(--dv-green);
+        }
+
+        .container {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 3rem;
+        }
+
+        .page-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 0.4rem;
+            padding-bottom: 0.6rem;
+            border-bottom: 2px solid var(--dv-green);
+            display: inline-block;
+        }
+        .page-title::before { content: '▸ '; color: var(--dv-green); }
+
+        .page-intro {
+            color: var(--dv-text-dim);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin: 1rem 0 2rem;
+            max-width: 680px;
+        }
+
+        .help-card {
+            background: linear-gradient(180deg, var(--dv-surface), var(--dv-bg-2));
+            border: 1px solid var(--dv-border);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+            position: relative;
+        }
+        .help-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--dv-aqua);
+            opacity: 0.6;
+        }
+        body.theme-light .help-card {
+            background: #ffffff;
+            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.08);
+        }
+
+        .help-card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            padding: 1rem 1.5rem;
+            background: rgba(0, 0, 0, 0.25);
+            border-bottom: 1px solid var(--dv-border);
+        }
+        body.theme-light .help-card-header {
+            background: linear-gradient(90deg, #f5f7ff, #fafbff);
+        }
+
+        .help-card-header .icon-circle {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: var(--dv-aqua-soft);
+            color: var(--dv-aqua);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        body.theme-light .help-card-header .icon-circle {
+            background: rgba(124, 58, 237, 0.12);
+        }
+
+        .help-card-header h2 {
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--dv-text);
+        }
+
+        .help-card-body { padding: 1.5rem; }
+
+        .form-row { margin-bottom: 1.1rem; }
+
+        .form-row label {
+            display: block;
+            color: var(--dv-text-dim);
+            font-size: 0.75rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 0.45rem;
+        }
+
+        .form-row input,
+        .form-row select,
+        .form-row textarea {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--dv-bg);
+            border: 1px solid var(--dv-border);
+            color: var(--dv-text);
+            font-size: 0.95rem;
+            outline: none;
+            font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        body.theme-light .form-row input,
+        body.theme-light .form-row select,
+        body.theme-light .form-row textarea {
+            background: #ffffff;
+        }
+
+        .form-row input:focus,
+        .form-row select:focus,
+        .form-row textarea:focus {
+            border-color: var(--dv-green);
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+        }
+
+        body.theme-light .form-row input:focus,
+        body.theme-light .form-row select:focus,
+        body.theme-light .form-row textarea:focus {
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+
+        .form-row textarea {
+            min-height: 130px;
+            resize: vertical;
+            line-height: 1.5;
+        }
+
+        .form-hint {
+            color: var(--dv-text-dim);
+            font-size: 0.78rem;
+            margin-top: 0.4rem;
+            line-height: 1.4;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 0.85rem;
+            background: linear-gradient(90deg, var(--dv-green-dark), var(--dv-green));
+            color: white;
+            border: none;
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+            margin-top: 0.5rem;
+        }
+        .submit-btn:hover {
+            background: linear-gradient(90deg, var(--dv-green), var(--dv-green-bright));
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.45);
+        }
+        body.theme-light .submit-btn:hover {
+            box-shadow: 0 0 20px rgba(37, 99, 235, 0.45);
+        }
+
+        /* Éxito al enviar */
+        .form-success {
+            display: none;
+            padding: 1rem 1.1rem;
+            background: rgba(34, 197, 94, 0.12);
+            border-left: 3px solid var(--dv-green);
+            color: var(--dv-green);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+        .form-success.show { display: block; }
+
+        /* Sección de contacto con asesor */
+        .contact-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .contact-card {
+            background: var(--dv-bg);
+            border: 1px solid var(--dv-border);
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 0.7rem;
+            transition: all 0.2s;
+            text-decoration: none;
+            color: var(--dv-text);
+        }
+        body.theme-light .contact-card { background: #ffffff; }
+
+        .contact-card:hover {
+            border-color: var(--dv-green);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 18px rgba(34, 197, 94, 0.25);
+        }
+        body.theme-light .contact-card:hover {
+            box-shadow: 0 4px 18px rgba(37, 99, 235, 0.25);
+        }
+
+        .contact-icon {
+            width: 52px;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: var(--dv-aqua-soft);
+            color: var(--dv-aqua);
+        }
+        body.theme-light .contact-icon {
+            background: rgba(124, 58, 237, 0.12);
+            color: var(--dv-aqua);
+        }
+
+        .contact-label {
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--dv-text-dim);
+        }
+
+        .contact-value {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--dv-text);
+            word-break: break-all;
+        }
+
+        /* FAQ: preguntas frecuentes dentro del panel */
+        .faq {
+            border-top: 1px solid var(--dv-border);
+            margin-top: 1rem;
+            padding-top: 1rem;
+        }
+
+        .faq-item {
+            padding: 0.8rem 0;
+            border-bottom: 1px dashed var(--dv-border);
+        }
+        .faq-item:last-child { border-bottom: none; }
+
+        .faq-item summary {
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--dv-text);
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.3rem 0;
+        }
+        .faq-item summary::-webkit-details-marker { display: none; }
+        .faq-item summary::before {
+            content: '+';
+            color: var(--dv-green);
+            font-size: 1.2rem;
+            font-weight: 700;
+            width: 20px;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+        .faq-item[open] summary::before { content: '−'; }
+
+        .faq-item .faq-answer {
+            color: var(--dv-text-dim);
+            font-size: 0.88rem;
+            line-height: 1.6;
+            padding: 0.5rem 0 0.2rem 1.6rem;
+        }
+
+        /* Footer */
+        .help-footer {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--dv-text-dim);
+            font-size: 0.78rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            border-top: 1px solid var(--dv-border);
+            margin-top: 2rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 560px) {
+            .help-topbar { padding: 0.7rem 0.9rem; flex-wrap: wrap; gap: 0.6rem; }
+            .brand-row h1 { font-size: 0.85rem; }
+            .brand-row .sub { display: none; }
+            .back-btn { font-size: 0.72rem; padding: 0.45rem 0.8rem; }
+            .container { padding: 1.25rem 1rem 2rem; }
+            .page-title { font-size: 1.15rem; letter-spacing: 2px; }
+            .page-intro { font-size: 0.85rem; }
+            .help-card-header { padding: 0.8rem 1rem; }
+            .help-card-body { padding: 1.1rem; }
+            .form-row input, .form-row select, .form-row textarea { font-size: 16px; }
+            .contact-grid { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top bar -->
+    <header class="help-topbar">
+        <div class="brand-row">
+            <div class="brand-mark"></div>
+            <div>
+                <h1>Centro de Ayuda</h1>
+                <span class="sub">Diver Control</span>
+            </div>
+        </div>
+        <a href="/" class="back-btn">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 18 L9 12 L15 6"/>
+            </svg>
+            Volver
+        </a>
+    </header>
+
+    <main class="container">
+        <h1 class="page-title">¿En qué podemos ayudarte?</h1>
+        <p class="page-intro">
+            Si estás teniendo un problema con el sistema o el robot, cuéntanos qué pasa
+            y te ayudaremos lo antes posible. Si lo prefieres, también puedes contactar
+            directamente a un asesor por WhatsApp, correo o teléfono.
+        </p>
+
+        <!-- Mensaje de éxito -->
+        <div id="form-success" class="form-success">
+            ✓ Mensaje enviado. Un asesor se pondrá en contacto contigo pronto.
+        </div>
+
+        <!-- Formulario de reporte -->
+        <div class="help-card">
+            <div class="help-card-header">
+                <div class="icon-circle">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 4 h16 v12 h-8 l-4 4 v-4 h-4 z"/>
+                    </svg>
+                </div>
+                <h2>Reportar un problema</h2>
+            </div>
+            <div class="help-card-body">
+                <form id="help-form" autocomplete="off">
+                    <div class="form-row">
+                        <label for="problem-type">Tipo de problema</label>
+                        <select id="problem-type" name="type" required>
+                            <option value="">— Selecciona una opción —</option>
+                            <option value="conexion">Conexión (no se conecta al robot, WiFi, red)</option>
+                            <option value="funciones">Funciones del robot (no responde, se mueve raro)</option>
+                            <option value="interfaz">Interfaz / pantalla (botones, vistas, menú)</option>
+                            <option value="cuenta">Cuenta / usuario (ingreso, permisos)</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                        <div class="form-hint">Elige la categoría que más se parezca a tu problema.</div>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="problem-name">Tu nombre <span style="text-transform: none; color: var(--dv-text-dim);">(opcional)</span></label>
+                        <input type="text" id="problem-name" name="name" placeholder="Ej. Juan Pérez">
+                    </div>
+
+                    <div class="form-row">
+                        <label for="problem-email">Correo o teléfono de contacto</label>
+                        <input type="text" id="problem-email" name="contact" placeholder="ejemplo@correo.com o 300 123 4567" required>
+                        <div class="form-hint">Lo necesitamos para poder responderte.</div>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="problem-comment">Cuéntanos qué pasa</label>
+                        <textarea id="problem-comment" name="comment" placeholder="Describe con tus palabras qué estabas haciendo y qué fue lo que salió mal. Entre más detalle, mejor podremos ayudarte." required minlength="10"></textarea>
+                        <div class="form-hint">Mínimo 10 caracteres. No te preocupes por la forma, escribe como si le contaras a un amigo.</div>
+                    </div>
+
+                    <button type="submit" class="submit-btn">Enviar mensaje</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Contacto con asesor -->
+        <div class="help-card">
+            <div class="help-card-header">
+                <div class="icon-circle">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 4 h4 l2 5 l-2.5 1.5 a11 11 0 0 0 5 5 L15 13 l5 2 v4 a2 2 0 0 1 -2 2 A17 17 0 0 1 3 6 a2 2 0 0 1 2 -2 z"/>
+                    </svg>
+                </div>
+                <h2>Contactar a un asesor</h2>
+            </div>
+            <div class="help-card-body">
+                <p class="page-intro" style="margin: 0 0 1.25rem;">
+                    Si prefieres hablar directamente con alguien, usa cualquiera de estas vías.
+                </p>
+
+                <div class="contact-grid">
+                    <a href="https://wa.me/573001234567?text=Hola,%20necesito%20ayuda%20con%20Diver%20Control" class="contact-card" target="_blank" rel="noopener">
+                        <div class="contact-icon">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                                <path d="M17.5 14.4c-.3-.1-1.7-.8-2-1-.3-.1-.5-.1-.7.1-.2.3-.8.9-1 1.1-.2.2-.4.2-.7.1-1.2-.6-2-1-2.9-2.3-.2-.3.2-.3.6-1.1.1-.2 0-.4 0-.5 0-.1-.7-1.7-.9-2.3-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1.1 2.9 1.2 3c.1.2 2.1 3.2 5.1 4.5 2 .8 2.5.8 3.2.8.5 0 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2-.1-.2-.3-.2-.6-.3zM12 2 A10 10 0 0 0 3.3 17.1 L2 22 l5.1-1.3 A10 10 0 1 0 12 2z m0 18.2 a8.2 8.2 0 0 1 -4.2-1.1 l-.3-.2l-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2z"/>
+                            </svg>
+                        </div>
+                        <div class="contact-label">WhatsApp</div>
+                        <div class="contact-value">+57 300 123 4567</div>
+                    </a>
+
+                    <a href="mailto:soporte@cun.edu.co?subject=Soporte%20Diver%20Control" class="contact-card">
+                        <div class="contact-icon">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="5" width="18" height="14" rx="1.5"/>
+                                <path d="M3 7 l9 6.5 l9 -6.5"/>
+                            </svg>
+                        </div>
+                        <div class="contact-label">Correo</div>
+                        <div class="contact-value">soporte@cun.edu.co</div>
+                    </a>
+
+                    <a href="tel:+576011234567" class="contact-card">
+                        <div class="contact-icon">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M5 4 h4 l2 5 l-2.5 1.5 a11 11 0 0 0 5 5 L15 13 l5 2 v4 a2 2 0 0 1 -2 2 A17 17 0 0 1 3 6 a2 2 0 0 1 2 -2 z"/>
+                            </svg>
+                        </div>
+                        <div class="contact-label">Teléfono</div>
+                        <div class="contact-value">(601) 123 4567</div>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- FAQ -->
+        <div class="help-card">
+            <div class="help-card-header">
+                <div class="icon-circle">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M9.5 9 a2.5 2.5 0 1 1 3.5 2.3 c-1 0.4-1.5 1-1.5 2.2"/>
+                        <circle cx="12" cy="17.3" r="0.7" fill="currentColor" stroke="none"/>
+                    </svg>
+                </div>
+                <h2>Preguntas frecuentes</h2>
+            </div>
+            <div class="help-card-body">
+                <div class="faq">
+                    <details class="faq-item">
+                        <summary>El robot no se conecta</summary>
+                        <div class="faq-answer">
+                            Verifica: (1) Tu computador y el robot están en la <strong>misma red WiFi</strong>;
+                            (2) La IP que escribiste es correcta (pregúntale al administrador);
+                            (3) El robot está encendido. Si sigue fallando, reinicia el robot y prueba de nuevo.
+                        </div>
+                    </details>
+                    <details class="faq-item">
+                        <summary>El robot no responde a los comandos</summary>
+                        <div class="faq-answer">
+                            Primero presiona <strong>⚠ Parada de Emergencia</strong>.
+                            Luego desconecta y vuelve a conectar. Si el problema persiste, revisa si
+                            el estado "WebRTC" está en verde (Activa). Si está rojo, la conexión de
+                            video/audio se perdió.
+                        </div>
+                    </details>
+                    <details class="faq-item">
+                        <summary>Olvidé mi contraseña</summary>
+                        <div class="faq-answer">
+                            Contacta al administrador del sistema (el usuario <strong>admin</strong>).
+                            Él puede editar tu cuenta desde la sección "Usuarios" y asignarte una
+                            contraseña nueva.
+                        </div>
+                    </details>
+                    <details class="faq-item">
+                        <summary>La interfaz se ve rara en mi celular</summary>
+                        <div class="faq-answer">
+                            El sistema está optimizado para pantallas pequeñas, pero algunas
+                            funciones de control fino se usan mejor desde computador o tablet.
+                            Asegúrate de usar un navegador moderno (Chrome, Edge, Firefox o Safari
+                            actualizados).
+                        </div>
+                    </details>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="help-footer">
+        DIVER CONTROL · Unitree Go2 Air · Laboratorio 2 · CUN
+    </footer>
+
+    <script>
+        // Aplicar tema e idioma guardados del index
+        (function () {
+            const theme = localStorage.getItem('dv_theme') || 'dark';
+            if (theme === 'light') document.body.classList.add('theme-light');
+        })();
+
+        // Manejo del formulario: guarda el mensaje en localStorage y muestra confirmación.
+        // (Cuando haya backend, aquí podemos POSTear a /api/help.)
+        const form = document.getElementById('help-form');
+        const success = document.getElementById('form-success');
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const data = {
+                type: document.getElementById('problem-type').value,
+                name: document.getElementById('problem-name').value.trim(),
+                contact: document.getElementById('problem-email').value.trim(),
+                comment: document.getElementById('problem-comment').value.trim(),
+                ts: new Date().toISOString()
+            };
+
+            // Guardar localmente (no hay backend de tickets aún)
+            const history = JSON.parse(localStorage.getItem('dv_help_tickets') || '[]');
+            history.push(data);
+            localStorage.setItem('dv_help_tickets', JSON.stringify(history));
+
+            // Abrir WhatsApp con el mensaje pre-redactado como alternativa rápida
+            const msg = encodeURIComponent(
+                `Hola, soy ${data.name || 'un usuario'}. Necesito ayuda con: ${data.type}. ${data.comment}`
+            );
+            // Descomentar si se desea abrir WhatsApp automáticamente:
+            // window.open(`https://wa.me/573001234567?text=${msg}`, '_blank');
+
+            form.reset();
+            success.classList.add('show');
+            success.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => success.classList.remove('show'), 6000);
+        });
+    </script>
+</body>
+</html>

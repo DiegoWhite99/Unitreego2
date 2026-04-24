@@ -214,6 +214,7 @@ async def robot_connect(ip):
     robot_state["connected"] = True
     robot_state["ip"] = ip
     robot_state["mode"] = "Balance Stand"
+
     emit_log('success', f'Conexion establecida con {ip}')
     emit_state_update()
 
@@ -942,6 +943,12 @@ def control_remoto():
     return send_from_directory('website', 'controlRemoto.html')
 
 
+@app.route('/help')
+@app.route('/help.html')
+def help_page():
+    return send_from_directory('website', 'help.html')
+
+
 @app.route('/autoroute')
 @app.route('/auto-ruta')
 @app.route('/autoroute.html')
@@ -971,6 +978,18 @@ def serve_assets(filename):
 @app.route('/api/status')
 def api_status():
     return jsonify(robot_state)
+
+
+@app.route('/api/ping')
+def api_ping():
+    """Endpoint ligero para medir latencia de red cliente→servidor.
+    Devuelve rápido (<1 ms de procesamiento) con timestamps y estado
+    del robot, sin tocar locks ni objetos pesados."""
+    return jsonify({
+        "ok": True,
+        "ts": time.time(),
+        "robot_connected": robot_state["connected"],
+    })
 
 
 @app.route('/api/connect', methods=['POST'])

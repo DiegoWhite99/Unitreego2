@@ -20,3 +20,8 @@ __pycache__/
 *.swp
 .DS_Store
 Thumbs.db
+
+
+# paginas pruebas
+website/demo_jarvis.html
+website/error_503.html

@@ -3,143 +3,1171 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daiver User End - Landing de Acciones</title>
+    <title>Diver - Acciones y Reconocimiento</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/user_end.css">
+    <style>
+        :root {
+            --dv-bg: #04070a;
+            --dv-bg-2: #080e14;
+            --dv-surface: #0c151e;
+            --dv-surface-2: #122030;
+            --dv-border: #1f3040;
+            --dv-aqua: #2dd4bf;
+            --dv-aqua-dark: #0d9488;
+            --dv-aqua-soft: rgba(45, 212, 191, 0.15);
+            --dv-cyan: #22d3ee;
+            --dv-blue: #38bdf8;
+            --dv-blue-dark: #0369a1;
+            --dv-green: #22c55e;
+            --dv-green-dark: #15803d;
+            --dv-green-bright: #4ade80;
+            --dv-amber: #f59e0b;
+            --dv-alert: #ef4444;
+            --dv-alert-dark: #b91c1c;
+            --dv-text: #e5f1f5;
+            --dv-text-dim: #7c95a6;
+        }
+
+        body.theme-light {
+            --dv-bg: #ffffff;
+            --dv-bg-2: #f7f9ff;
+            --dv-surface: #ffffff;
+            --dv-surface-2: #f3f4ff;
+            --dv-border: #d4daee;
+            --dv-text: #111633;
+            --dv-text-dim: #5d6784;
+            --dv-green: #2563eb;
+            --dv-green-dark: #1d4ed8;
+            --dv-green-bright: #3b82f6;
+            --dv-aqua: #7c3aed;
+            --dv-aqua-dark: #5b21b6;
+            --dv-blue: #3b82f6;
+            --dv-blue-dark: #1e40af;
+            --dv-amber: #d97706;
+            --dv-alert: #dc2626;
+            --dv-alert-dark: #991b1b;
+        }
+
+        /* Reset y base */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background:
+                radial-gradient(ellipse at top, rgba(45, 212, 191, 0.10), transparent 60%),
+                radial-gradient(ellipse at bottom, rgba(56, 189, 248, 0.08), transparent 60%),
+                var(--dv-bg);
+            color: var(--dv-text);
+            letter-spacing: 0.3px;
+            min-height: 100vh;
+        }
+        body.theme-light {
+            background:
+                radial-gradient(ellipse at top, rgba(124, 58, 237, 0.10), transparent 60%),
+                radial-gradient(ellipse at bottom, rgba(37, 99, 235, 0.08), transparent 60%),
+                var(--dv-bg);
+        }
+
+        /* Top bar */
+        .dv-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.85rem 1.5rem;
+            background: linear-gradient(180deg, var(--dv-bg-2), var(--dv-surface));
+            border-bottom: 1px solid var(--dv-border);
+            position: sticky;
+            top: 0;
+            z-index: 200;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+            gap: 1rem;
+        }
+        body.theme-light .dv-topbar {
+            background: linear-gradient(180deg, #ffffff, #f5f7ff);
+            box-shadow: 0 2px 10px rgba(37, 99, 235, 0.08);
+        }
+
+        .dv-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+        }
+        .dv-brand-mark {
+            width: 34px;
+            height: 34px;
+            border: 2px solid var(--dv-aqua);
+            transform: rotate(45deg);
+            position: relative;
+        }
+        .dv-brand-mark::after {
+            content: '';
+            position: absolute;
+            inset: 5px;
+            background: var(--dv-aqua);
+        }
+        .dv-brand h1 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--dv-text);
+        }
+        .dv-brand .brand-sub {
+            display: block;
+            font-size: 0.65rem;
+            letter-spacing: 3px;
+            color: var(--dv-text-dim);
+            text-transform: uppercase;
+        }
+
+        /* Status chips */
+        .dv-status-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .status-indicator::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        .status-indicator.connected {
+            background-color: rgba(34, 197, 94, 0.15);
+            color: var(--dv-green);
+        }
+        .status-indicator.connected::before {
+            background-color: var(--dv-green);
+            box-shadow: 0 0 6px var(--dv-green);
+        }
+        .status-indicator.disconnected {
+            background-color: rgba(239, 68, 68, 0.12);
+            color: var(--dv-alert);
+        }
+        .status-indicator.disconnected::before { background-color: var(--dv-alert); }
+
+        body.theme-light .status-indicator.connected {
+            background-color: rgba(37, 99, 235, 0.12);
+            color: var(--dv-green);
+        }
+        body.theme-light .status-indicator.connected::before {
+            background-color: var(--dv-green);
+            box-shadow: 0 0 6px var(--dv-green);
+        }
+        body.theme-light .status-indicator.disconnected {
+            background-color: rgba(220, 38, 38, 0.10);
+        }
+
+        /* Botón menú con pulso */
+        .menu-toggle {
+            background: linear-gradient(90deg, var(--dv-green-dark), var(--dv-green));
+            color: white;
+            border: 1px solid var(--dv-green);
+            padding: 0.6rem 1.2rem;
+            font-size: 0.88rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+            box-shadow: 0 0 18px rgba(34, 197, 94, 0.35);
+            animation: menuPulse 2.2s ease-in-out infinite;
+        }
+        .menu-toggle:hover {
+            background: linear-gradient(90deg, var(--dv-green), var(--dv-green-bright));
+            animation: none;
+            box-shadow: 0 0 24px rgba(34, 197, 94, 0.55);
+        }
+        .menu-toggle .bars {
+            display: inline-block;
+            margin-right: 0.5rem;
+            font-size: 1rem;
+            vertical-align: middle;
+        }
+        @keyframes menuPulse {
+            0%, 100% { box-shadow: 0 0 12px rgba(34, 197, 94, 0.25); }
+            50% { box-shadow: 0 0 22px rgba(34, 197, 94, 0.55); }
+        }
+        body.theme-light .menu-toggle {
+            animation: menuPulseLight 2.2s ease-in-out infinite;
+        }
+        @keyframes menuPulseLight {
+            0%, 100% { box-shadow: 0 0 12px rgba(37, 99, 235, 0.30); }
+            50% { box-shadow: 0 0 22px rgba(37, 99, 235, 0.55); }
+        }
+
+        /* ========================================
+           Category Nav (estilo Apple, siempre visible)
+           Sticky debajo del topbar. Scroll horizontal en móvil,
+           centrado y justificado en escritorio.
+           ======================================== */
+        .mobile-pill-nav {
+            display: block;
+            position: sticky;
+            top: 57px; /* debajo del topbar en escritorio */
+            z-index: 150;
+            background: rgba(8, 14, 20, 0.85);
+            backdrop-filter: saturate(180%) blur(18px);
+            -webkit-backdrop-filter: saturate(180%) blur(18px);
+            border-bottom: 1px solid var(--dv-border);
+        }
+        /* En móvil el topbar se apila en 2 filas (status group en línea propia) */
+        @media (max-width: 720px) {
+            .mobile-pill-nav { top: 104px; }
+        }
+        @media (max-width: 480px) {
+            .mobile-pill-nav { top: 110px; }
+        }
+        body.theme-light .mobile-pill-nav {
+            background: rgba(255, 255, 255, 0.85);
+            border-bottom-color: rgba(37, 99, 235, 0.15);
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.06);
+        }
+
+        .pill-nav-inner {
+            display: flex;
+            gap: 0.55rem;
+            padding: 0.7rem 1rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            /* En escritorio centramos, en móvil permitimos scroll horizontal */
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .pill-chip {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.55rem 0.95rem;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--dv-border);
+            border-radius: 999px;
+            color: var(--dv-text);
+            text-decoration: none;
+            font-size: 0.82rem;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+            scroll-snap-align: start;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .pill-chip svg {
+            color: var(--dv-text-dim);
+            flex-shrink: 0;
+            transition: color 0.2s ease, transform 0.2s ease;
+        }
+        .pill-chip:hover,
+        .pill-chip:focus-visible {
+            background: rgba(34, 197, 94, 0.10);
+            border-color: var(--dv-green);
+            color: white;
+        }
+        .pill-chip:hover svg,
+        .pill-chip:focus-visible svg { color: var(--dv-green); }
+
+        .pill-chip:active {
+            transform: scale(0.96);
+        }
+
+        .pill-chip.active {
+            background: linear-gradient(90deg, var(--dv-green-dark), var(--dv-green));
+            border-color: var(--dv-green);
+            color: #ffffff;
+            box-shadow: 0 2px 12px rgba(34, 197, 94, 0.35);
+        }
+        .pill-chip.active svg { color: #ffffff; }
+
+        /* Tema claro: chips con fondo blanco, activo azul */
+        body.theme-light .pill-chip {
+            background: rgba(255, 255, 255, 0.85);
+            border-color: rgba(37, 99, 235, 0.20);
+            color: var(--dv-text);
+        }
+        body.theme-light .pill-chip svg { color: var(--dv-text-dim); }
+        body.theme-light .pill-chip:hover,
+        body.theme-light .pill-chip:focus-visible {
+            background: rgba(37, 99, 235, 0.10);
+            border-color: var(--dv-green);
+            color: var(--dv-green-dark);
+        }
+        body.theme-light .pill-chip:hover svg,
+        body.theme-light .pill-chip:focus-visible svg { color: var(--dv-green); }
+        body.theme-light .pill-chip.active {
+            background: linear-gradient(90deg, var(--dv-green-dark), var(--dv-green));
+            color: #ffffff;
+            box-shadow: 0 2px 14px rgba(37, 99, 235, 0.40);
+        }
+        body.theme-light .pill-chip.active svg { color: #ffffff; }
+
+        /* Menu drawer */
+        .menu-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(3px);
+            z-index: 300;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s;
+        }
+        .menu-backdrop.open { opacity: 1; pointer-events: auto; }
+
+        .dv-menu {
+            position: fixed;
+            top: 0;
+            right: -360px;
+            width: 320px;
+            height: 100vh;
+            background: linear-gradient(180deg, var(--dv-bg-2), var(--dv-surface));
+            border-left: 2px solid var(--dv-green);
+            box-shadow: -10px 0 40px rgba(0, 0, 0, 0.6);
+            z-index: 310;
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem 0;
+        }
+        .dv-menu.open { right: 0; }
+        body.theme-light .dv-menu {
+            background: linear-gradient(180deg, #ffffff, #f5f7ff);
+            box-shadow: -10px 0 40px rgba(37, 99, 235, 0.18);
+        }
+
+        .dv-menu-label {
+            color: var(--dv-text-dim);
+            font-size: 0.65rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 0.5rem 1.5rem;
+        }
+        .dv-menu a.nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            padding: 0.85rem 1.5rem;
+            color: var(--dv-text);
+            text-decoration: none;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+        }
+        .dv-menu a.nav-link:hover,
+        .dv-menu a.nav-link.active {
+            background: rgba(34, 197, 94, 0.10);
+            border-left-color: var(--dv-green);
+            color: white;
+        }
+
+        /* Link destacado dentro del drawer (Control Remoto) */
+        .dv-menu a.nav-link-featured {
+            background: linear-gradient(90deg, rgba(34, 197, 94, 0.14), rgba(34, 197, 94, 0.02));
+            border-left-color: var(--dv-green);
+            color: var(--dv-text);
+            font-weight: 700;
+            margin: 0.35rem 0.75rem;
+            padding-left: 1rem;
+            border: 1px solid var(--dv-green);
+            border-left-width: 4px;
+            box-shadow: 0 0 14px rgba(34, 197, 94, 0.18);
+        }
+        .dv-menu a.nav-link-featured:hover {
+            background: linear-gradient(90deg, rgba(34, 197, 94, 0.22), rgba(34, 197, 94, 0.05));
+            box-shadow: 0 0 22px rgba(34, 197, 94, 0.35);
+            color: white;
+        }
+        body.theme-light .dv-menu a.nav-link-featured {
+            background: linear-gradient(90deg, rgba(37, 99, 235, 0.12), rgba(37, 99, 235, 0.02));
+            border-color: var(--dv-green);
+            color: var(--dv-green-dark);
+            box-shadow: 0 0 14px rgba(37, 99, 235, 0.18);
+        }
+        body.theme-light .dv-menu a.nav-link-featured:hover {
+            background: linear-gradient(90deg, rgba(37, 99, 235, 0.20), rgba(37, 99, 235, 0.04));
+            box-shadow: 0 0 22px rgba(37, 99, 235, 0.30);
+        }
+        body.theme-light .dv-menu a.nav-link {
+            color: var(--dv-text);
+        }
+        body.theme-light .dv-menu a.nav-link:hover,
+        body.theme-light .dv-menu a.nav-link.active {
+            background: rgba(37, 99, 235, 0.10);
+            color: var(--dv-green-dark);
+        }
+        .dv-menu a.nav-link .icon {
+            width: 20px;
+            text-align: center;
+            font-size: 1rem;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.5rem 1.5rem 3rem;
+        }
+
+        /* Hero compacto */
+        .hero-card {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 1.5rem;
+            align-items: center;
+            padding: 1.75rem 2rem;
+            background: linear-gradient(90deg, var(--dv-surface), var(--dv-bg-2));
+            border: 1px solid var(--dv-border);
+            border-left: 4px solid var(--dv-green);
+            margin-bottom: 2rem;
+        }
+        body.theme-light .hero-card {
+            background: linear-gradient(90deg, #ffffff, #faf7ff);
+            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.08);
+        }
+        .hero-copy h2 {
+            font-size: 1.4rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--dv-text);
+            margin-bottom: 0.5rem;
+        }
+        .hero-copy p {
+            color: var(--dv-text-dim);
+            font-size: 0.92rem;
+            line-height: 1.6;
+        }
+        .hero-copy .badge {
+            display: inline-block;
+            font-size: 0.65rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 0.2rem 0.6rem;
+            background: var(--dv-aqua-soft);
+            color: var(--dv-aqua);
+            border: 1px solid rgba(45, 212, 191, 0.35);
+            margin-bottom: 0.6rem;
+        }
+        body.theme-light .hero-copy .badge {
+            background: rgba(124, 58, 237, 0.12);
+            color: var(--dv-aqua);
+            border-color: rgba(124, 58, 237, 0.35);
+        }
+        .hero-image {
+            max-width: 100%;
+            height: auto;
+            filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.35));
+        }
+
+        /* Section title */
+        .dv-section-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: var(--dv-text);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--dv-green);
+            display: inline-block;
+        }
+        .dv-section-title::before { content: '▸ '; color: var(--dv-green); }
+
+        .dv-intro {
+            color: var(--dv-text-dim);
+            font-size: 0.9rem;
+            line-height: 1.55;
+            margin-bottom: 1.25rem;
+            max-width: 780px;
+        }
+        .dv-intro strong { color: var(--dv-text); font-weight: 600; }
+
+        .dv-tag {
+            display: inline-block;
+            font-size: 0.68rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 0.25rem 0.7rem;
+            background: var(--dv-aqua-soft);
+            color: var(--dv-aqua);
+            border: 1px solid rgba(45, 212, 191, 0.35);
+            margin-right: 0.4rem;
+        }
+        body.theme-light .dv-tag {
+            background: rgba(124, 58, 237, 0.12);
+            color: var(--dv-aqua);
+            border-color: rgba(124, 58, 237, 0.35);
+        }
+
+        /* Card estilo Divergente */
+        .dv-card {
+            background: linear-gradient(180deg, var(--dv-surface), var(--dv-bg-2));
+            border: 1px solid var(--dv-border);
+            margin-bottom: 1.25rem;
+            position: relative;
+            overflow: visible;
+        }
+        body.theme-light .dv-card {
+            background: #ffffff;
+            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.08);
+        }
+        .dv-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 3px;
+            height: 100%;
+            background: var(--dv-aqua);
+            opacity: 0.55;
+        }
+
+        .dv-card-header {
+            padding: 0.9rem 1.2rem;
+            background: rgba(0, 0, 0, 0.25);
+            border-bottom: 1px solid var(--dv-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        body.theme-light .dv-card-header {
+            background: linear-gradient(90deg, #f5f7ff, #fafbff);
+        }
+        .dv-card-header h3 {
+            font-size: 0.95rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--dv-text);
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+        .dv-card-body { padding: 1.25rem; }
+
+        /* Category header icon */
+        .cat-icon {
+            width: 28px;
+            height: 28px;
+            color: var(--dv-green);
+            flex-shrink: 0;
+        }
+
+        /* Grids de acciones */
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 0.85rem;
+        }
+
+        .action-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.9rem 0.5rem;
+            background: var(--dv-bg);
+            border: 1px solid var(--dv-border);
+            color: var(--dv-text);
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        body.theme-light .action-item { background: #ffffff; }
+
+        .action-item:hover:not(:disabled) {
+            border-color: var(--dv-green);
+            background: rgba(34, 197, 94, 0.08);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 14px rgba(34, 197, 94, 0.25);
+        }
+        body.theme-light .action-item:hover:not(:disabled) {
+            background: rgba(37, 99, 235, 0.08);
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.22);
+        }
+
+        .action-item:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .action-item img {
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+        }
+
+        .action-item.variant-fun {
+            border-left: 3px solid var(--dv-amber);
+        }
+        .action-item.variant-danger {
+            border-left: 3px solid var(--dv-alert);
+        }
+
+        /* YOLO section */
+        .yolo-grid {
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 1.25rem;
+        }
+
+        .yolo-video-wrap {
+            position: relative;
+            background: var(--dv-bg);
+            border: 1px solid var(--dv-border);
+            aspect-ratio: 16/9;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .yolo-video {
+            display: none;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .yolo-video.active { display: block; }
+        .yolo-placeholder {
+            text-align: center;
+            color: var(--dv-text-dim);
+            padding: 1rem;
+        }
+        .yolo-placeholder p {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.35rem;
+            color: var(--dv-text);
+        }
+        .yolo-placeholder small { font-size: 0.8rem; }
+
+        .yolo-controls {
+            display: grid;
+            grid-template-columns: auto 1fr auto 1fr;
+            gap: 0.6rem 0.85rem;
+            align-items: center;
+            margin: 1rem 0;
+        }
+        .yolo-controls label {
+            font-size: 0.72rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--dv-text-dim);
+        }
+        .yolo-input,
+        .input-field {
+            padding: 0.5rem 0.75rem;
+            background: var(--dv-bg);
+            border: 1px solid var(--dv-border);
+            color: var(--dv-text);
+            font-size: 0.85rem;
+            outline: none;
+            font-family: inherit;
+        }
+        body.theme-light .yolo-input,
+        body.theme-light .input-field { background: #ffffff; }
+        .yolo-input:focus, .input-field:focus {
+            border-color: var(--dv-green);
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+        }
+        body.theme-light .yolo-input:focus, body.theme-light .input-field:focus {
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+
+        .yolo-badge {
+            background: var(--dv-aqua-soft);
+            color: var(--dv-aqua);
+            padding: 0.2rem 0.6rem;
+            font-size: 0.7rem;
+            letter-spacing: 1.5px;
+            border: 1px solid rgba(45, 212, 191, 0.35);
+        }
+        body.theme-light .yolo-badge {
+            background: rgba(124, 58, 237, 0.12);
+            color: var(--dv-aqua);
+            border-color: rgba(124, 58, 237, 0.35);
+        }
+
+        .yolo-waypoints {
+            min-height: 120px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Consolas', monospace;
+            font-size: 0.85rem;
+        }
+        .yolo-empty {
+            color: var(--dv-text-dim);
+            text-align: center;
+            padding: 1.5rem 0.5rem;
+            font-style: italic;
+        }
+
+        /* Buttons generales */
+        .dv-btn {
+            padding: 0.7rem 1.2rem;
+            border: none;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: white;
+            clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+        }
+        .dv-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .dv-btn.primary {
+            background: linear-gradient(90deg, var(--dv-green-dark), var(--dv-green));
+        }
+        .dv-btn.primary:hover:not(:disabled) {
+            background: linear-gradient(90deg, var(--dv-green), var(--dv-green-bright));
+            box-shadow: 0 0 18px rgba(34, 197, 94, 0.40);
+        }
+        body.theme-light .dv-btn.primary:hover:not(:disabled) {
+            box-shadow: 0 0 18px rgba(37, 99, 235, 0.35);
+        }
+        .dv-btn.danger {
+            background: linear-gradient(90deg, var(--dv-alert-dark), var(--dv-alert));
+        }
+        .dv-btn.danger:hover:not(:disabled) {
+            background: linear-gradient(90deg, var(--dv-alert), #f87171);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+        }
+        .action-buttons .dv-btn { flex: 1; min-width: 140px; }
+
+        /* Logs desplegable */
+        details.logs-details {
+            background: linear-gradient(180deg, var(--dv-surface), var(--dv-bg-2));
+            border: 1px solid var(--dv-border);
+            margin-bottom: 1.25rem;
+            overflow: hidden;
+        }
+        body.theme-light details.logs-details {
+            background: #ffffff;
+            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.08);
+        }
+
+        details.logs-details summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 0.9rem 1.2rem;
+            background: rgba(0, 0, 0, 0.25);
+            border-bottom: 1px solid transparent;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.85rem;
+            transition: background 0.2s;
+        }
+        body.theme-light details.logs-details summary {
+            background: linear-gradient(90deg, #f5f7ff, #fafbff);
+        }
+        details.logs-details summary::-webkit-details-marker { display: none; }
+        details.logs-details[open] summary { border-bottom-color: var(--dv-border); }
+        details.logs-details summary:hover { background: rgba(34, 197, 94, 0.08); }
+
+        details.logs-details summary .left {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            color: var(--dv-text);
+            font-size: 0.95rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        details.logs-details summary .chevron {
+            width: 16px;
+            height: 16px;
+            color: var(--dv-green);
+            transition: transform 0.25s ease;
+        }
+        details.logs-details[open] summary .chevron {
+            transform: rotate(180deg);
+        }
+
+        .logs-inner { padding: 1rem 1.2rem; }
+        .log-container {
+            max-height: 360px;
+            overflow-y: auto;
+            padding: 0.5rem;
+            background: var(--dv-bg);
+            border: 1px solid var(--dv-border);
+            font-family: 'Consolas', monospace;
+            font-size: 0.8rem;
+        }
+        body.theme-light .log-container { background: #f8fafc; }
+
+        .log-entry {
+            padding: 0.2rem 0.35rem;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            line-height: 1.5;
+        }
+        body.theme-light .log-entry { border-bottom-color: rgba(15, 23, 42, 0.05); }
+        .log-info { color: var(--dv-text-dim); }
+        .log-success { color: var(--dv-green); }
+        .log-warning { color: var(--dv-amber); }
+        .log-error { color: var(--dv-alert); }
+
+        .btn-small {
+            padding: 0.35rem 0.75rem;
+            font-size: 0.7rem;
+            background: var(--dv-bg);
+            color: var(--dv-text);
+            border: 1px solid var(--dv-border);
+            cursor: pointer;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+        .btn-small:hover {
+            background: var(--dv-green);
+            color: white;
+            border-color: var(--dv-green);
+        }
+        body.theme-light .btn-small { background: #ffffff; }
+
+        /* Elementos ocultos para compatibilidad con JS (no se quita del HTML) */
+        .dv-hidden {
+            position: absolute !important;
+            left: -9999px !important;
+            width: 1px; height: 1px; overflow: hidden;
+        }
+
+        /* Footer */
+        .dv-footer {
+            text-align: center;
+            padding: 1.25rem 2rem;
+            border-top: 1px solid var(--dv-border);
+            color: var(--dv-text-dim);
+            font-size: 0.78rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        /* Responsive */
+        @media (max-width: 960px) {
+            .yolo-grid { grid-template-columns: 1fr; }
+            .hero-card { grid-template-columns: 1fr; text-align: center; }
+            .hero-image { max-width: 240px; margin: 0 auto; }
+        }
+        @media (max-width: 720px) {
+            .dv-topbar {
+                flex-wrap: wrap;
+                gap: 0.6rem;
+                padding: 0.7rem 0.9rem;
+            }
+            .dv-status-group {
+                order: 3;
+                width: 100%;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            .dv-brand h1 { font-size: 0.95rem; letter-spacing: 1.5px; }
+            .dv-brand-mark { width: 28px; height: 28px; }
+            .dv-menu { width: 85vw; right: -90vw; }
+            .container { padding: 1rem; }
+            .hero-card { padding: 1.25rem; }
+            .hero-copy h2 { font-size: 1.15rem; }
+            .dv-section-title { font-size: 1.1rem; letter-spacing: 2px; }
+            .yolo-controls { grid-template-columns: 1fr 1fr; }
+
+            /* En móvil: scroll horizontal con snap (el hamburguesa sigue existiendo para páginas) */
+            .pill-nav-inner {
+                justify-content: flex-start;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                scroll-snap-type: x proximity;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                padding: 0.55rem 0.85rem;
+                gap: 0.5rem;
+            }
+            .pill-nav-inner::-webkit-scrollbar { display: none; }
+            .pill-chip { scroll-snap-align: start; }
+
+            /* Offset del scroll para que el sticky no tape los títulos */
+            .section { scroll-margin-top: 130px; }
+            .dv-card[id^="cat-"] { scroll-margin-top: 130px; }
+        }
+
+        @media (min-width: 721px) {
+            /* En escritorio: offset porque el pill nav también es sticky */
+            .section { scroll-margin-top: 130px; }
+            .dv-card[id^="cat-"] { scroll-margin-top: 130px; }
+        }
+        @media (max-width: 480px) {
+            .actions-grid { grid-template-columns: repeat(2, 1fr); }
+            .action-item img { width: 38px; height: 38px; }
+            .action-item { font-size: 0.72rem; }
+            .yolo-controls { grid-template-columns: 1fr; }
+            .action-buttons .dv-btn { width: 100%; }
+            .dv-status-group { gap: 0.35rem; }
+            .status-indicator { font-size: 0.7rem; padding: 0.3rem 0.6rem; }
+        }
+    </style>
 </head>
 <body>
-    <header class="navbar user-navbar">
-        <div class="navbar-brand">
-            <img class="brand-logo" src="/assets/images/diver.png" alt="Logo Daiver">
-            <div class="brand-copy">
-                <h1>Daiver User End</h1>
-                <span class="badge">Landing Interactiva</span>
+
+    <!-- ============ TOP BAR ============ -->
+    <header class="dv-topbar">
+        <div class="dv-brand">
+            <div class="dv-brand-mark"></div>
+            <div>
+                <h1>Diver · Acciones</h1>
+                <span class="brand-sub">User End</span>
             </div>
         </div>
 
-        <nav class="navbar-links user-nav-links">
-            <a href="#hero" class="nav-link active">Inicio</a>
-            <a href="#connection" class="nav-link">Conexion</a>
-            <a href="#actions" class="nav-link">Acciones</a>
-            <a href="#yolo" class="nav-link">Vision YOLO</a>
-            <a href="#system-logs" class="nav-link">Comunicacion</a>
-            <a href="/" class="nav-link nav-external">Dashboard</a>
-        </nav>
-
-        <div class="navbar-status status-group">
+        <div class="dv-status-group">
             <span id="server-status" class="status-indicator disconnected">Servidor Offline</span>
             <span id="connection-status" class="status-indicator disconnected">Robot Desconectado</span>
         </div>
+
+        <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menú">
+            <span class="bars">☰</span>Menú
+        </button>
     </header>
 
-    <main class="container user-container">
-        <section id="hero" class="section hero-section">
+    <!-- Nav horizontal móvil estilo Apple: atajos rápidos -->
+    <nav class="mobile-pill-nav" id="mobile-pill-nav" aria-label="Atajos">
+        <div class="pill-nav-inner">
+            <a href="#actions" class="pill-chip" data-target="actions">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M12 2 v3 M12 19 v3 M22 12 h-3 M5 12 H2 M19 5 l-2 2 M7 17 l-2 2 M19 19 l-2 -2 M7 7 l-2 -2"/>
+                </svg>
+                <span>Acciones</span>
+            </a>
+            <a href="#cat-posturas" class="pill-chip" data-target="cat-posturas">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="6" r="2.5"/>
+                    <path d="M8 22 V15 a2 2 0 0 1 2 -2 h4 a2 2 0 0 1 2 2 V22"/>
+                </svg>
+                <span>Posturas</span>
+            </a>
+            <a href="#cat-saludos" class="pill-chip" data-target="cat-saludos">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 13 V9 a1.5 1.5 0 0 1 3 0 V13"/>
+                    <path d="M9 12 V7 a1.5 1.5 0 0 1 3 0 V13"/>
+                    <path d="M12 12 V8 a1.5 1.5 0 0 1 3 0 V16 a4.5 4.5 0 0 1 -9 0 V11 a1.5 1.5 0 1 0 -3 0 z"/>
+                </svg>
+                <span>Saludos</span>
+            </a>
+            <a href="#cat-bailes" class="pill-chip" data-target="cat-bailes">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 18 V8 l10 -3 V15"/>
+                    <circle cx="6" cy="18" r="2.5"/>
+                    <circle cx="16" cy="15" r="2.5"/>
+                </svg>
+                <span>Bailes</span>
+            </a>
+            <a href="#cat-acrobacias" class="pill-chip" data-target="cat-acrobacias">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2 L14 8 L20 9 L15.5 13 L17 20 L12 16.5 L7 20 L8.5 13 L4 9 L10 8 Z"/>
+                </svg>
+                <span>Acrobacias</span>
+            </a>
+            <a href="#yolo" class="pill-chip" data-target="yolo">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="6" width="14" height="12" rx="1.5"/>
+                    <path d="M16 10 L22 6.5 V17.5 L16 14 Z"/>
+                </svg>
+                <span>Cámara</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Menú drawer lateral: SOLO navegación entre páginas -->
+    <div class="menu-backdrop" id="menu-backdrop"></div>
+    <aside class="dv-menu" id="dv-menu" aria-hidden="true">
+        <div class="dv-menu-label">Ir a</div>
+        <a href="/control-remoto" class="nav-link nav-link-featured">
+            <span class="icon">🎮</span> Control Remoto
+        </a>
+        <a href="/" class="nav-link">
+            <span class="icon">◀</span> Configuraciones
+        </a>
+        <a href="/help" class="nav-link">
+            <span class="icon">?</span> Ayuda
+        </a>
+
+        <div class="dv-menu-label" style="margin-top: 1rem;">Registro</div>
+        <a href="#system-logs" class="nav-link">
+            <span class="icon">≡</span> Comunicación del sistema
+        </a>
+    </aside>
+
+    <main class="container">
+
+        <!-- ============ HERO ============ -->
+        <section id="hero" class="section">
             <div class="hero-card">
                 <div class="hero-copy">
-                    <h2>Control rapido para acciones de Daiver</h2>
-                    <p>Conecta el robot, ejecuta gestos y monitorea la comunicacion en tiempo real desde una sola interfaz.</p>
-                    <a href="#connection" class="btn btn-primary">Iniciar conexion</a>
+                    <span class="badge">Landing interactiva</span>
+                    <h2>Acciones rápidas del robot</h2>
+                    <p>
+                        Desde aquí puedes lanzar las <strong>acciones pre-programadas</strong> del Go2
+                        y activar el <strong>reconocimiento de objetos</strong> en tiempo real.
+                        Elige una categoría en el menú <strong>☰</strong> o desplázate para verlas todas.
+                    </p>
                 </div>
-                <img src="/assets/images/pie.png" alt="Daiver de pie" class="hero-image">
+                <img src="/assets/images/pie.png" alt="Diver de pie" class="hero-image">
             </div>
         </section>
 
-        <section id="connection" class="section">
-            <h2 class="section-title">Conectividad</h2>
-            <div class="cards-grid">
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Canal Robot</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="connect-form">
-                            <label for="ip-input">IP del Robot:</label>
-                            <input type="text" id="ip-input" class="input-field" placeholder="10.3.16.11">
-                        </div>
-                        <div class="action-buttons">
-                            <button id="btn-connect" class="btn btn-primary">Conectar</button>
-                            <button id="btn-disconnect" class="btn btn-danger" disabled>Desconectar</button>
-                        </div>
-                        <button id="btn-emergency" class="btn btn-warning btn-full">PARADA DE EMERGENCIA</button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
+        <!-- ============ ACCIONES ============ -->
         <section id="actions" class="section">
-            <h2 class="section-title">Acciones y Trucos</h2>
-            <div class="cards-grid">
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Saludos y Gestos</h3>
-                    </div>
-                    <div class="card-body actions-grid user-actions-grid">
-                        <button class="btn btn-secondary action-item" data-action="hello">
-                            <img src="/assets/images/patica.png" alt="Saludar">
-                            <span>Saludar</span>
-                        </button>
-                        <button class="btn btn-secondary action-item" data-action="stretch">
-                            <img src="/assets/images/pie.png" alt="Estirarse">
-                            <span>Estirarse</span>
-                        </button>
-                        <button class="btn btn-secondary action-item" data-action="heart">
-                            <img src="/assets/images/corazon.png" alt="Corazon">
-                            <span>Corazon</span>
-                        </button>
-                        <button class="btn btn-secondary action-item" data-action="wiggle">
-                            <img src="/assets/images/diver.png" alt="Meneo">
-                            <span>Meneo</span>
-                        </button>
-                        <button class="btn btn-secondary action-item" data-action="scrape">
-                            <img src="/assets/images/patica.png" alt="Raspar">
-                            <span>Raspar</span>
-                        </button>
-                    </div>
-                </div>
+            <h2 class="dv-section-title">Acciones y Trucos</h2>
+            <p class="dv-intro">
+                <span class="dv-tag">Rutinas estáticas</span>
+                Esta sección ejecuta <strong>secuencias predefinidas</strong> (posturas, gestos,
+                bailes y acrobacias) que ya vienen programadas en el robot. No usan IA ni
+                sensores: son movimientos fijos que siempre hacen lo mismo. Toca un botón
+                y el robot la ejecutará de inmediato.
+            </p>
 
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Posturas</h3>
-                    </div>
-                    <div class="card-body actions-grid user-actions-grid">
-                        <button class="btn btn-secondary action-item" data-action="lie">
+            <!-- 1. POSTURAS (básicas / seguras) -->
+            <div id="cat-posturas" class="dv-card">
+                <div class="dv-card-header">
+                    <h3>
+                        <svg class="cat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 20 H20"/>
+                            <path d="M7 20 V14 a3 3 0 0 1 3 -3 h4 a3 3 0 0 1 3 3 V20"/>
+                            <circle cx="12" cy="7" r="2.5"/>
+                        </svg>
+                        Posturas
+                    </h3>
+                    <span class="dv-tag">Básicas</span>
+                </div>
+                <div class="dv-card-body">
+                    <div class="actions-grid">
+                        <button class="action-item" data-action="lie">
                             <img src="/assets/images/acostado.png" alt="Acostarse">
                             <span>Acostarse</span>
                         </button>
-                        <button class="btn btn-secondary action-item" data-action="sit">
+                        <button class="action-item" data-action="sit">
                             <img src="/assets/images/sentado.png" alt="Sentarse">
                             <span>Sentarse</span>
                         </button>
-                        <button class="btn btn-secondary action-item" data-action="rise">
+                        <button class="action-item" data-action="rise">
                             <img src="/assets/images/levantarse.png" alt="Levantarse">
                             <span>Levantarse</span>
                         </button>
-                        <button class="btn btn-secondary action-item" data-action="recovery">
+                        <button class="action-item" data-action="recovery">
                             <img src="/assets/images/recuperarse.png" alt="Recuperarse">
                             <span>Recuperarse</span>
                         </button>
                     </div>
                 </div>
+            </div>
 
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Ritmo y Acrobacias</h3>
+            <!-- 2. SALUDOS Y GESTOS -->
+            <div id="cat-saludos" class="dv-card">
+                <div class="dv-card-header">
+                    <h3>
+                        <svg class="cat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M6 14 V9 a2 2 0 0 1 4 0 V14"/>
+                            <path d="M10 13 V7 a2 2 0 0 1 4 0 V14"/>
+                            <path d="M14 13 V8 a2 2 0 0 1 4 0 V16 a5 5 0 0 1 -10 0 V11 a2 2 0 1 0 -4 0 z"/>
+                        </svg>
+                        Saludos y Gestos
+                    </h3>
+                    <span class="dv-tag">Amigables</span>
+                </div>
+                <div class="dv-card-body">
+                    <div class="actions-grid">
+                        <button class="action-item" data-action="hello">
+                            <img src="/assets/images/patica.png" alt="Saludar">
+                            <span>Saludar</span>
+                        </button>
+                        <button class="action-item" data-action="stretch">
+                            <img src="/assets/images/pie.png" alt="Estirarse">
+                            <span>Estirarse</span>
+                        </button>
+                        <button class="action-item" data-action="heart">
+                            <img src="/assets/images/corazon.png" alt="Corazon">
+                            <span>Corazón</span>
+                        </button>
+                        <button class="action-item" data-action="wiggle">
+                            <img src="/assets/images/diver.png" alt="Meneo">
+                            <span>Meneo</span>
+                        </button>
+                        <button class="action-item" data-action="scrape">
+                            <img src="/assets/images/patica.png" alt="Raspar">
+                            <span>Raspar</span>
+                        </button>
                     </div>
-                    <div class="card-body actions-grid user-actions-grid">
-                        <button class="btn btn-accent action-item" data-action="dance1">
+                </div>
+            </div>
+
+            <!-- 3. BAILES (diversión) -->
+            <div id="cat-bailes" class="dv-card">
+                <div class="dv-card-header">
+                    <h3>
+                        <svg class="cat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 18 V8 l10 -3 V15"/>
+                            <circle cx="6" cy="18" r="3"/>
+                            <circle cx="16" cy="15" r="3"/>
+                        </svg>
+                        Bailes
+                    </h3>
+                    <span class="dv-tag">Diversión</span>
+                </div>
+                <div class="dv-card-body">
+                    <div class="actions-grid">
+                        <button class="action-item variant-fun" data-action="dance1">
                             <img src="/assets/images/baile1.png" alt="Baile 1">
                             <span>Baile 1</span>
                         </button>
-                        <button class="btn btn-accent action-item" data-action="dance2">
+                        <button class="action-item variant-fun" data-action="dance2">
                             <img src="/assets/images/baile2.png" alt="Baile 2">
                             <span>Baile 2</span>
                         </button>
-                        <button class="btn btn-warning action-item" data-action="frontjump">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. ACROBACIAS (riesgo) -->
+            <div id="cat-acrobacias" class="dv-card">
+                <div class="dv-card-header">
+                    <h3>
+                        <svg class="cat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2 L14 8 L20 9 L15.5 13 L17 20 L12 16.5 L7 20 L8.5 13 L4 9 L10 8 Z"/>
+                        </svg>
+                        Acrobacias
+                    </h3>
+                    <span class="dv-tag" style="background: rgba(239,68,68,0.12); color: var(--dv-alert); border-color: rgba(239,68,68,0.35);">Cuidado</span>
+                </div>
+                <div class="dv-card-body">
+                    <p class="dv-intro" style="margin-bottom: 0.85rem;">
+                        ⚠ Asegúrate de que el robot tenga <strong>espacio libre alrededor</strong>
+                        antes de ejecutar estas acciones.
+                    </p>
+                    <div class="actions-grid">
+                        <button class="action-item variant-danger" data-action="frontjump">
                             <img src="/assets/images/salto.png" alt="Salto Frontal">
                             <span>Salto Frontal</span>
                         </button>
-                        <button class="btn btn-warning action-item" data-action="frontpounce">
+                        <button class="action-item variant-danger" data-action="frontpounce">
                             <img src="/assets/images/salto_Agresivo.png" alt="Salto Agresivo">
                             <span>Salto Agresivo</span>
                         </button>
@@ -148,86 +1176,216 @@
             </div>
         </section>
 
+        <!-- ============ YOLO ============ -->
         <section id="yolo" class="section">
-            <h2 class="section-title">Vision por Computadora - YOLO</h2>
+            <h2 class="dv-section-title">Encender Cámara de Reconocimiento de Objetos</h2>
+            <p class="dv-intro">
+                <span class="dv-tag" style="background: rgba(34,197,94,0.12); color: var(--dv-green); border-color: rgba(34,197,94,0.35);">IA en tiempo real</span>
+                A diferencia de las <strong>rutinas estáticas</strong> de arriba, aquí activas
+                la <strong>visión por computadora (YOLO)</strong>: el sistema analiza el video en
+                vivo de la cámara del robot y detecta objetos a su alrededor
+                (personas, sillas, mascotas, etc.) marcándolos como puntos de interés.
+            </p>
+
             <div class="yolo-grid">
-                <div class="card yolo-video-card">
-                    <div class="card-header">
-                        <h3>Stream en Vivo</h3>
-                        <span id="yolo-fps" class="badge yolo-badge">FPS: --</span>
+                <div class="dv-card">
+                    <div class="dv-card-header">
+                        <h3>
+                            <svg class="cat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="2" y="6" width="14" height="12" rx="1.5"/>
+                                <path d="M16 10 L22 6.5 V17.5 L16 14 Z"/>
+                            </svg>
+                            Stream en vivo
+                        </h3>
+                        <span id="yolo-fps" class="yolo-badge">FPS: --</span>
                     </div>
-                    <div class="card-body">
+                    <div class="dv-card-body">
                         <div id="yolo-video-wrap" class="yolo-video-wrap">
                             <img id="yolo-video" class="yolo-video" alt="Stream YOLO">
                             <div id="yolo-placeholder" class="yolo-placeholder">
-                                <p>Stream detenido</p>
-                                <small>Presiona "Iniciar YOLO" para activar la camara y la deteccion.</small>
+                                <p>Cámara apagada</p>
+                                <small>Presiona "Encender Cámara" para activar el reconocimiento en tiempo real.</small>
                             </div>
                         </div>
 
                         <div class="yolo-controls">
                             <label for="yolo-source">Fuente:</label>
-                            <select id="yolo-source" class="input-field yolo-input">
-                                <option value="robot" selected>Camara Go2 (WebRTC)</option>
+                            <select id="yolo-source" class="yolo-input">
+                                <option value="robot" selected>Cámara Go2 (WebRTC)</option>
                                 <option value="webcam">Webcam local (fallback)</option>
                             </select>
 
                             <label for="yolo-camera">Webcam idx:</label>
-                            <input type="number" id="yolo-camera" class="input-field yolo-input" value="0" min="0" max="9">
+                            <input type="number" id="yolo-camera" class="yolo-input" value="0" min="0" max="9">
 
-                            <label for="yolo-conf">Confianza min:</label>
-                            <input type="number" id="yolo-conf" class="input-field yolo-input" value="0.35" min="0.05" max="0.95" step="0.05">
+                            <label for="yolo-conf">Confianza mín:</label>
+                            <input type="number" id="yolo-conf" class="yolo-input" value="0.35" min="0.05" max="0.95" step="0.05">
 
                             <label for="yolo-model">Modelo:</label>
-                            <select id="yolo-model" class="input-field yolo-input">
-                                <option value="yolov8n.pt" selected>YOLOv8n (rapido)</option>
+                            <select id="yolo-model" class="yolo-input">
+                                <option value="yolov8n.pt" selected>YOLOv8n (rápido)</option>
                                 <option value="yolov8s.pt">YOLOv8s (equilibrado)</option>
                                 <option value="yolov8m.pt">YOLOv8m (preciso)</option>
                             </select>
                         </div>
 
                         <div class="action-buttons">
-                            <button id="btn-yolo-start" class="btn btn-primary">Iniciar YOLO</button>
-                            <button id="btn-yolo-stop" class="btn btn-danger" disabled>Detener YOLO</button>
+                            <button id="btn-yolo-start" class="dv-btn primary">Encender Cámara</button>
+                            <button id="btn-yolo-stop" class="dv-btn danger" disabled>Apagar Cámara</button>
                         </div>
                     </div>
                 </div>
 
-                <div class="card yolo-waypoints-card">
-                    <div class="card-header">
-                        <h3>Waypoints Detectados</h3>
-                        <span id="yolo-count" class="badge yolo-badge">0 objetos</span>
+                <div class="dv-card">
+                    <div class="dv-card-header">
+                        <h3>
+                            <svg class="cat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="10" r="3"/>
+                                <path d="M12 2 C 7 2 4 5 4 10 c0 6 8 12 8 12 s 8 -6 8 -12 c 0 -5 -3 -8 -8 -8 z"/>
+                            </svg>
+                            Objetos detectados
+                        </h3>
+                        <span id="yolo-count" class="yolo-badge">0 objetos</span>
                     </div>
-                    <div class="card-body">
+                    <div class="dv-card-body">
                         <div id="yolo-waypoints" class="yolo-waypoints">
-                            <p class="yolo-empty">No hay detecciones. Inicia YOLO para ver objetos del entorno como waypoints.</p>
+                            <p class="yolo-empty">Aún no hay detecciones. Enciende la cámara para ver los objetos del entorno.</p>
                         </div>
                     </div>
                 </div>
             </div>
         </section>
 
+        <!-- ============ LOGS DESPLEGABLES ============ -->
         <section id="system-logs" class="section">
-            <h2 class="section-title">Comunicacion</h2>
-            <div class="card">
-                <div class="card-header">
-                    <h3>Canal Backend y Robot</h3>
-                    <button id="btn-clear-logs" class="btn btn-small">Limpiar</button>
-                </div>
-                <div class="card-body">
+            <h2 class="dv-section-title">Comunicación del sistema</h2>
+            <p class="dv-intro">
+                Mensajes en tiempo real entre tu navegador, el servidor y el robot.
+                Toca la barra para <strong>abrir o cerrar</strong> el registro.
+            </p>
+
+            <details class="logs-details">
+                <summary>
+                    <span class="left">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 6 h16 M4 12 h16 M4 18 h10"/>
+                        </svg>
+                        Registro de eventos
+                    </span>
+                    <span style="display:flex; align-items:center; gap: 0.6rem;">
+                        <button id="btn-clear-logs" class="btn-small" type="button">Limpiar</button>
+                        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M6 9 L12 15 L18 9"/>
+                        </svg>
+                    </span>
+                </summary>
+                <div class="logs-inner">
                     <div id="log-container" class="log-container">
                         <div class="log-entry log-info">[INFO] Landing user_end lista. Esperando conexion...</div>
                     </div>
                 </div>
-            </div>
+            </details>
         </section>
+
     </main>
 
-    <footer class="footer">
-        <p>Daiver User End - Unitree Go2 Air WebRTC | CUN Laboratorio 2</p>
+    <!-- Elementos ocultos: conectividad (requerida por user_end.js, no visible) -->
+    <div class="dv-hidden" aria-hidden="true">
+        <input type="text" id="ip-input" value="10.3.16.11">
+        <button id="btn-connect"></button>
+        <button id="btn-disconnect" disabled></button>
+        <button id="btn-emergency"></button>
+    </div>
+
+    <footer class="dv-footer">
+        DIVER USER END · Unitree Go2 Air WebRTC · Laboratorio 2 · CUN
     </footer>
 
     <script src="js/socket.io.min.js"></script>
     <script src="js/user_end.js"></script>
+    <script>
+        // Aplicar tema guardado del index (oscuro/claro)
+        (function () {
+            const theme = localStorage.getItem('dv_theme') || 'dark';
+            if (theme === 'light') document.body.classList.add('theme-light');
+        })();
+
+        // Evitar que el botón "Limpiar" dentro del <summary> abra/cierre el <details>
+        document.getElementById('btn-clear-logs')?.addEventListener('click', function (e) {
+            e.stopPropagation();
+            e.preventDefault();
+            const container = document.getElementById('log-container');
+            if (container) container.innerHTML = '';
+        });
+
+        // Menú drawer
+        const menuToggle = document.getElementById('menu-toggle');
+        const dvMenu = document.getElementById('dv-menu');
+        const menuBackdrop = document.getElementById('menu-backdrop');
+
+        function openMenu() {
+            dvMenu.classList.add('open');
+            menuBackdrop.classList.add('open');
+            dvMenu.setAttribute('aria-hidden', 'false');
+        }
+        function closeMenu() {
+            dvMenu.classList.remove('open');
+            menuBackdrop.classList.remove('open');
+            dvMenu.setAttribute('aria-hidden', 'true');
+        }
+
+        menuToggle?.addEventListener('click', openMenu);
+        menuBackdrop?.addEventListener('click', closeMenu);
+        dvMenu?.querySelectorAll('a.nav-link').forEach(link => {
+            link.addEventListener('click', () => setTimeout(closeMenu, 150));
+        });
+
+        // ---------- Mobile pill nav: scrollspy + scroll suave ----------
+        (function () {
+            const nav = document.getElementById('mobile-pill-nav');
+            if (!nav) return;
+            const chips = Array.from(nav.querySelectorAll('.pill-chip'));
+
+            // Scroll suave al tocar un chip
+            chips.forEach(chip => {
+                chip.addEventListener('click', (e) => {
+                    const target = document.getElementById(chip.dataset.target);
+                    if (!target) return;
+                    e.preventDefault();
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    setActive(chip);
+                });
+            });
+
+            function setActive(activeChip) {
+                chips.forEach(c => c.classList.remove('active'));
+                if (activeChip) {
+                    activeChip.classList.add('active');
+                    // Auto-scroll del pill nav para que el chip activo se vea
+                    activeChip.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                }
+            }
+
+            // Scrollspy: activar chip según sección visible
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const id = entry.target.id;
+                        const chip = chips.find(c => c.dataset.target === id);
+                        if (chip) setActive(chip);
+                    }
+                });
+            }, {
+                // un poco antes de la mitad de la pantalla para que se active pronto
+                rootMargin: '-30% 0px -60% 0px',
+                threshold: 0
+            });
+
+            chips.forEach(chip => {
+                const sec = document.getElementById(chip.dataset.target);
+                if (sec) observer.observe(sec);
+            });
+        })();
+    </script>
 </body>
 </html>
