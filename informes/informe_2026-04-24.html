@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informe de desarrollo — 24 de abril de 2026</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2.5cm 2cm;
+        }
+
+        * { box-sizing: border-box; }
+
+        html { font-size: 12pt; }
+
+        body {
+            font-family: "Calibri", "Segoe UI", Arial, sans-serif;
+            color: #222;
+            background: #f4f4f4;
+            line-height: 1.55;
+            margin: 0;
+            padding: 2rem 1rem;
+        }
+
+        .page {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 3.5rem 3rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            border: 1px solid #dcdcdc;
+        }
+
+        /* Encabezado institucional */
+        .header {
+            border-bottom: 3px double #1a3a6b;
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .header .institution {
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #6b6b6b;
+            margin-bottom: 0.35rem;
+        }
+
+        .header .document-type {
+            font-size: 0.85rem;
+            color: #1a3a6b;
+            font-weight: 600;
+            margin-bottom: 0.2rem;
+        }
+
+        .header h1 {
+            font-size: 1.6rem;
+            color: #1a3a6b;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            line-height: 1.3;
+        }
+
+        .header .subtitle {
+            font-size: 0.95rem;
+            color: #444;
+            font-style: italic;
+        }
+
+        /* Tabla de datos del informe */
+        .meta {
+            margin: 1.5rem 0 2.25rem;
+            border: 1px solid #cfcfcf;
+            background: #fafafa;
+        }
+
+        .meta table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .meta td {
+            padding: 0.5rem 0.85rem;
+            font-size: 0.88rem;
+            border-bottom: 1px solid #e6e6e6;
+            vertical-align: top;
+        }
+
+        .meta tr:last-child td { border-bottom: none; }
+
+        .meta td:first-child {
+            width: 30%;
+            color: #6b6b6b;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+            background: #f0f0f0;
+        }
+
+        /* Secciones y numeración */
+        h2 {
+            font-size: 1.15rem;
+            color: #1a3a6b;
+            font-weight: 700;
+            margin: 2rem 0 0.75rem;
+            padding-bottom: 0.35rem;
+            border-bottom: 1px solid #1a3a6b;
+        }
+
+        h3 {
+            font-size: 1rem;
+            color: #333;
+            font-weight: 700;
+            margin: 1.5rem 0 0.6rem;
+        }
+
+        h4 {
+            font-size: 0.92rem;
+            color: #444;
+            font-weight: 700;
+            margin: 1rem 0 0.4rem;
+        }
+
+        p {
+            text-align: justify;
+            margin-bottom: 0.85rem;
+            font-size: 0.92rem;
+        }
+
+        ul, ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+        }
+
+        li {
+            margin-bottom: 0.35rem;
+            font-size: 0.92rem;
+            line-height: 1.55;
+        }
+
+        strong { color: #1a3a6b; }
+
+        code {
+            font-family: "Consolas", "Courier New", monospace;
+            font-size: 0.85em;
+            color: #555;
+            background: #f3f3f3;
+            padding: 0.05em 0.35em;
+            border: 1px solid #e1e1e1;
+        }
+
+        /* Tablas formales */
+        table.data {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0.75rem 0 1.25rem;
+            font-size: 0.88rem;
+        }
+
+        table.data th,
+        table.data td {
+            border: 1px solid #c6c6c6;
+            padding: 0.55rem 0.7rem;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        table.data th {
+            background: #1a3a6b;
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 0.82rem;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+
+        table.data tbody tr:nth-child(even) {
+            background: #f7f9fc;
+        }
+
+        table.data td.num {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            font-family: "Consolas", monospace;
+            font-size: 0.86rem;
+        }
+
+        table.data td.total {
+            background: #eaeff7;
+            font-weight: 700;
+            color: #1a3a6b;
+        }
+
+        /* Bloque resumen ejecutivo */
+        .summary-box {
+            background: #f5f8fc;
+            border-left: 4px solid #1a3a6b;
+            padding: 1rem 1.25rem;
+            margin: 0.75rem 0 1.5rem;
+            font-size: 0.92rem;
+        }
+
+        /* Pie de página del informe */
+        .signature {
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid #cfcfcf;
+            display: flex;
+            justify-content: space-between;
+            gap: 2rem;
+            font-size: 0.85rem;
+        }
+
+        .signature .block {
+            flex: 1;
+            border-top: 1px solid #888;
+            padding-top: 0.4rem;
+            text-align: center;
+            color: #555;
+        }
+
+        .footer-page {
+            margin-top: 2.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e0e0e0;
+            text-align: center;
+            color: #888;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        /* Acciones (solo en pantalla) */
+        .toolbar {
+            max-width: 800px;
+            margin: 0 auto 1rem;
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.5rem;
+        }
+
+        .tool-btn {
+            background: #1a3a6b;
+            color: #ffffff;
+            border: none;
+            padding: 0.5rem 1.1rem;
+            font-size: 0.82rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .tool-btn:hover { background: #0f2548; }
+        .tool-btn.secondary {
+            background: #ffffff;
+            color: #1a3a6b;
+            border: 1px solid #1a3a6b;
+        }
+        .tool-btn.secondary:hover {
+            background: #eef2f8;
+        }
+
+        /* Estilos de impresión */
+        @media print {
+            body { background: #ffffff; padding: 0; }
+            .page {
+                max-width: 100%;
+                padding: 0;
+                box-shadow: none;
+                border: none;
+            }
+            .toolbar { display: none; }
+            h2 { page-break-after: avoid; }
+            table.data, .summary-box, .meta {
+                page-break-inside: avoid;
+            }
+        }
+
+        /* Responsive móvil */
+        @media (max-width: 640px) {
+            body { padding: 0.5rem; }
+            .page { padding: 1.5rem 1.1rem; }
+            .header h1 { font-size: 1.2rem; }
+            .meta td:first-child { width: 40%; }
+            table.data { font-size: 0.78rem; }
+            table.data th, table.data td { padding: 0.4rem 0.45rem; }
+            .signature { flex-direction: column; gap: 2.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Barra de herramientas (no aparece al imprimir) -->
+    <div class="toolbar">
+        <a href="/" class="tool-btn secondary" style="text-decoration: none;">← Volver al sistema</a>
+        <button class="tool-btn" onclick="window.print()">Imprimir / Exportar a PDF</button>
+    </div>
+
+    <!-- Documento -->
+    <div class="page">
+
+        <header class="header">
+            <div class="institution">Corporación Unificada Nacional · Laboratorio 2</div>
+            <div class="document-type">Informe técnico de desarrollo</div>
+            <h1>Rediseño de la interfaz web del sistema Diver Control</h1>
+            <div class="subtitle">Unitree Go2 Air — Interfaz WebRTC</div>
+        </header>
+
+        <!-- Datos del informe -->
+        <div class="meta">
+            <table>
+                <tr>
+                    <td>Fecha del informe</td>
+                    <td>24 de abril de 2026</td>
+                </tr>
+                <tr>
+                    <td>Período cubierto</td>
+                    <td>23 y 24 de abril de 2026</td>
+                </tr>
+                <tr>
+                    <td>Proyecto</td>
+                    <td>Diver Control · Laboratorio 2</td>
+                </tr>
+                <tr>
+                    <td>Responsable</td>
+                    <td>Diego White</td>
+                </tr>
+                <tr>
+                    <td>Repositorio / rama</td>
+                    <td><code>unitreeWebRTC</code> · rama <code>aplicacion</code></td>
+                </tr>
+                <tr>
+                    <td>Commit de cierre</td>
+                    <td><code>17d5e90b</code> — "cambio y actualizaciones en la aplicación web"</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- 1. Resumen ejecutivo -->
+        <h2>1. Resumen ejecutivo</h2>
+        <div class="summary-box">
+            Durante los días 23 y 24 de abril de 2026 se llevó a cabo un rediseño integral
+            de la interfaz web del sistema <strong>Diver Control</strong>. El trabajo se
+            organizó en torno a tres objetivos: (i) mejorar la experiencia para usuarios
+            sin formación técnica, (ii) incorporar un esquema de acceso y administración de
+            cuentas y (iii) garantizar coherencia visual, capacidad responsive y
+            accesibilidad multilingüe. Adicionalmente se incorporó una nueva página de
+            centro de ayuda y se ajustaron componentes del backend.
+        </div>
+
+        <!-- 2. Objetivos -->
+        <h2>2. Objetivos</h2>
+        <ol>
+            <li>Reducir la curva de aprendizaje para operarios no especializados mediante
+                un tutorial guiado, texto de ayuda contextual e iconografía explícita.</li>
+            <li>Implementar un sistema de autenticación con gestión de roles y cuentas,
+                limitando la cantidad de usuarios activos a los definidos por la
+                administración del laboratorio.</li>
+            <li>Unificar la identidad visual del sistema y asegurar su adecuada
+                visualización en dispositivos móviles, tabletas y computadores de
+                escritorio.</li>
+            <li>Proveer un canal estructurado de soporte al usuario final, con formulario
+                de reporte y datos de contacto directo.</li>
+        </ol>
+
+        <!-- 3. Actividades realizadas -->
+        <h2>3. Actividades realizadas</h2>
+
+        <h3>3.1. Panel principal (<code>website/index.html</code>)</h3>
+        <table class="data">
+            <thead>
+                <tr><th style="width: 28%;">Área</th><th>Actividad</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Autenticación</td>
+                    <td>Se implementó una pantalla de inicio de sesión con almacenamiento
+                    local de credenciales. Usuario por defecto: <code>admin / admin123</code>.</td>
+                </tr>
+                <tr>
+                    <td>Gestión de usuarios</td>
+                    <td>El administrador puede crear, modificar y eliminar hasta dos
+                    cuentas adicionales con roles diferenciados: operador y observador.</td>
+                </tr>
+                <tr>
+                    <td>Identidad visual</td>
+                    <td>Se unificó la paleta cromática y tipografía. Los elementos
+                    activos se representan en verde; los estados de alerta en rojo.</td>
+                </tr>
+                <tr>
+                    <td>Tutorial guiado</td>
+                    <td>Secuencia de seis pasos que se presenta únicamente la primera vez
+                    que un usuario ingresa al sistema, con versionado para reactivación
+                    en caso de cambios relevantes.</td>
+                </tr>
+                <tr>
+                    <td>Tooltips</td>
+                    <td>Información contextual visible al pasar el cursor sobre los
+                    elementos interactivos, con posicionamiento adaptativo.</td>
+                </tr>
+                <tr>
+                    <td>Internacionalización</td>
+                    <td>Soporte para español e inglés mediante atributos <code>data-i18n</code>;
+                    la preferencia se conserva entre sesiones.</td>
+                </tr>
+                <tr>
+                    <td>Tema claro y oscuro</td>
+                    <td>Se incorporó un selector de tema con paleta alternativa completa
+                    y persistencia de la preferencia.</td>
+                </tr>
+                <tr>
+                    <td>Medición de señal</td>
+                    <td>Se sustituyó el indicador binario de conexión por una medición
+                    real de latencia mediante pulsos periódicos al servidor, con cinco
+                    niveles de calidad.</td>
+                </tr>
+                <tr>
+                    <td>Diseño responsive</td>
+                    <td>Cinco puntos de quiebre progresivos (960, 720, 560, 400 píxeles y
+                    orientación apaisada de baja altura) con ajustes específicos para
+                    cada tamaño.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>3.2. Centro de ayuda (<code>website/help.html</code>) — archivo nuevo</h3>
+        <p>
+            Se creó una página independiente, accesible mediante la ruta <code>/help</code>,
+            que ofrece tres mecanismos de soporte:
+        </p>
+        <ul>
+            <li><strong>Formulario de reporte</strong> con selector de categoría
+            (conexión, funciones del robot, interfaz, cuenta u otro), campo de contacto
+            obligatorio y descripción detallada del incidente.</li>
+            <li><strong>Canales de contacto directo</strong> con enlaces predefinidos a
+            WhatsApp, correo electrónico y número telefónico del asesor.</li>
+            <li><strong>Preguntas frecuentes</strong> organizadas en cuatro bloques
+            desplegables: fallo de conexión, ausencia de respuesta a comandos,
+            recuperación de contraseña y visualización en dispositivos móviles.</li>
+        </ul>
+
+        <h3>3.3. Vista de acciones (<code>website/user_end.html</code>)</h3>
+        <p>
+            Se rediseñó la totalidad de la página manteniendo la compatibilidad con la
+            lógica existente en <code>user_end.js</code>. Los principales cambios fueron:
+        </p>
+        <ul>
+            <li>Supresión de la sección de conectividad (los identificadores se
+            conservan ocultos por compatibilidad).</li>
+            <li>Reorganización de las acciones en orden ascendente de riesgo: posturas,
+            saludos y gestos, bailes y acrobacias.</li>
+            <li>Inclusión de un párrafo explicativo que diferencia las rutinas estáticas
+            preprogramadas del procesamiento por visión artificial.</li>
+            <li>Renombramiento del módulo de visión por computadora a
+            "Encender cámara de reconocimiento de objetos", con terminología accesible
+            para el usuario final.</li>
+            <li>Conversión del registro de eventos a formato desplegable, cerrado por
+            defecto.</li>
+            <li>Incorporación de una barra de navegación horizontal con seis accesos
+            directos a las secciones principales, siempre visible.</li>
+        </ul>
+
+        <h3>3.4. Servidor de aplicación (<code>app.py</code>)</h3>
+        <ul>
+            <li>Nuevo endpoint <code>GET /api/ping</code> para medición de latencia
+            cliente–servidor.</li>
+            <li>Nueva ruta <code>GET /help</code> para servir el centro de ayuda.</li>
+            <li>Exploración y posterior retiro de la lectura del estado de carga del
+            robot (véase sección 5).</li>
+        </ul>
+
+        <!-- 4. Archivos modificados -->
+        <h2>4. Archivos modificados</h2>
+        <table class="data">
+            <thead>
+                <tr>
+                    <th>Archivo</th>
+                    <th style="text-align: right; width: 20%;">Líneas añadidas</th>
+                    <th style="text-align: right; width: 22%;">Líneas eliminadas</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>website/index.html</code></td>
+                    <td class="num">≈ 3 096</td>
+                    <td class="num">≈ 100</td>
+                </tr>
+                <tr>
+                    <td><code>website/user_end.html</code></td>
+                    <td class="num">≈ 1 398</td>
+                    <td class="num">≈ 200</td>
+                </tr>
+                <tr>
+                    <td><code>website/help.html</code> <em>(nuevo)</em></td>
+                    <td class="num">680</td>
+                    <td class="num">—</td>
+                </tr>
+                <tr>
+                    <td><code>app.py</code></td>
+                    <td class="num">19</td>
+                    <td class="num">0</td>
+                </tr>
+                <tr>
+                    <td><code>.gitignore</code></td>
+                    <td class="num">5</td>
+                    <td class="num">0</td>
+                </tr>
+                <tr>
+                    <td class="total">Totales</td>
+                    <td class="num total">≈ 4 972</td>
+                    <td class="num total">≈ 226</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- 5. Decisiones técnicas -->
+        <h2>5. Decisiones técnicas relevantes</h2>
+        <ol>
+            <li>
+                <strong>Retiro del indicador de batería.</strong> Tras verificar que el
+                firmware del Unitree Go2 Air disponible no expone el nivel de carga a
+                través del canal WebRTC, se optó por eliminar el componente en lugar de
+                presentar un valor no confiable. La estructura de datos <code>robot_state["battery"]</code>
+                se mantiene disponible para integraciones futuras.
+            </li>
+            <li>
+                <strong>Medición real de calidad de señal.</strong> Se sustituyó el
+                indicador binario "conectado/desconectado" por una medición activa de
+                latencia mediante <code>GET /api/ping</code> cada tres segundos, con
+                clasificación en cinco niveles.
+            </li>
+            <li>
+                <strong>Persistencia en el cliente.</strong> Las preferencias de usuario
+                (idioma, tema, tutorial visto, sesión y cuentas) se almacenan en
+                <code>localStorage</code> del navegador con claves prefijadas <code>dv_*</code>.
+                Esta decisión es suficiente para el alcance actual del laboratorio.
+            </li>
+        </ol>
+
+        <!-- 6. Pendientes -->
+        <h2>6. Pendientes y recomendaciones</h2>
+        <ol>
+            <li>Sustituir los datos de contacto de ejemplo en <code>help.html</code>
+            (WhatsApp, correo, teléfono) por los valores reales del área de soporte.</li>
+            <li>Evaluar la conveniencia de migrar la gestión de usuarios a un
+            almacenamiento en el servidor, en caso de escalar el uso del sistema.</li>
+            <li>Implementar el endpoint <code>POST /api/help</code> que reciba y
+            almacene los reportes del formulario de soporte.</li>
+            <li>Revisar nuevamente la disponibilidad del estado de carga del robot si se
+            actualiza el firmware del equipo.</li>
+            <li>Realizar pruebas de usabilidad con usuarios sin formación técnica para
+            validar el tutorial, los tooltips y la nueva barra de navegación.</li>
+        </ol>
+
+        <!-- 7. Conclusiones -->
+        <h2>7. Conclusiones</h2>
+        <p>
+            El trabajo realizado consolida la interfaz del sistema Diver Control en un
+            producto coherente, accesible y adaptable a distintos perfiles de usuario y
+            dispositivos. La incorporación del centro de ayuda y del sistema de cuentas
+            establece las bases para su uso sostenido por parte de personal no
+            especializado, mientras que las mediciones reales de señal y la supresión de
+            indicadores poco confiables refuerzan la fiabilidad percibida del sistema.
+        </p>
+
+        <!-- Firmas -->
+        <div class="signature">
+            <div class="block">
+                Elaborado por<br>
+                <strong>Diego White</strong>
+            </div>
+            <div class="block">
+                Revisado por<br>
+                &nbsp;
+            </div>
+            <div class="block">
+                Aprobado por<br>
+                &nbsp;
+            </div>
+        </div>
+
+        <div class="footer-page">
+            Informe técnico — Diver Control — 24 de abril de 2026 — Página 1 de 1
+        </div>
+
+    </div>
+
+</body>
+</html>

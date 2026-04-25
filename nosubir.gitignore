@@ -1,7 +1,0 @@
-/config/config.py
-/website/lading
-__pycache__/
-*.pyc
-logs/
-.env
-.vscode/
