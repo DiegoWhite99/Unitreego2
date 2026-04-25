@@ -512,32 +512,75 @@ body.control-remoto-body {
     transform: translateY(-50%);
 }
 
-.cr-joystick.joy-rotate {
-    background: radial-gradient(circle at center, rgba(249, 171, 0, 0.18), rgba(0, 0, 0, 0.55));
-    border-color: rgba(249, 171, 0, 0.35);
-}
-
-.cr-joystick.joy-rotate .cr-joy-knob {
-    background: radial-gradient(circle at 40% 35%, #f9c240, #a06b00);
-}
-
-.cr-joystick.joy-rotate.active .cr-joy-knob {
-    background: radial-gradient(circle at 40% 35%, #ffd572, #f9ab00);
-}
-
-/* Joystick — size scales with viewport so it fits on any phone. */
+/* ===== Joystick base: acero metálico (gris serio, look técnico) ===== */
 .cr-joystick {
     position: relative;
     width: clamp(100px, 22vmin, 150px);
     height: clamp(100px, 22vmin, 150px);
     border-radius: 50%;
-    background: radial-gradient(circle at center, rgba(26, 115, 232, 0.18), rgba(0, 0, 0, 0.55));
-    border: 2px solid rgba(255, 255, 255, 0.18);
+    /* Base oscura con leve highlight superior */
+    background:
+        radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.08), transparent 50%),
+        radial-gradient(circle at 50% 80%, rgba(0, 0, 0, 0.40), transparent 60%),
+        radial-gradient(circle at center, rgba(70, 78, 88, 0.30), rgba(8, 11, 14, 0.85));
+    border: 1.5px solid rgba(200, 205, 215, 0.20);
     touch-action: none;
     user-select: none;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    /* Sombra externa + sombra interna para sentir hueco */
+    box-shadow:
+        inset 0 2px 3px rgba(0, 0, 0, 0.6),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.04),
+        0 4px 22px rgba(0, 0, 0, 0.6),
+        0 0 0 1px rgba(0, 0, 0, 0.4);
 }
 
+/* Anillo decorativo interior (marca el "área activa") */
+.cr-joystick::before {
+    content: '';
+    position: absolute;
+    inset: 8%;
+    border-radius: 50%;
+    border: 1px dashed rgba(180, 188, 200, 0.18);
+    pointer-events: none;
+}
+
+/* Sutil cruceta de referencia en el joystick de movimiento */
+.cr-joystick.joy-move::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    pointer-events: none;
+    background:
+        linear-gradient(0deg,    transparent 49.3%, rgba(255, 255, 255, 0.10) 49.3% 50.7%, transparent 50.7%),
+        linear-gradient(90deg,   transparent 49.3%, rgba(255, 255, 255, 0.10) 49.3% 50.7%, transparent 50.7%);
+    -webkit-mask: radial-gradient(circle, #000 50%, transparent 60%);
+            mask: radial-gradient(circle, #000 50%, transparent 60%);
+}
+
+/* Arco de giro sutil en el joystick de rotación */
+.cr-joystick.joy-rotate {
+    background:
+        radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.08), transparent 50%),
+        radial-gradient(circle at 50% 80%, rgba(0, 0, 0, 0.40), transparent 60%),
+        radial-gradient(circle at center, rgba(78, 82, 92, 0.28), rgba(10, 12, 16, 0.85));
+    border-color: rgba(210, 215, 225, 0.22);
+}
+
+.cr-joystick.joy-rotate::after {
+    content: '↻';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(28px, 6vmin, 44px);
+    color: rgba(220, 225, 235, 0.06);
+    pointer-events: none;
+    font-weight: 300;
+}
+
+/* ===== Knob (perilla): cromo/peltre con relieve ===== */
 .cr-joystick .cr-joy-knob {
     position: absolute;
     top: 50%;
@@ -545,14 +588,57 @@ body.control-remoto-body {
     width: clamp(42px, 9vmin, 62px);
     height: clamp(42px, 9vmin, 62px);
     border-radius: 50%;
-    background: radial-gradient(circle at 40% 35%, #4a90f0, #1557b0);
+    /* Esfera gris metálica con highlight superior y reflejo inferior */
+    background:
+        radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.55), transparent 38%),
+        radial-gradient(circle at 65% 80%, rgba(255, 255, 255, 0.10), transparent 50%),
+        radial-gradient(circle at 40% 40%, #b9bdc4 0%, #7c818a 45%, #3d4148 100%);
     transform: translate(-50%, -50%);
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.6);
-    transition: background 0.15s;
+    border: 1px solid rgba(255, 255, 255, 0.30);
+    box-shadow:
+        inset 0 2px 2px rgba(255, 255, 255, 0.30),
+        inset 0 -3px 4px rgba(0, 0, 0, 0.45),
+        0 4px 12px rgba(0, 0, 0, 0.7),
+        0 1px 0 rgba(255, 255, 255, 0.10);
+    transition: box-shadow 0.18s ease, filter 0.18s ease;
 }
 
+/* Knob activo: anillo brillante alrededor + leve glow */
 .cr-joystick.active .cr-joy-knob {
-    background: radial-gradient(circle at 40% 35%, #5aa8ff, #1a73e8);
+    filter: brightness(1.12);
+    box-shadow:
+        inset 0 2px 2px rgba(255, 255, 255, 0.40),
+        inset 0 -3px 4px rgba(0, 0, 0, 0.45),
+        0 0 0 2px rgba(255, 255, 255, 0.25),
+        0 0 18px rgba(180, 190, 205, 0.30),
+        0 4px 14px rgba(0, 0, 0, 0.7);
+}
+
+/* Punto central del knob (le da profundidad y referencia) */
+.cr-joystick .cr-joy-knob::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 22%;
+    height: 22%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.25), transparent 60%),
+                radial-gradient(circle, #2a2d33, #14171b);
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+}
+
+/* Pulso muy sutil en el anillo cuando el joystick está activo */
+.cr-joystick.active::before {
+    border-color: rgba(220, 230, 245, 0.35);
+    animation: joyPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes joyPulse {
+    0%, 100% { opacity: 0.7; transform: scale(1); }
+    50%      { opacity: 1;   transform: scale(1.04); }
 }
 
 .cr-joystick .cr-joy-label {
@@ -814,6 +900,102 @@ body.control-remoto-body {
     50% { box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.4), 0 0 18px rgba(0, 200, 83, 0.95); }
 }
 
+/* ========================================
+   Indicador de rumbo (solo móvil) — línea roja horizontal
+   ======================================== */
+.cr-heading-strip {
+    display: none;                  /* visible solo en móvil vía media-query */
+    position: absolute;
+    top: 3.75rem;                   /* debajo del slider flotante */
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(280px, 62vw);
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+    z-index: 11;
+    user-select: none;
+}
+
+.cr-heading-label {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #ff3b3b;
+    text-shadow:
+        0 0 8px rgba(255, 59, 59, 0.5),
+        0 2px 4px rgba(0, 0, 0, 0.7);
+    letter-spacing: 0.5px;
+    line-height: 1;
+}
+
+.cr-heading-card {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #fff3f3;
+    margin-top: 1px;
+    opacity: 0.85;
+}
+
+.cr-heading-line {
+    margin-top: 0.35rem;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 59, 59, 0.2) 10%,
+        #ff3b3b 45%,
+        #ff3b3b 55%,
+        rgba(255, 59, 59, 0.2) 90%,
+        transparent 100%
+    );
+    box-shadow: 0 0 6px rgba(255, 59, 59, 0.6);
+    position: relative;
+}
+
+/* Flecha central apuntando abajo (marca el rumbo actual) */
+.cr-heading-line::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 2px;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid #ff3b3b;
+    filter: drop-shadow(0 0 4px rgba(255, 59, 59, 0.5));
+}
+
+/* Marcas (ticks) pequeñas a lo largo de la línea */
+.cr-heading-ticks {
+    margin-top: 0.3rem;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 2px;
+}
+.cr-heading-ticks .tk {
+    width: 1px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.35);
+}
+.cr-heading-ticks .tk.center {
+    height: 10px;
+    width: 2px;
+    background: #ff3b3b;
+    box-shadow: 0 0 4px rgba(255, 59, 59, 0.7);
+}
+
+@media (hover: none) and (pointer: coarse) and (max-height: 520px) {
+    .cr-heading-strip { top: 3rem; width: min(240px, 58vw); }
+    .cr-heading-label { font-size: 1.1rem; }
+    .cr-heading-card { font-size: 0.6rem; }
+}
+
 /* ====== Mobile action buttons (center of the screen, between joysticks) ====== */
 .cr-mobile-actions {
     display: none;
@@ -846,7 +1028,16 @@ body.control-remoto-body {
     transition: transform 0.12s, background 0.18s, border-color 0.18s;
 }
 
-.cr-mob-action-btn .ico { font-size: 1.15rem; line-height: 1; }
+.cr-mob-action-btn .ico {
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    color: #e2e6ec;
+}
+.cr-mob-action-btn .ico svg { width: 100%; height: 100%; }
 .cr-mob-action-btn .lbl {
     font-size: 0.62rem;
     font-weight: 700;
@@ -854,6 +1045,8 @@ body.control-remoto-body {
     text-transform: uppercase;
     color: #cfd2d6;
 }
+.cr-mob-override .ico { color: #f9ab00; }
+.cr-mob-override[aria-pressed="true"] .ico { color: #1a1400; }
 
 .cr-mob-action-btn:active,
 .cr-mob-action-btn.pressed {
@@ -950,6 +1143,23 @@ body.control-remoto-body {
     .cr-stage { grid-template-columns: 1fr; }
     html, body, .control-remoto-body { height: 100%; height: 100dvh; }
     .cr-video-wrap { height: 100%; }
+
+    /* Centro despejado: ocultamos el crosshair del escritorio y
+       mostramos en su lugar la línea roja de rumbo en la parte superior */
+    .cr-crosshair { display: none; }
+    .cr-heading-strip { display: flex; }
+
+    /* Acciones al fondo en el centro (entre los joysticks) */
+    .cr-mobile-actions {
+        top: auto;
+        left: 50%;
+        bottom: max(26px, env(safe-area-inset-bottom, 0px));
+        transform: translateX(-50%);
+    }
+
+    /* Slider de velocidad flotante: bajarlo un poco del borde y reducirlo
+       para que no tape la imagen del video */
+    .cr-speed-floating { top: 0.5rem; }
 }
 
 /* Short landscape phones (iPhone SE, old Androids with address bar visible):
@@ -1032,4 +1242,205 @@ body.control-remoto-body {
     border-radius: 6px;
     font-size: 0.75rem;
     cursor: pointer;
+}
+
+/* ========================================
+   CONTROL DE VELOCIDAD
+   Slider con gradiente verde → amarillo → rojo → rojo intenso.
+   Existe en dos ubicaciones sincronizadas:
+     - .cr-speed-panel: dentro del side panel (escritorio)
+     - .cr-speed-floating: flotante sobre el video (móvil/overlay)
+   ======================================== */
+.cr-speed-panel .cr-speed-status {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin-bottom: 0.7rem;
+    padding: 0.55rem 0.8rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--cr-border);
+    border-radius: 10px;
+}
+.cr-speed-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: #22c55e;
+    box-shadow: 0 0 10px currentColor;
+    transition: background-color 0.25s ease;
+}
+.cr-speed-label {
+    flex: 1;
+    font-size: 0.85rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #e8eef5;
+}
+.cr-speed-pct {
+    font-family: 'Consolas', monospace;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #cfd5dd;
+    min-width: 42px;
+    text-align: right;
+}
+
+/* Estados por nivel (via data-level) */
+.cr-speed-status[data-level="slow"]    .cr-speed-dot { background: #22c55e; }
+.cr-speed-status[data-level="slow"]    .cr-speed-label { color: #22c55e; }
+.cr-speed-status[data-level="normal"]  .cr-speed-dot { background: #facc15; }
+.cr-speed-status[data-level="normal"]  .cr-speed-label { color: #facc15; }
+.cr-speed-status[data-level="fast"]    .cr-speed-dot { background: #f97316; }
+.cr-speed-status[data-level="fast"]    .cr-speed-label { color: #f97316; }
+.cr-speed-status[data-level="max"]     .cr-speed-dot {
+    background: #ef4444;
+    animation: speedPulse 0.8s ease-in-out infinite;
+}
+.cr-speed-status[data-level="max"]     .cr-speed-label { color: #ef4444; }
+
+@keyframes speedPulse {
+    0%, 100% { box-shadow: 0 0 10px #ef4444; }
+    50%      { box-shadow: 0 0 22px #ef4444; transform: scale(1.15); }
+}
+
+/* Slider con track de gradiente semaforo */
+.cr-speed-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 14px;
+    border-radius: 7px;
+    outline: none;
+    cursor: pointer;
+    background: linear-gradient(
+        90deg,
+        #16a34a 0%,
+        #22c55e 20%,
+        #facc15 45%,
+        #f97316 70%,
+        #ef4444 90%,
+        #b91c1c 100%
+    );
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+/* Thumb (WebKit) */
+.cr-speed-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 3px solid #0f1923;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+    cursor: grab;
+    transition: transform 0.15s ease;
+}
+.cr-speed-slider::-webkit-slider-thumb:active {
+    transform: scale(1.15);
+    cursor: grabbing;
+}
+
+/* Thumb (Firefox) */
+.cr-speed-slider::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 3px solid #0f1923;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+    cursor: grab;
+}
+
+/* Escala debajo del slider */
+.cr-speed-scale {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.45rem;
+    font-size: 0.68rem;
+    letter-spacing: 0.5px;
+    color: #9aa4b1;
+}
+
+.cr-speed-help {
+    margin-top: 0.65rem;
+    font-size: 0.72rem;
+    color: #9aa4b1;
+    line-height: 1.5;
+}
+.cr-speed-help strong { color: #ef4444; }
+
+/* ----- Slider flotante (móvil / overlay sobre video) ----- */
+.cr-speed-floating {
+    position: absolute;
+    left: 50%;
+    top: 0.75rem;
+    transform: translateX(-50%);
+    width: min(360px, 70vw);
+    background: rgba(8, 14, 20, 0.88);
+    backdrop-filter: saturate(180%) blur(14px);
+    -webkit-backdrop-filter: saturate(180%) blur(14px);
+    border: 1px solid var(--cr-border);
+    border-radius: 14px;
+    padding: 0.5rem 0.75rem 0.6rem;
+    z-index: 20;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.cr-speed-floating-head {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.35rem;
+}
+
+.cr-speed-floating-lbl {
+    flex: 1;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #e8eef5;
+    transition: color 0.2s ease;
+}
+
+.cr-speed-floating-pct {
+    font-family: 'Consolas', monospace;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #cfd5dd;
+}
+
+/* Estados por nivel en el flotante */
+.cr-speed-floating[data-level="slow"]    .cr-speed-floating-lbl { color: #22c55e; }
+.cr-speed-floating[data-level="slow"]    .cr-speed-dot { background: #22c55e; }
+.cr-speed-floating[data-level="normal"]  .cr-speed-floating-lbl { color: #facc15; }
+.cr-speed-floating[data-level="normal"]  .cr-speed-dot { background: #facc15; }
+.cr-speed-floating[data-level="fast"]    .cr-speed-floating-lbl { color: #f97316; }
+.cr-speed-floating[data-level="fast"]    .cr-speed-dot { background: #f97316; }
+.cr-speed-floating[data-level="max"]     .cr-speed-floating-lbl { color: #ef4444; }
+.cr-speed-floating[data-level="max"]     .cr-speed-dot {
+    background: #ef4444;
+    animation: speedPulse 0.8s ease-in-out infinite;
+}
+
+/* Halo rojo en el contorno cuando está en modo máximo */
+.cr-speed-floating[data-level="max"] {
+    border-color: rgba(239, 68, 68, 0.6);
+    box-shadow: 0 0 18px rgba(239, 68, 68, 0.35), 0 4px 18px rgba(0, 0, 0, 0.4);
+}
+
+/* En pantallas pequeñas (móvil portrait) ajustamos tamaño */
+@media (max-width: 640px) {
+    .cr-speed-floating {
+        width: min(320px, 88vw);
+        top: 0.5rem;
+        padding: 0.4rem 0.65rem 0.5rem;
+    }
+    .cr-speed-floating-lbl { font-size: 0.68rem; }
 }

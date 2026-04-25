@@ -97,6 +97,7 @@ const ControlRemoto = {
         this.setupTraceActions();
         this.initTraceCanvas();
         this.restoreLiveScan();
+        this.setupSpeedControl();
         this.loadInitialData();
         this.startStatusPolling();
         this.refreshYoloStatus();
@@ -908,6 +909,76 @@ const ControlRemoto = {
         });
     },
 
+    /* ============ Control de velocidad ============
+       Slider con cuatro zonas (semaforo): lento / normal / rapido / emergencia.
+       Ajusta App.movement.speedFactor (0.15–1.00) y persiste la preferencia
+       en localStorage. Sincroniza los dos sliders (side panel + flotante). */
+    setupSpeedControl() {
+        const LS_KEY = 'cr_speed_factor';
+        const sliderDesktop = document.getElementById('cr-speed-slider');
+        const sliderMobile  = document.getElementById('cr-speed-slider-m');
+        const statusDesktop = document.getElementById('cr-speed-status');
+        const statusMobile  = document.getElementById('cr-speed-floating');
+        const labelDesktop  = document.getElementById('cr-speed-label');
+        const labelMobile   = document.getElementById('cr-speed-label-m');
+        const pctDesktop    = document.getElementById('cr-speed-pct');
+        const pctMobile     = document.getElementById('cr-speed-pct-m');
+
+        if (!sliderDesktop && !sliderMobile) return;
+
+        // Rango del slider: 15 – 100 (%). Internamente va a 0.15–1.00.
+        // Zonas: <35 lento, <60 normal, <85 rapido, >=85 emergencia.
+        const zoneFor = (pct) => {
+            if (pct >= 85) return { level: 'max',    label: '⚠ EMERGENCIA' };
+            if (pct >= 60) return { level: 'fast',   label: 'RÁPIDO' };
+            if (pct >= 35) return { level: 'normal', label: 'NORMAL' };
+            return { level: 'slow', label: 'LENTO' };
+        };
+
+        // Carga valor guardado o usa el default del objeto movement
+        let initial = parseInt(localStorage.getItem(LS_KEY), 10);
+        if (isNaN(initial) || initial < 15 || initial > 100) {
+            initial = Math.round((this.movement?.speedFactor || 0.45) * 100);
+        }
+
+        const apply = (pct, fromEl) => {
+            pct = Math.max(15, Math.min(100, Math.round(pct)));
+            const factor = pct / 100;
+
+            // Actualiza el estado interno del movimiento
+            if (this.movement) this.movement.speedFactor = factor;
+            // Guarda preferencia
+            try { localStorage.setItem(LS_KEY, String(pct)); } catch (e) { /* ignore */ }
+
+            // Sincroniza sliders (sin disparar loop infinito)
+            if (sliderDesktop && fromEl !== sliderDesktop) sliderDesktop.value = pct;
+            if (sliderMobile  && fromEl !== sliderMobile)  sliderMobile.value  = pct;
+
+            // Actualiza labels y estado visual
+            const zone = zoneFor(pct);
+            [statusDesktop, statusMobile].forEach(el => el && el.setAttribute('data-level', zone.level));
+            [labelDesktop, labelMobile].forEach(el => { if (el) el.textContent = zone.label; });
+            [pctDesktop, pctMobile].forEach(el => { if (el) el.textContent = pct + '%'; });
+
+            // Feedback en la métrica existente de "Velocidad" (solo el factor configurado,
+            // no la velocidad real reportada por el robot)
+            const metricSpeed = this.el?.metricSpeed;
+            if (metricSpeed) {
+                // Si no hay telemetría viva, mostramos el factor configurado
+                const current = metricSpeed.textContent || '';
+                if (current === '' || current === '0.0 m/s' || current.startsWith('--')) {
+                    metricSpeed.textContent = factor.toFixed(2) + ' ×';
+                }
+            }
+        };
+
+        sliderDesktop?.addEventListener('input', (e) => apply(parseInt(e.target.value, 10), sliderDesktop));
+        sliderMobile?.addEventListener('input',  (e) => apply(parseInt(e.target.value, 10), sliderMobile));
+
+        // Estado inicial
+        apply(initial, null);
+    },
+
     /* ============ YOLO ============ */
     async startYolo() {
         const payload = {
@@ -1222,6 +1293,26 @@ const ControlRemoto = {
         if (this.el.statSteps) this.el.statSteps.textContent = steps.toLocaleString('es-CO');
     },
 
+    /* ============ Indicador de rumbo (línea roja, móvil) ============
+       Convierte el heading (radianes) a grados 0–360 y actualiza el badge
+       y la etiqueta cardinal (N / NE / E / SE / S / SO / O / NO). */
+    updateHeadingStrip() {
+        const label = document.getElementById('cr-heading-label');
+        const card  = document.getElementById('cr-heading-card');
+        if (!label && !card) return;
+
+        const h = (this.trace && this.trace.pose) ? this.trace.pose.heading : 0;
+        let deg = (h * 180 / Math.PI) % 360;
+        if (deg < 0) deg += 360;
+        const degInt = Math.round(deg);
+
+        const cards = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
+        const idx = Math.round(deg / 45) % 8;
+
+        if (label) label.textContent = degInt + '°';
+        if (card)  card.textContent  = cards[idx];
+    },
+
     advanceTraceFromVelocity(v, dt) {
         const p = this.trace.pose;
         p.heading += (v.z || 0) * dt;
@@ -1229,6 +1320,9 @@ const ControlRemoto = {
         const strafe = (v.y || 0) * dt;
         p.x += forward * Math.cos(p.heading) - strafe * Math.sin(p.heading);
         p.y += forward * Math.sin(p.heading) + strafe * Math.cos(p.heading);
+
+        // Refrescar indicador de rumbo (móvil)
+        this.updateHeadingStrip();
 
         if (!this.trace.history.length ||
             Math.hypot(p.x - this.trace.history.at(-1).x, p.y - this.trace.history.at(-1).y) > 0.02) {

@@ -949,6 +949,43 @@ def help_page():
     return send_from_directory('website', 'help.html')
 
 
+@app.route('/informes/')
+@app.route('/informes/<path:filename>')
+def informes_page(filename=None):
+    """Sirve los informes técnicos desde la carpeta /informes.
+    Sin filename: lista los informes disponibles en un índice HTML."""
+    import os
+    informes_dir = os.path.join(os.path.dirname(__file__), 'informes')
+    if filename:
+        return send_from_directory('informes', filename)
+    # Índice: lista los archivos HTML de informes
+    try:
+        files = sorted(
+            [f for f in os.listdir(informes_dir) if f.endswith('.html')],
+            reverse=True
+        )
+    except FileNotFoundError:
+        files = []
+    items = ''.join(
+        f'<li><a href="/informes/{f}">{f}</a></li>' for f in files
+    ) or '<li><em>No hay informes disponibles.</em></li>'
+    return (
+        '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
+        '<title>Informes técnicos</title>'
+        '<style>body{font-family:Calibri,Segoe UI,Arial,sans-serif;'
+        'max-width:720px;margin:3rem auto;padding:0 1rem;color:#222;}'
+        'h1{color:#1a3a6b;border-bottom:3px double #1a3a6b;padding-bottom:.5rem;}'
+        'ul{list-style:none;padding:0;}li{padding:.6rem 0;border-bottom:1px solid #eee;}'
+        'a{color:#1a3a6b;text-decoration:none;font-weight:600;}'
+        'a:hover{text-decoration:underline;}'
+        '.back{display:inline-block;margin-bottom:1rem;color:#666;}</style>'
+        '</head><body>'
+        '<a class="back" href="/">← Volver al sistema</a>'
+        '<h1>Informes técnicos</h1>'
+        f'<ul>{items}</ul></body></html>'
+    )
+
+
 @app.route('/autoroute')
 @app.route('/auto-ruta')
 @app.route('/autoroute.html')

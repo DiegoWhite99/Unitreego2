@@ -54,11 +54,23 @@
                 <p>Conecta el robot y presiona <strong>YOLO</strong> para ver la camara con deteccion en vivo.</p>
             </div>
 
-            <!-- Crosshair verde al centro (referencia de rumbo estilo HUD) -->
+            <!-- Crosshair verde al centro (solo escritorio) -->
             <div class="cr-crosshair" aria-hidden="true">
                 <span class="ch-v"></span>
                 <span class="ch-h"></span>
                 <span class="ch-dot"></span>
+            </div>
+
+            <!-- Indicador de rumbo (solo móvil): línea roja con grados -->
+            <div class="cr-heading-strip" id="cr-heading-strip" aria-hidden="true">
+                <span class="cr-heading-label" id="cr-heading-label">0°</span>
+                <span class="cr-heading-card" id="cr-heading-card">N</span>
+                <div class="cr-heading-line"></div>
+                <div class="cr-heading-ticks">
+                    <span class="tk"></span><span class="tk"></span><span class="tk"></span>
+                    <span class="tk center"></span>
+                    <span class="tk"></span><span class="tk"></span><span class="tk"></span>
+                </div>
             </div>
 
             <!-- HUD badges over video -->
@@ -117,22 +129,57 @@
                 <span class="cr-mobile-dot"></span>
             </div>
 
+            <!-- Mobile-only floating speed slider (visible en escritorio también) -->
+            <div class="cr-speed-floating" id="cr-speed-floating" aria-label="Velocidad del robot">
+                <div class="cr-speed-floating-head">
+                    <span class="cr-speed-dot" id="cr-speed-dot-m"></span>
+                    <span class="cr-speed-floating-lbl" id="cr-speed-label-m">LENTO</span>
+                    <span class="cr-speed-floating-pct" id="cr-speed-pct-m">30%</span>
+                </div>
+                <input type="range" id="cr-speed-slider-m" class="cr-speed-slider"
+                       min="15" max="100" step="5" value="45"
+                       aria-label="Velocidad del robot (móvil)">
+            </div>
+
             <!-- Mobile action buttons: stay visible on mobile alongside joysticks -->
             <div class="cr-mobile-actions" aria-label="Acciones rapidas">
                 <button class="cr-mob-action-btn" data-action="hello" aria-label="Saludar">
-                    <span class="ico">&#x270B;</span>
+                    <span class="ico" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M7 11 V6.5 a1.5 1.5 0 0 1 3 0 V11"/>
+                            <path d="M10 10 V5 a1.5 1.5 0 0 1 3 0 V11"/>
+                            <path d="M13 10 V6 a1.5 1.5 0 0 1 3 0 V13 a5 5 0 0 1 -10 0 V8 a1.5 1.5 0 1 0 -3 0 V13 a9 9 0 0 0 16 4"/>
+                        </svg>
+                    </span>
                     <span class="lbl">Saludar</span>
                 </button>
                 <button class="cr-mob-action-btn" data-action="sit" aria-label="Sentarse">
-                    <span class="ico">&#x1F415;</span>
+                    <span class="ico" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="5.5" r="2.2"/>
+                            <path d="M7 21 v-6 a2 2 0 0 1 2 -2 h6 a2 2 0 0 1 2 2 v6"/>
+                            <path d="M7 21 H17"/>
+                            <path d="M9 13 v-3"/>
+                            <path d="M15 13 v-3"/>
+                        </svg>
+                    </span>
                     <span class="lbl">Sentarse</span>
                 </button>
                 <button class="cr-mob-action-btn" data-action="recovery" aria-label="Recuperarse">
-                    <span class="ico">&#x21BB;</span>
+                    <span class="ico" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 12 a8 8 0 0 1 13.65 -5.65 L20 4 V9 H15"/>
+                            <path d="M20 12 a8 8 0 0 1 -13.65 5.65 L4 20 V15 H9"/>
+                        </svg>
+                    </span>
                     <span class="lbl">Recuperar</span>
                 </button>
                 <button id="cr-mobile-override" class="cr-mob-action-btn cr-mob-override" aria-label="Mantener para ignorar el sensor" aria-pressed="false">
-                    <span class="ico">&#x26A1;</span>
+                    <span class="ico" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M13 2 L4 14 H11 L10 22 L20 10 H13 Z"/>
+                        </svg>
+                    </span>
                     <span class="lbl">Forzar</span>
                 </button>
             </div>
@@ -153,6 +200,28 @@
 
         <!-- Side panel: sensors & 3D trace -->
         <aside id="cr-side" class="cr-side" aria-label="Panel de sensores">
+
+            <!-- Control de velocidad (duplicado con el flotante del video) -->
+            <section class="cr-panel cr-speed-panel">
+                <h4>Velocidad del robot</h4>
+                <div class="cr-speed-status" id="cr-speed-status">
+                    <span class="cr-speed-dot"></span>
+                    <span class="cr-speed-label" id="cr-speed-label">LENTO</span>
+                    <span class="cr-speed-pct" id="cr-speed-pct">30%</span>
+                </div>
+                <input type="range" id="cr-speed-slider" class="cr-speed-slider"
+                       min="15" max="100" step="5" value="45"
+                       aria-label="Velocidad del robot">
+                <div class="cr-speed-scale">
+                    <span>🟢 Lento</span>
+                    <span>🟡 Normal</span>
+                    <span>🟠 Rápido</span>
+                    <span>🔴 Máx.</span>
+                </div>
+                <p class="cr-speed-help">
+                    Desliza para ajustar. <strong>Rojo intenso = emergencia</strong>, úsalo solo si sabes lo que haces.
+                </p>
+            </section>
 
             <section class="cr-panel">
                 <h4>Sensores</h4>
