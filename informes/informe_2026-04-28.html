@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informe de desarrollo — 28 de abril de 2026</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2.5cm 2cm;
+        }
+
+        * { box-sizing: border-box; }
+
+        html { font-size: 12pt; }
+
+        body {
+            font-family: "Calibri", "Segoe UI", Arial, sans-serif;
+            color: #222;
+            background: #f4f4f4;
+            line-height: 1.55;
+            margin: 0;
+            padding: 2rem 1rem;
+        }
+
+        .page {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 3.5rem 3rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            border: 1px solid #dcdcdc;
+        }
+
+        /* Encabezado institucional */
+        .header {
+            border-bottom: 3px double #1a3a6b;
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .header .institution {
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #6b6b6b;
+            margin-bottom: 0.35rem;
+        }
+
+        .header .document-type {
+            font-size: 0.85rem;
+            color: #1a3a6b;
+            font-weight: 600;
+            margin-bottom: 0.2rem;
+        }
+
+        .header h1 {
+            font-size: 1.6rem;
+            color: #1a3a6b;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            line-height: 1.3;
+        }
+
+        .header .subtitle {
+            font-size: 0.95rem;
+            color: #444;
+            font-style: italic;
+        }
+
+        /* Tabla de datos del informe */
+        .meta {
+            margin: 1.5rem 0 2.25rem;
+            border: 1px solid #cfcfcf;
+            background: #fafafa;
+        }
+
+        .meta table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .meta td {
+            padding: 0.5rem 0.85rem;
+            font-size: 0.88rem;
+            border-bottom: 1px solid #e6e6e6;
+            vertical-align: top;
+        }
+
+        .meta tr:last-child td { border-bottom: none; }
+
+        .meta td:first-child {
+            width: 30%;
+            color: #6b6b6b;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+            background: #f0f0f0;
+        }
+
+        /* Secciones y numeración */
+        h2 {
+            font-size: 1.15rem;
+            color: #1a3a6b;
+            font-weight: 700;
+            margin: 2rem 0 0.75rem;
+            padding-bottom: 0.35rem;
+            border-bottom: 1px solid #1a3a6b;
+        }
+
+        h3 {
+            font-size: 1rem;
+            color: #333;
+            font-weight: 700;
+            margin: 1.5rem 0 0.6rem;
+        }
+
+        h4 {
+            font-size: 0.92rem;
+            color: #444;
+            font-weight: 700;
+            margin: 1rem 0 0.4rem;
+        }
+
+        p {
+            text-align: justify;
+            margin-bottom: 0.85rem;
+            font-size: 0.92rem;
+        }
+
+        ul, ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+        }
+
+        li {
+            margin-bottom: 0.35rem;
+            font-size: 0.92rem;
+            line-height: 1.55;
+        }
+
+        strong { color: #1a3a6b; }
+
+        code {
+            font-family: "Consolas", "Courier New", monospace;
+            font-size: 0.85em;
+            color: #555;
+            background: #f3f3f3;
+            padding: 0.05em 0.35em;
+            border: 1px solid #e1e1e1;
+        }
+
+        /* Tablas formales */
+        table.data {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0.75rem 0 1.25rem;
+            font-size: 0.88rem;
+        }
+
+        table.data th,
+        table.data td {
+            border: 1px solid #c6c6c6;
+            padding: 0.55rem 0.7rem;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        table.data th {
+            background: #1a3a6b;
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 0.82rem;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+
+        table.data tbody tr:nth-child(even) {
+            background: #f7f9fc;
+        }
+
+        table.data td.num {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            font-family: "Consolas", monospace;
+            font-size: 0.86rem;
+        }
+
+        table.data td.total {
+            background: #eaeff7;
+            font-weight: 700;
+            color: #1a3a6b;
+        }
+
+        /* Bloque resumen ejecutivo */
+        .summary-box {
+            background: #f5f8fc;
+            border-left: 4px solid #1a3a6b;
+            padding: 1rem 1.25rem;
+            margin: 0.75rem 0 1.5rem;
+            font-size: 0.92rem;
+        }
+
+        /* Pie de página del informe */
+        .signature {
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid #cfcfcf;
+            display: flex;
+            justify-content: space-between;
+            gap: 2rem;
+            font-size: 0.85rem;
+        }
+
+        .signature .block {
+            flex: 1;
+            border-top: 1px solid #888;
+            padding-top: 0.4rem;
+            text-align: center;
+            color: #555;
+        }
+
+        .footer-page {
+            margin-top: 2.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e0e0e0;
+            text-align: center;
+            color: #888;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        /* Acciones (solo en pantalla) */
+        .toolbar {
+            max-width: 800px;
+            margin: 0 auto 1rem;
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.5rem;
+        }
+
+        .tool-btn {
+            background: #1a3a6b;
+            color: #ffffff;
+            border: none;
+            padding: 0.5rem 1.1rem;
+            font-size: 0.82rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .tool-btn:hover { background: #0f2548; }
+        .tool-btn.secondary {
+            background: #ffffff;
+            color: #1a3a6b;
+            border: 1px solid #1a3a6b;
+        }
+        .tool-btn.secondary:hover {
+            background: #eef2f8;
+        }
+
+        /* Estilos de impresión */
+        @media print {
+            body { background: #ffffff; padding: 0; }
+            .page {
+                max-width: 100%;
+                padding: 0;
+                box-shadow: none;
+                border: none;
+            }
+            .toolbar { display: none; }
+            h2 { page-break-after: avoid; }
+            table.data, .summary-box, .meta {
+                page-break-inside: avoid;
+            }
+        }
+
+        /* Responsive móvil */
+        @media (max-width: 640px) {
+            body { padding: 0.5rem; }
+            .page { padding: 1.5rem 1.1rem; }
+            .header h1 { font-size: 1.2rem; }
+            .meta td:first-child { width: 40%; }
+            table.data { font-size: 0.78rem; }
+            table.data th, table.data td { padding: 0.4rem 0.45rem; }
+            .signature { flex-direction: column; gap: 2.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Barra de herramientas (no aparece al imprimir) -->
+    <div class="toolbar">
+        <a href="/" class="tool-btn secondary" style="text-decoration: none;">← Volver al sistema</a>
+        <button class="tool-btn" onclick="window.print()">Imprimir / Exportar a PDF</button>
+    </div>
+
+    <!-- Documento -->
+    <div class="page">
+
+        <header class="header">
+            <div class="institution">Corporación Unificada Nacional · Laboratorio 2</div>
+            <div class="document-type">Informe técnico de desarrollo</div>
+            <h1>Agente conversacional Diver: integración de LLM con tools, voz robótica y reacción autónoma a gestos</h1>
+            <div class="subtitle">Unitree Go2 Air — Interfaz WebRTC</div>
+        </header>
+
+        <!-- Datos del informe -->
+        <div class="meta">
+            <table>
+                <tr>
+                    <td>Fecha del informe</td>
+                    <td>28 de abril de 2026</td>
+                </tr>
+                <tr>
+                    <td>Período cubierto</td>
+                    <td>28 de abril de 2026</td>
+                </tr>
+                <tr>
+                    <td>Proyecto</td>
+                    <td>Diver Control · Laboratorio 2</td>
+                </tr>
+                <tr>
+                    <td>Responsable</td>
+                    <td>Diego White</td>
+                </tr>
+                <tr>
+                    <td>Repositorio / rama</td>
+                    <td><code>unitreeWebRTC</code> · rama <code>aplicacion</code></td>
+                </tr>
+                <tr>
+                    <td>Commit base de la jornada</td>
+                    <td><code>69bdd10f</code> — "se agrega mejora en el control, se modifica organización"</td>
+                </tr>
+                <tr>
+                    <td>Archivos principales</td>
+                    <td><code>app.py</code>, <code>config/config.py</code>, <code>src/agente.html</code>, <code>src/css/agente.css</code>, <code>src/js/agente.js</code></td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- 1. Resumen ejecutivo -->
+        <h2>1. Resumen ejecutivo</h2>
+        <div class="summary-box">
+            Durante la jornada del 28 de abril de 2026 se llevó a cabo la consolidación
+            del módulo del agente conversacional <strong>Diver</strong>, ampliándolo con
+            cuatro bloques de funcionalidad: (i) corrección y enriquecimiento del
+            sistema de comandos de movimiento, (ii) refactor profundo del prompt y de
+            los filtros de respuesta del modelo, (iii) incorporación de entrada y
+            salida por voz con timbre robótico masculino, y (iv) reacción autónoma a
+            gestos humanos detectados por la visión computacional. Adicionalmente se
+            habilitó soporte para dos proveedores de modelos de lenguaje (Google AI y
+            OpenAI) con conmutación automática según el identificador del modelo.
+        </div>
+
+        <!-- 2. Objetivos -->
+        <h2>2. Objetivos</h2>
+        <ol>
+            <li>Garantizar que el agente convierta correctamente las órdenes del
+            usuario en acciones reales del robot, sin respuestas falsas ni fugas de
+            razonamiento interno del modelo.</li>
+            <li>Habilitar interacción por voz bidireccional (escucha por micrófono y
+            respuesta hablada) con un timbre identificable como sintético-masculino.</li>
+            <li>Permitir reacción automática del robot ante gestos humanos comunes
+            (saludo con la mano, manos juntas, T-pose) sin necesidad de comando
+            verbal.</li>
+            <li>Soportar más de un proveedor de modelos de lenguaje a fin de mitigar
+            limitaciones de cuota y comparar comportamiento.</li>
+        </ol>
+
+        <!-- 3. Actividades realizadas -->
+        <h2>3. Actividades realizadas</h2>
+
+        <h3>3.1. Corrección del comando de giro y conversión de unidades</h3>
+        <p>
+            Se identificó que la orden "girar 360 grados" producía un giro real de
+            aproximadamente 90°. La causa fue un parámetro <code>duracion_s</code>
+            limitado a un tope de 5 segundos, que a la velocidad angular de
+            <code>0.7&nbsp;rad/s</code> sólo permitía cubrir cerca de 200°. Se
+            extendió el catálogo de herramientas con un parámetro adicional
+            <code>grados</code> en la función <code>mover</code>, que el backend
+            convierte a duración mediante la fórmula
+            <code>(grados&nbsp;×&nbsp;π&nbsp;/&nbsp;180)&nbsp;/&nbsp;0.7</code> con un
+            margen del 5&nbsp;% y un tope de 15&nbsp;segundos (suficiente para una vuelta
+            completa o ligeramente superior). Se documentó al modelo la equivalencia
+            <code>1 gradian = 0.9°</code> para que admita órdenes en sistema centesimal
+            como "400 gradianes" (= 360°).
+        </p>
+
+        <h3>3.2. Refactor del agente conversacional</h3>
+        <p>
+            Se reescribió el <code>system prompt</code> del agente para incluir de
+            forma explícita las capacidades reales del Unitree Go2 Air (acciones
+            disponibles, velocidades de movimiento, límite de salto frontal) y las
+            limitaciones (ausencia de SLAM y por tanto de navegación autónoma a
+            objetos). Se incorporó una sección de prohibiciones literales para evitar
+            las fugas de razonamiento que el modelo emitía hacia el usuario.
+        </p>
+
+        <table class="data">
+            <thead>
+                <tr><th style="width: 30%;">Componente</th><th>Cambio aplicado</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Sanitizador de respuesta</td>
+                    <td>Nuevos patrones <code>_META_LEAK</code> y
+                    <code>_LEAK_KEYWORDS</code> que descartan frases tipo
+                    <code>Plan: 1.</code>, <code>Max one emoji</code>,
+                    <code>Spanish (Latin)</code>, <code>Conversational</code>,
+                    <code>User's request:</code>, <code>Mensaje del usuario:</code>,
+                    <code>Contexto de tu cámara:</code> y palabras sueltas en
+                    mayúsculas como <code>TAZA</code>.</td>
+                </tr>
+                <tr>
+                    <td>Helpers <code>_strip_meta_prefix</code>,
+                        <code>_is_uppercase_blip</code></td>
+                    <td>Limpieza de prefijos meta-fuga (paréntesis, asteriscos,
+                    "Plan:") y rechazo de oraciones compuestas únicamente por
+                    palabras en mayúsculas.</td>
+                </tr>
+                <tr>
+                    <td>Auto-disparo de <code>mirar_alrededor</code></td>
+                    <td>El backend detecta, antes de invocar al modelo, si la
+                    pregunta del usuario es de tipo "qué ves", "describe",
+                    "qué hay alrededor". Si así es y YOLO está activo,
+                    pre-ejecuta la herramienta y entrega el resumen al modelo,
+                    eliminando la dependencia de que éste decida invocarla.</td>
+                </tr>
+                <tr>
+                    <td>Construcción del mensaje del usuario</td>
+                    <td>Se eliminó el envoltorio
+                    "<em>Mensaje del usuario:&nbsp;…</em>" porque ciertos modelos lo
+                    parroteaban como <code>User's request:&nbsp;"…"</code>. El
+                    contexto de cámara, cuando aplica, se anexa entre paréntesis al
+                    final de la frase.</td>
+                </tr>
+                <tr>
+                    <td>Bucle de <em>tool calling</em></td>
+                    <td>Se ajustó para conservar únicamente el texto de la última
+                    iteración del modelo (la respuesta natural posterior a la
+                    ejecución de las herramientas), descartando los textos
+                    intermedios de planificación.</td>
+                </tr>
+                <tr>
+                    <td>Diagnóstico en consola</td>
+                    <td>Cada turno emite un bloque <code>[AGENTE] ───</code> con
+                    modelo, mensaje del usuario, estado del robot y de YOLO,
+                    herramientas invocadas, resultados y respuesta final, lo que
+                    facilita la depuración remota.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>3.3. Soporte multi-proveedor: Google y OpenAI</h3>
+        <p>
+            Se incorporó la dependencia <code>openai</code> de manera condicional, de
+            modo que si no está instalada el sistema sigue funcionando con Google AI
+            sin emitir errores. El backend detecta automáticamente el proveedor a
+            partir del prefijo del identificador del modelo:
+        </p>
+        <table class="data">
+            <thead>
+                <tr><th style="width: 30%;">Prefijo del modelo</th><th>Proveedor</th><th>Llave requerida</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>gpt-*</code> · <code>o1-*</code> · <code>o3-*</code> · <code>o4-*</code></td>
+                    <td>OpenAI</td>
+                    <td><code>OPENAI_API_KEY</code></td>
+                </tr>
+                <tr>
+                    <td><code>gemini-*</code> · <code>gemma-*</code></td>
+                    <td>Google AI Studio</td>
+                    <td><code>GEMINI_API_KEY</code></td>
+                </tr>
+            </tbody>
+        </table>
+        <p>
+            Se implementó una rama nueva en <code>/api/agente/chat</code> que
+            traduce el catálogo de herramientas al formato OpenAI
+            (<code>type:&nbsp;function</code>), maneja la imagen de la cámara como
+            <em>data URL</em> base64 y aplica el mismo bucle de hasta cuatro
+            iteraciones de <em>tool calling</em>, el mismo sanitizador y el mismo
+            <em>fallback</em> que la rama de Google. El <em>endpoint</em>
+            <code>/api/agente/health</code> reporta el proveedor activo.
+        </p>
+
+        <h3>3.4. Pruebas comparativas de modelos</h3>
+        <table class="data">
+            <thead>
+                <tr><th>Modelo</th><th style="width: 16%;">Proveedor</th><th>Resultado</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>gemini-2.5-flash</code></td>
+                    <td>Google</td>
+                    <td>Function calling fiable y respuesta limpia, pero <strong>20
+                    solicitudes diarias</strong> en plan gratuito; insuficiente para
+                    desarrollo.</td>
+                </tr>
+                <tr>
+                    <td><code>gemma-4-31b-it</code></td>
+                    <td>Google</td>
+                    <td>Cuota efectivamente sin tope, pero presenta filtración del
+                    razonamiento interno (frases tipo "<em>Plan: 1. 2.</em>",
+                    "<em>Max one emoji</em>", "<em>Spanish (Latin)</em>"), respuestas
+                    en inglés tras <em>inputs</em> multimodales y eco del envoltorio
+                    del prompt. <strong>Descartado para producción.</strong></td>
+                </tr>
+                <tr>
+                    <td><code>gemini-2.5-flash-lite</code></td>
+                    <td>Google</td>
+                    <td>1.000 solicitudes diarias en plan gratuito, calidad de
+                    instrucción comparable al modelo principal. <strong>Recomendado
+                    para fase de desarrollo.</strong></td>
+                </tr>
+                <tr>
+                    <td><code>gpt-5.3</code></td>
+                    <td>OpenAI</td>
+                    <td>El identificador no existe en el catálogo público; la API
+                    devolvió <code>404 model_not_found</code>. Se solicitó al usuario
+                    listar los modelos disponibles para su llave.</td>
+                </tr>
+                <tr>
+                    <td><code>gpt-4o</code></td>
+                    <td>OpenAI</td>
+                    <td>Modelo finalmente seleccionado: multimodal, <em>function
+                    calling</em> sólido, latencia baja. Configurado por defecto en
+                    <code>config/config.py</code>.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>3.5. Voz robótica masculina y micrófono</h3>
+        <p>
+            Se incorporó interacción por voz utilizando exclusivamente APIs estándar
+            del navegador (Web Speech Recognition y Web Speech Synthesis), por lo que
+            no requiere instalación adicional ni dependencias en el servidor.
+        </p>
+        <table class="data">
+            <thead>
+                <tr><th style="width: 30%;">Función</th><th>Implementación</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Botón de micrófono</td>
+                    <td>Activa <code>SpeechRecognition</code> en español (es-ES),
+                    transcribe en tiempo real con previsualización flotante y, al
+                    finalizar, envía el mensaje al chat de forma automática.</td>
+                </tr>
+                <tr>
+                    <td>Botón de altavoz (TTS)</td>
+                    <td>Conmuta lectura en voz alta de las respuestas del agente. La
+                    preferencia persiste en <code>localStorage</code>.</td>
+                </tr>
+                <tr>
+                    <td>Selección de voz</td>
+                    <td>Prioriza voces sintéticas conocidas (eSpeak, Festival, Pico,
+                    Flite). Si no hay disponibles, busca voces masculinas en español
+                    por nombre (Pablo, Diego, Jorge, Carlos, Andrés, etc.). Como
+                    último recurso utiliza la primera voz del sistema.</td>
+                </tr>
+                <tr>
+                    <td>Parámetros de timbre</td>
+                    <td><code>pitch&nbsp;=&nbsp;0.4</code>,
+                    <code>rate&nbsp;=&nbsp;0.85</code>, volumen al máximo. La
+                    combinación produce un timbre grave-metálico identificable.</td>
+                </tr>
+                <tr>
+                    <td>Bips de inicio y cierre</td>
+                    <td>Antes y después de cada locución se emite un tono cuadrado
+                    sintético (220&nbsp;Hz / 90&nbsp;ms al inicio, 180&nbsp;Hz /
+                    70&nbsp;ms al final) generado con <code>OscillatorNode</code> de
+                    la Web Audio API, evocando un "<em>acknowledge</em>" de robot.</td>
+                </tr>
+                <tr>
+                    <td>Indicadores visuales</td>
+                    <td>El botón del micrófono pulsa en rojo mientras escucha; el
+                    botón del altavoz brilla en turquesa mientras habla; ambos
+                    persisten su estado y se restauran al recargar la página.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>3.6. Reacción autónoma a gestos</h3>
+        <p>
+            Se diseñó e implementó la clase <code>GestureReactor</code>, que ejecuta
+            un hilo en segundo plano para vigilar las detecciones de gestos humanos
+            entregadas por el modelo YOLOv8-pose. Cuando identifica un gesto
+            registrado en el mapa de reacciones, dispara la acción correspondiente
+            sobre el robot y notifica al frontend mediante un evento
+            <em>WebSocket</em>.
+        </p>
+        <table class="data">
+            <thead>
+                <tr><th style="width: 38%;">Gesto humano</th><th>Acción del robot</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Mano arriba (saludo)</td>
+                    <td><code>Hello</code> — saluda alzando la pata</td>
+                </tr>
+                <tr>
+                    <td>Ambas manos arriba</td>
+                    <td><code>Hello</code></td>
+                </tr>
+                <tr>
+                    <td>Brazos arriba</td>
+                    <td><code>Hello</code></td>
+                </tr>
+                <tr>
+                    <td>Manos juntas</td>
+                    <td><code>Heart</code> — gesto de corazón</td>
+                </tr>
+                <tr>
+                    <td>T-pose (brazos en cruz)</td>
+                    <td><code>Wiggle</code> — meneo de caderas</td>
+                </tr>
+            </tbody>
+        </table>
+        <p>
+            La frecuencia de muestreo es de 1.2&nbsp;segundos. Cada gesto cuenta con
+            un <em>cooldown</em> de 8&nbsp;segundos para evitar reacciones repetidas
+            ante presencia sostenida. El reactor sólo opera cuando el robot está
+            conectado y el detector YOLO está activo. Se expusieron tres
+            <em>endpoints</em>:
+        </p>
+        <ul>
+            <li><code>POST /api/gestures/start</code> — activa el reactor.</li>
+            <li><code>POST /api/gestures/stop</code> — lo desactiva.</li>
+            <li><code>GET /api/gestures/state</code> — devuelve el estado actual y
+            el mapeo gesto → acción.</li>
+        </ul>
+        <p>
+            En la interfaz se añadió un botón distintivo en color ámbar pulsante,
+            ubicado en la cabecera del panel de chat junto a los controles de voz.
+            El estado se guarda en <code>localStorage</code> y se reactiva
+            automáticamente tras un reinicio del servidor. Cuando se dispara una
+            reacción, el chat muestra una entrada del agente con el ícono 🎯,
+            el gesto detectado y la acción ejecutada; si el TTS está activo, el
+            agente también lo verbaliza.
+        </p>
+
+        <h3>3.7. Soporte y diagnóstico</h3>
+        <p>
+            Se atendieron consultas adicionales sobre el uso de
+            <code>local-ssl-proxy</code> (utilidad <em>npm</em>, no <em>pip</em>) y
+            su sintaxis correcta <code>local-ssl-proxy --source 3000 --target 5000</code>,
+            necesaria sólo para acceder al sistema desde otros dispositivos de la
+            red local con HTTPS.
+        </p>
+
+        <!-- 4. Tecnologías y librerías utilizadas -->
+        <h2>4. Tecnologías y librerías utilizadas</h2>
+        <p>
+            La jornada se apoyó exclusivamente en componentes ya presentes en el
+            proyecto, salvo por la incorporación de la librería <code>openai</code>
+            (Python) y el aprovechamiento de dos APIs estándar del navegador (Web
+            Speech y Web Audio) que no requieren instalación.
+        </p>
+
+        <h3>4.1. Lado servidor (Python)</h3>
+        <table class="data">
+            <thead>
+                <tr><th style="width: 28%;">Librería</th><th style="width: 14%;">Versión</th><th>Función dentro del trabajo del día</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>flask</code></td>
+                    <td>≥&nbsp;3.0</td>
+                    <td>Servidor HTTP y enrutamiento de los <em>endpoints</em>
+                    <code>/api/agente/chat</code>, <code>/api/agente/health</code>,
+                    <code>/api/gestures/*</code>.</td>
+                </tr>
+                <tr>
+                    <td><code>flask-socketio</code></td>
+                    <td>≥&nbsp;5.3</td>
+                    <td>Canal de eventos en tiempo real desde el reactor de gestos
+                    hacia el frontend (<code>emit('gesture_reaction', …)</code>).</td>
+                </tr>
+                <tr>
+                    <td><code>google-generativeai</code></td>
+                    <td>—</td>
+                    <td>Cliente oficial para invocar modelos
+                    <code>gemini-*</code> y <code>gemma-*</code> con
+                    <em>function calling</em> nativo y entrada multimodal.</td>
+                </tr>
+                <tr>
+                    <td><code>openai</code> <em>(añadida hoy)</em></td>
+                    <td>≥&nbsp;1.0</td>
+                    <td>Cliente oficial de OpenAI para modelos
+                    <code>gpt-*</code> y <code>o*</code>; soporta <em>tool
+                    calling</em>, imágenes en formato <em>data URL</em> y
+                    conversación con historial.</td>
+                </tr>
+                <tr>
+                    <td><code>ultralytics</code></td>
+                    <td>≥&nbsp;8.0</td>
+                    <td>Inferencia de YOLOv8-pose para detección de personas y
+                    estimación de pose. Sus salidas alimentan tanto la herramienta
+                    <code>mirar_alrededor</code> como el reactor autónomo de
+                    gestos.</td>
+                </tr>
+                <tr>
+                    <td><code>opencv-python</code></td>
+                    <td>≥&nbsp;4.8</td>
+                    <td>Codificación del último frame de cámara como JPEG, base
+                    para enviar la imagen al modelo (<em>inline_data</em> en
+                    Google y <em>data URL</em> en OpenAI).</td>
+                </tr>
+                <tr>
+                    <td><code>asyncio</code> + <code>threading</code></td>
+                    <td>stdlib</td>
+                    <td>El reactor de gestos vive en un <code>threading.Thread</code>
+                    diario que utiliza <code>run_async</code> para encolar comandos
+                    al robot en el bucle <em>asyncio</em> principal sin bloquear.</td>
+                </tr>
+                <tr>
+                    <td><code>re</code>, <code>json</code></td>
+                    <td>stdlib</td>
+                    <td>Análisis de las respuestas del modelo, sanitización de
+                    fugas (<code>_META_LEAK</code>, <code>_LEAK_KEYWORDS</code>) y
+                    serialización de argumentos de herramientas.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>4.2. Lado cliente (navegador)</h3>
+        <table class="data">
+            <thead>
+                <tr><th style="width: 30%;">API o librería</th><th>Función</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>SpeechRecognition</code> (Web Speech API)</td>
+                    <td>Dictado por voz en el botón del micrófono. Idioma fijado
+                    en <code>es-ES</code>, transcripción en tiempo real con envío
+                    automático del mensaje cuando finaliza el habla.</td>
+                </tr>
+                <tr>
+                    <td><code>SpeechSynthesisUtterance</code> (Web Speech API)</td>
+                    <td>Lectura en voz alta de las respuestas del agente con voz
+                    masculina sintética (<code>pitch&nbsp;=&nbsp;0.4</code>,
+                    <code>rate&nbsp;=&nbsp;0.85</code>).</td>
+                </tr>
+                <tr>
+                    <td><code>OscillatorNode</code> (Web Audio API)</td>
+                    <td>Generación de los pitidos sintéticos cuadrados de inicio
+                    (220&nbsp;Hz / 90&nbsp;ms) y cierre (180&nbsp;Hz / 70&nbsp;ms)
+                    de cada locución.</td>
+                </tr>
+                <tr>
+                    <td><code>socket.io-client</code></td>
+                    <td>Suscripción al evento <code>gesture_reaction</code>
+                    emitido por el reactor de gestos del backend, que dispara la
+                    aparición del mensaje en el chat.</td>
+                </tr>
+                <tr>
+                    <td><code>fetch</code> + <code>localStorage</code></td>
+                    <td>Comunicación con los <em>endpoints</em>
+                    <code>/api/agente/*</code> y <code>/api/gestures/*</code> y
+                    persistencia de las preferencias de voz y de reacción a
+                    gestos entre sesiones.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- 5. Arquitectura de conexiones -->
+        <h2>5. Arquitectura de conexiones y flujo de datos</h2>
+        <p>
+            El sistema mantiene tres canales activos durante una sesión de uso del
+            agente: un canal HTTP de petición/respuesta para el chat, un canal
+            <em>WebSocket</em> para eventos asíncronos (notificaciones del reactor
+            de gestos, actualizaciones de estado) y el canal WebRTC ya existente
+            con el robot Unitree Go2 Air. El detector YOLO y el reactor de gestos
+            operan dentro del mismo proceso del backend, por lo que comparten
+            memoria con el resto de la aplicación sin necesidad de serialización.
+        </p>
+
+        <h3>5.1. Canal de chat (síncrono)</h3>
+        <ol>
+            <li>El usuario escribe o dicta su mensaje en el cliente
+            <code>src/agente.html</code>.</li>
+            <li>El cliente envía <code>POST /api/agente/chat</code> con
+            <code>message</code>, <code>history</code> y, en una vista futura,
+            metadatos del frame.</li>
+            <li>El backend revisa el patrón de la pregunta. Si reconoce una
+            consulta de visión, ejecuta <code>mirar_alrededor</code> antes de
+            invocar al modelo y anexa el resumen al mensaje del usuario.</li>
+            <li>Detecta el proveedor por el prefijo del modelo y construye la
+            estructura adecuada (<code>system_instruction</code> + historial +
+            usuario + imagen JPEG opcional).</li>
+            <li>Itera el ciclo de <em>tool calling</em> hasta cuatro veces. Cada
+            herramienta invocada se traduce a una llamada real al robot mediante
+            <code>robot_send_command</code> dentro del bucle <em>asyncio</em>.</li>
+            <li>Aplica el sanitizador y devuelve <code>{reply, actions}</code> al
+            cliente.</li>
+            <li>El cliente muestra la respuesta en el chat. Si el TTS está
+            activo, la lee en voz alta con bips de marco.</li>
+        </ol>
+
+        <h3>5.2. Canal de gestos (asíncrono)</h3>
+        <ol>
+            <li>El detector YOLO publica detecciones en memoria mediante
+            <code>yolo_detector.get_detections()</code>.</li>
+            <li>El hilo <code>GestureReactor</code> consulta esa estructura cada
+            1.2&nbsp;segundos.</li>
+            <li>Si encuentra un gesto registrado y su <em>cooldown</em> ha
+            vencido, dispara <code>_agent_call_robot_action(spec.action)</code>,
+            que comparte código con la rama de <em>tool calling</em> del agente.</li>
+            <li>Emite <code>socket.io</code> <code>gesture_reaction</code> con el
+            gesto, la acción, el éxito y la frase asociada.</li>
+            <li>El cliente añade un mensaje al chat y, si el TTS está activo,
+            verbaliza la frase.</li>
+        </ol>
+
+        <!-- 6. Diagrama de flujo -->
+        <h2>6. Diagrama de flujo</h2>
+        <p>
+            Se presenta a continuación, en dos paneles, el flujo del agente
+            conversacional (panel A) y el flujo del reactor autónomo de gestos
+            (panel B). Ambos se ejecutan dentro del mismo proceso de
+            <code>app.py</code>; los dos canales comparten el dispatcher de
+            herramientas <code>_agent_call_robot_action</code> y el cliente del
+            robot Unitree.
+        </p>
+
+        <div style="text-align:center; margin: 1rem 0;">
+            <strong style="display:block; margin-bottom:0.4rem;">Panel A · Flujo del agente conversacional</strong>
+            <svg viewBox="0 0 720 880" xmlns="http://www.w3.org/2000/svg"
+                 style="width:100%; max-width:720px; height:auto;
+                        border:1px solid #cfcfcf; background:#fafafa;">
+                <defs>
+                    <marker id="arr" markerWidth="10" markerHeight="10" refX="9" refY="3"
+                            orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,6 L9,3 z" fill="#1a3a6b"/>
+                    </marker>
+                    <marker id="arrG" markerWidth="10" markerHeight="10" refX="9" refY="3"
+                            orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,6 L9,3 z" fill="#2f7a3f"/>
+                    </marker>
+                </defs>
+                <style>
+                    .box { fill:#ffffff; stroke:#1a3a6b; stroke-width:1.5; }
+                    .box.start { fill:#eaf2ff; }
+                    .box.deci { fill:#fff7e6; stroke:#a86b00; }
+                    .box.tool { fill:#eaf6ec; stroke:#2f7a3f; }
+                    .box.term { fill:#fdecec; stroke:#9b2222; }
+                    .lbl { font-family: "Segoe UI", Arial, sans-serif; font-size:12px; fill:#222; }
+                    .lbl.title { font-weight:700; }
+                    .lbl.small { font-size:11px; fill:#555; }
+                    .arrow { stroke:#1a3a6b; stroke-width:1.6; fill:none;
+                             marker-end:url(#arr); }
+                    .arrow.green { stroke:#2f7a3f; marker-end:url(#arrG); }
+                    .label-mid { font-family:"Segoe UI", Arial, sans-serif;
+                                 font-size:10.5px; fill:#444; font-style:italic; }
+                </style>
+
+                <!-- Usuario -->
+                <rect class="box start" x="280" y="14" width="160" height="40" rx="20"/>
+                <text class="lbl title" x="360" y="38" text-anchor="middle">Usuario</text>
+
+                <!-- Frontend -->
+                <rect class="box" x="220" y="80" width="280" height="56" rx="6"/>
+                <text class="lbl title" x="360" y="102" text-anchor="middle">Frontend agente</text>
+                <text class="lbl small"  x="360" y="120" text-anchor="middle">agente.html · agente.js · STT/TTS</text>
+
+                <!-- Backend Flask -->
+                <rect class="box" x="200" y="172" width="320" height="50" rx="6"/>
+                <text class="lbl title" x="360" y="194" text-anchor="middle">Flask backend (app.py)</text>
+                <text class="lbl small"  x="360" y="210" text-anchor="middle">POST /api/agente/chat</text>
+
+                <!-- Decisión: vision query? -->
+                <polygon class="box deci" points="360,250 530,300 360,350 190,300"/>
+                <text class="lbl title" x="360" y="295" text-anchor="middle">¿Pregunta</text>
+                <text class="lbl title" x="360" y="312" text-anchor="middle">de visión?</text>
+
+                <!-- Pre-execute mirar_alrededor (rama derecha) -->
+                <rect class="box tool" x="555" y="278" width="150" height="44" rx="6"/>
+                <text class="lbl title" x="630" y="298" text-anchor="middle">mirar_alrededor</text>
+                <text class="lbl small"  x="630" y="314" text-anchor="middle">YOLO summary</text>
+
+                <!-- Build messages -->
+                <rect class="box" x="200" y="380" width="320" height="56" rx="6"/>
+                <text class="lbl title" x="360" y="402" text-anchor="middle">Construir mensaje</text>
+                <text class="lbl small"  x="360" y="420" text-anchor="middle">system + historial + usuario + imagen JPEG</text>
+
+                <!-- LLM call -->
+                <rect class="box" x="200" y="460" width="320" height="60" rx="6"/>
+                <text class="lbl title" x="360" y="482" text-anchor="middle">Invocar LLM</text>
+                <text class="lbl small"  x="360" y="500" text-anchor="middle">OpenAI (gpt-*) · Google (gemini/gemma-*)</text>
+
+                <!-- Decisión: tool calls? -->
+                <polygon class="box deci" points="360,544 530,600 360,656 190,600"/>
+                <text class="lbl title" x="360" y="595" text-anchor="middle">¿Llamó</text>
+                <text class="lbl title" x="360" y="612" text-anchor="middle">tools?</text>
+
+                <!-- Dispatch tools (rama derecha) -->
+                <rect class="box tool" x="555" y="572" width="150" height="56" rx="6"/>
+                <text class="lbl title" x="630" y="594" text-anchor="middle">Dispatch tool</text>
+                <text class="lbl small"  x="630" y="610" text-anchor="middle">_agent_dispatch</text>
+                <text class="lbl small"  x="630" y="624" text-anchor="middle">→ robot_send_command</text>
+
+                <!-- Sanitize -->
+                <rect class="box" x="200" y="694" width="320" height="50" rx="6"/>
+                <text class="lbl title" x="360" y="716" text-anchor="middle">Sanitizar respuesta</text>
+                <text class="lbl small"  x="360" y="732" text-anchor="middle">_sanitize_reply · _META_LEAK · fallback</text>
+
+                <!-- Frontend recibe -->
+                <rect class="box" x="220" y="772" width="280" height="50" rx="6"/>
+                <text class="lbl title" x="360" y="794" text-anchor="middle">Frontend</text>
+                <text class="lbl small"  x="360" y="810" text-anchor="middle">render chat · TTS opcional + bips</text>
+
+                <!-- Usuario final -->
+                <rect class="box start" x="280" y="838" width="160" height="36" rx="18"/>
+                <text class="lbl title" x="360" y="861" text-anchor="middle">Usuario lo ve / oye</text>
+
+                <!-- Flechas -->
+                <path class="arrow" d="M360,54 L360,80"/>
+                <path class="arrow" d="M360,136 L360,172"/>
+                <text class="label-mid" x="380" y="158">HTTP POST</text>
+
+                <path class="arrow" d="M360,222 L360,250"/>
+                <!-- Vision query SÍ -->
+                <path class="arrow green" d="M530,300 L555,300"/>
+                <text class="label-mid" x="538" y="293">SÍ</text>
+                <!-- Retorna a build messages -->
+                <path class="arrow" d="M630,322 L630,408 L520,408"/>
+                <text class="label-mid" x="554" y="402">resumen</text>
+                <!-- Vision query NO -->
+                <path class="arrow" d="M360,350 L360,380"/>
+                <text class="label-mid" x="370" y="370">NO</text>
+
+                <path class="arrow" d="M360,436 L360,460"/>
+                <path class="arrow" d="M360,520 L360,544"/>
+
+                <!-- Tool call SÍ -->
+                <path class="arrow green" d="M530,600 L555,600"/>
+                <text class="label-mid" x="538" y="593">SÍ</text>
+                <!-- Loop back a invocar LLM -->
+                <path class="arrow green" d="M555,572 L555,500 L520,490"/>
+                <text class="label-mid" x="468" y="490">resultado tool · loop ≤ 4</text>
+                <!-- Tool call NO -->
+                <path class="arrow" d="M360,656 L360,694"/>
+                <text class="label-mid" x="370" y="680">NO</text>
+
+                <path class="arrow" d="M360,744 L360,772"/>
+                <text class="label-mid" x="378" y="762">JSON</text>
+                <path class="arrow" d="M360,822 L360,838"/>
+            </svg>
+        </div>
+
+        <div style="text-align:center; margin: 1.5rem 0;">
+            <strong style="display:block; margin-bottom:0.4rem;">Panel B · Flujo del reactor autónomo de gestos</strong>
+            <svg viewBox="0 0 720 480" xmlns="http://www.w3.org/2000/svg"
+                 style="width:100%; max-width:720px; height:auto;
+                        border:1px solid #cfcfcf; background:#fafafa;">
+                <defs>
+                    <marker id="arr2" markerWidth="10" markerHeight="10" refX="9" refY="3"
+                            orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,6 L9,3 z" fill="#1a3a6b"/>
+                    </marker>
+                </defs>
+                <style>
+                    .b   { fill:#ffffff; stroke:#1a3a6b; stroke-width:1.5; }
+                    .b.tool { fill:#eaf6ec; stroke:#2f7a3f; }
+                    .b.deci { fill:#fff7e6; stroke:#a86b00; }
+                    .b.term { fill:#fdecec; stroke:#9b2222; }
+                    .b.start { fill:#eaf2ff; }
+                    .t   { font-family:"Segoe UI", Arial, sans-serif; font-size:12px; fill:#222; }
+                    .t.h { font-weight:700; }
+                    .t.s { font-size:11px; fill:#555; }
+                    .a   { stroke:#1a3a6b; stroke-width:1.6; fill:none; marker-end:url(#arr2); }
+                    .lm  { font-family:"Segoe UI", Arial, sans-serif;
+                           font-size:10.5px; fill:#444; font-style:italic; }
+                </style>
+
+                <!-- Cámara -->
+                <rect class="b start" x="40" y="20" width="180" height="40" rx="20"/>
+                <text class="t h" x="130" y="45" text-anchor="middle">Cámara robot</text>
+
+                <!-- YOLO -->
+                <rect class="b" x="40" y="90" width="180" height="50" rx="6"/>
+                <text class="t h" x="130" y="111" text-anchor="middle">YOLOv8-pose</text>
+                <text class="t s" x="130" y="127" text-anchor="middle">detecciones + gestos</text>
+
+                <!-- GestureReactor -->
+                <rect class="b" x="270" y="90" width="200" height="50" rx="6"/>
+                <text class="t h" x="370" y="111" text-anchor="middle">GestureReactor</text>
+                <text class="t s" x="370" y="127" text-anchor="middle">hilo background · 1.2 s</text>
+
+                <!-- Decisión gesto + cooldown -->
+                <polygon class="b deci" points="370,170 540,220 370,270 200,220"/>
+                <text class="t h" x="370" y="215" text-anchor="middle">¿Gesto en mapa</text>
+                <text class="t h" x="370" y="232" text-anchor="middle">y sin cooldown?</text>
+
+                <!-- Dispatch acción -->
+                <rect class="b tool" x="200" y="300" width="340" height="50" rx="6"/>
+                <text class="t h" x="370" y="322" text-anchor="middle">_agent_call_robot_action</text>
+                <text class="t s" x="370" y="338" text-anchor="middle">hello · heart · wiggle (según mapa)</text>
+
+                <!-- Robot -->
+                <rect class="b" x="40" y="370" width="200" height="44" rx="6"/>
+                <text class="t h" x="140" y="392" text-anchor="middle">Robot Go2 Air</text>
+                <text class="t s" x="140" y="406" text-anchor="middle">acción ejecutada</text>
+
+                <!-- Socket emit -->
+                <rect class="b" x="290" y="370" width="180" height="44" rx="6"/>
+                <text class="t h" x="380" y="392" text-anchor="middle">socket.emit</text>
+                <text class="t s" x="380" y="406" text-anchor="middle">gesture_reaction</text>
+
+                <!-- Frontend -->
+                <rect class="b start" x="510" y="372" width="180" height="40" rx="20"/>
+                <text class="t h" x="600" y="396" text-anchor="middle">Frontend chat</text>
+
+                <!-- Flechas -->
+                <path class="a" d="M130,60 L130,90"/>
+                <path class="a" d="M220,115 L270,115"/>
+                <text class="lm" x="232" y="108">poll</text>
+                <path class="a" d="M370,140 L370,170"/>
+                <path class="a" d="M370,270 L370,300"/>
+                <text class="lm" x="378" y="290">SÍ</text>
+                <!-- NO loop (vuelve al reactor) -->
+                <path class="a" d="M540,220 L640,220 L640,115 L470,115"/>
+                <text class="lm" x="595" y="212">NO · siguiente ciclo</text>
+
+                <path class="a" d="M280,335 L240,375"/>
+                <path class="a" d="M380,350 L380,370"/>
+                <path class="a" d="M470,390 L510,390"/>
+            </svg>
+        </div>
+
+        <h3>6.1. Convenciones del diagrama</h3>
+        <ul>
+            <li><strong>Cajas azules</strong>: componentes de la aplicación
+            (frontend, backend, módulos).</li>
+            <li><strong>Cajas verdes</strong>: invocación de herramientas o
+            acciones del robot.</li>
+            <li><strong>Rombos ámbar</strong>: puntos de decisión.</li>
+            <li><strong>Cajas con borde redondeado</strong>: actores externos al
+            código (usuario, cámara, robot).</li>
+            <li><strong>Flechas verdes</strong>: ramas afirmativas que
+            disparan trabajo adicional.</li>
+        </ul>
+
+        <!-- 7. Resultados -->
+        <h2>7. Resultados</h2>
+        <ul>
+            <li>El agente conversacional ejecuta correctamente acciones de
+            movimiento, gestos predefinidos y consultas a la cámara.</li>
+            <li>Las respuestas del modelo ya no presentan filtraciones de
+            razonamiento ni eco del envoltorio del prompt.</li>
+            <li>El sistema admite alternativamente Google AI y OpenAI sin cambios de
+            código, únicamente actualizando el identificador del modelo en
+            <code>config/config.py</code>.</li>
+            <li>El robot saluda automáticamente cuando una persona alza la mano
+            frente a la cámara, con tiempo de respuesta inferior a 2&nbsp;segundos.</li>
+            <li>La interacción por voz funciona en navegadores Chromium (Chrome,
+            Edge) tanto en localhost como con HTTPS de proxy.</li>
+        </ul>
+
+        <!-- 8. Pendientes y recomendaciones -->
+        <h2>8. Pendientes y recomendaciones</h2>
+        <ol>
+            <li>Evaluar el uso de un servicio de TTS de mayor calidad (por ejemplo,
+            <code>OpenAI tts-1</code> con voz <code>onyx</code>) para reemplazar la
+            síntesis del navegador en escenarios de demostración pública, donde la
+            voz local resulta limitada.</li>
+            <li>Considerar la incorporación de identificación individual de personas
+            mediante <code>InsightFace</code> u otro modelo de reconocimiento facial,
+            para que el agente pueda saludar nominalmente.</li>
+            <li>Ampliar el mapa de reacciones a gestos con configuración en frontend,
+            de modo que el operador pueda definir nuevas correspondencias gesto →
+            acción sin tocar código.</li>
+            <li>Revisar el comportamiento del agente con <code>gemini-2.5-flash-lite</code>
+            como respaldo cuando se agote la cuota de OpenAI, mediante una capa de
+            conmutación automática por proveedor.</li>
+            <li>Realizar una sesión de pruebas de uso con observadores externos para
+            validar la naturalidad de la voz y la utilidad de la reacción a gestos
+            en condiciones reales.</li>
+        </ol>
+
+        <!-- 9. Conclusiones -->
+        <h2>9. Conclusiones</h2>
+        <p>
+            La jornada permitió cerrar el ciclo del agente conversacional Diver
+            como una unidad funcional integrada, capaz de recibir órdenes en
+            lenguaje natural por texto o voz, ejecutar las acciones físicas
+            correspondientes en el robot, describir lo que percibe a través de la
+            cámara y reaccionar de forma autónoma a gestos humanos comunes. La
+            arquitectura adoptada, con detección automática de proveedor y
+            tolerancia a la ausencia de cualquiera de las dependencias opcionales,
+            facilita su mantenimiento y abre la puerta a comparaciones
+            cuantitativas entre distintos modelos de lenguaje sin reescritura del
+            <em>backend</em>. El conjunto de filtros aplicados sobre la salida del
+            modelo asegura que las respuestas mostradas al usuario sean siempre
+            naturales y libres de información interna, requisito indispensable para
+            su exposición frente a usuarios no especializados.
+        </p>
+
+        <!-- Firmas -->
+        <div class="signature">
+            <div class="block">
+                Elaborado por<br>
+                <strong>Diego White</strong>
+            </div>
+            <div class="block">
+                Revisado por<br>
+                &nbsp;
+            </div>
+            <div class="block">
+                Aprobado por<br>
+                &nbsp;
+            </div>
+        </div>
+
+        <div class="footer-page">
+            Informe técnico — Diver Control — 28 de abril de 2026 — Página 1 de 1
+        </div>
+
+    </div>
+
+</body>
+</html>

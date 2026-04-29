@@ -23,7 +23,7 @@ unitreeWebRTC/
 │   └── 01_test_connection.py, 02_basic_motion.py …
 ├── tests/                   # Tests de integración
 │
-├── website/                 # Frontend servido por Flask
+├── src/                     # Frontend servido por Flask
 │   ├── index.html           # Panel principal (login, conexión, usuarios)
 │   ├── user_end.html        # Landing de acciones + cámara YOLO
 │   ├── controlRemoto.html   # Control remoto en vivo

@@ -327,62 +327,136 @@ body.control-remoto-body {
     justify-content: space-between;
 }
 
+/* ====== Panel Telemetría (serio) ====== */
+.cr-panel-ico {
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 0.4rem;
+    color: rgba(200, 210, 225, 0.65);
+}
+
 .cr-metrics {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.45rem;
+    gap: 0.5rem;
 }
 
 .cr-metric {
-    background: rgba(255, 255, 255, 0.025);
-    border: 1px solid var(--cr-border);
-    border-radius: 8px;
-    padding: 0.45rem 0.55rem;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012));
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 6px;
+    padding: 0.55rem 0.65rem 0.5rem;
     display: flex;
     flex-direction: column;
-    gap: 0.1rem;
+    gap: 0.25rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.cr-metric::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: rgba(150, 160, 175, 0.25);
+    transition: background 0.25s ease, box-shadow 0.25s ease;
+}
+
+.cr-metric-head {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.cr-metric-ico {
+    width: 13px;
+    height: 13px;
+    color: rgba(170, 180, 195, 0.7);
+    flex-shrink: 0;
+    transition: color 0.25s ease;
 }
 
 .cr-metric .label {
-    font-size: 0.65rem;
+    font-size: 0.62rem;
     text-transform: uppercase;
     color: #8c919a;
-    letter-spacing: 0.5px;
+    letter-spacing: 1.2px;
+    font-weight: 600;
 }
 
 .cr-metric .value {
-    font-size: 1rem;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.95rem;
     font-weight: 700;
-    color: #e8eaed;
+    color: #e8eef5;
+    letter-spacing: 0.3px;
+    line-height: 1.15;
+    margin-top: 0.05rem;
 }
 
-.cr-metric.accent .value { color: var(--cr-accent); }
-.cr-metric.ok .value { color: var(--cr-ok); }
-.cr-metric.warn .value { color: var(--cr-warn); }
+/* Estados por nivel de velocidad */
+.cr-metric[data-level="slow"]::before   { background: #22c55e; box-shadow: 0 0 6px rgba(34, 197, 94, 0.5); }
+.cr-metric[data-level="slow"]   .cr-metric-ico { color: #22c55e; }
+.cr-metric[data-level="slow"]   .value { color: #4ade80; }
 
-.cr-sensor-bar {
+.cr-metric[data-level="normal"]::before { background: #facc15; box-shadow: 0 0 6px rgba(250, 204, 21, 0.5); }
+.cr-metric[data-level="normal"] .cr-metric-ico { color: #facc15; }
+.cr-metric[data-level="normal"] .value { color: #fde047; }
+
+.cr-metric[data-level="fast"]::before   { background: #f97316; box-shadow: 0 0 6px rgba(249, 115, 22, 0.5); }
+.cr-metric[data-level="fast"]   .cr-metric-ico { color: #f97316; }
+.cr-metric[data-level="fast"]   .value { color: #fb923c; }
+
+.cr-metric[data-level="max"]::before    { background: #ef4444; box-shadow: 0 0 10px rgba(239, 68, 68, 0.65); }
+.cr-metric[data-level="max"]    .cr-metric-ico { color: #ef4444; }
+.cr-metric[data-level="max"]    .value { color: #fca5a5; }
+
+/* Métrica "Rumbo" con mini brújula */
+.cr-metric-heading { padding-bottom: 0.4rem; }
+
+.cr-heading-row {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
-    font-size: 0.7rem;
-    color: #bbb;
-    margin-top: 0.3rem;
+    gap: 0.5rem;
+    margin-top: 0.15rem;
 }
 
-.cr-sensor-bar .bar {
-    flex: 1;
-    height: 6px;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 999px;
+.cr-compass {
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+
+.cr-compass-needle {
+    transform-origin: 20px 20px;
+    transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.cr-metric-heading .value {
+    font-size: 1rem;
+    letter-spacing: 0.5px;
+}
+
+/* Barra pequeña dentro de la métrica de velocidad */
+.cr-metric-bar {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 2px;
     overflow: hidden;
+    margin-top: 0.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-.cr-sensor-bar .bar span {
+.cr-metric-bar span {
     display: block;
     height: 100%;
-    background: linear-gradient(90deg, var(--cr-ok), var(--cr-accent));
     width: 0%;
-    transition: width 0.25s ease;
+    background: linear-gradient(90deg, #16a34a, #22c55e 35%, #facc15 60%, #f97316 80%, #ef4444);
+    transition: width 0.3s ease;
 }
 
 /* ====== 3D Trace Canvas ====== */
@@ -507,7 +581,9 @@ body.control-remoto-body {
 
 .cr-joystick.joy-rotate {
     position: absolute;
-    right: max(14px, env(safe-area-inset-right, 0px));
+    /* +38px de margen para dejar espacio a la barra de velocidad
+       interactiva (cr-speed-tape) en el borde derecho. */
+    right: calc(max(14px, env(safe-area-inset-right, 0px)) + 38px);
     top: 50%;
     transform: translateY(-50%);
 }
@@ -1157,9 +1233,8 @@ body.control-remoto-body {
         transform: translateX(-50%);
     }
 
-    /* Slider de velocidad flotante: bajarlo un poco del borde y reducirlo
-       para que no tape la imagen del video */
-    .cr-speed-floating { top: 0.5rem; }
+    /* Slider de velocidad flotante: visible SOLO en móvil */
+    .cr-speed-floating { display: block; top: 0.5rem; }
 }
 
 /* Short landscape phones (iPhone SE, old Androids with address bar visible):
@@ -1245,195 +1320,313 @@ body.control-remoto-body {
 }
 
 /* ========================================
-   CONTROL DE VELOCIDAD
-   Slider con gradiente verde → amarillo → rojo → rojo intenso.
-   Existe en dos ubicaciones sincronizadas:
-     - .cr-speed-panel: dentro del side panel (escritorio)
-     - .cr-speed-floating: flotante sobre el video (móvil/overlay)
+   CONTROL DE VELOCIDAD (look técnico / sobrio)
+   El color se muestra SOLO en la parte llena del slider,
+   no en todo el track.
    ======================================== */
 .cr-speed-panel .cr-speed-status {
     display: flex;
-    align-items: center;
+    align-items: baseline;
     gap: 0.55rem;
-    margin-bottom: 0.7rem;
-    padding: 0.55rem 0.8rem;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--cr-border);
-    border-radius: 10px;
-}
-.cr-speed-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    background: #22c55e;
-    box-shadow: 0 0 10px currentColor;
-    transition: background-color 0.25s ease;
-}
-.cr-speed-label {
-    flex: 1;
-    font-size: 0.85rem;
-    font-weight: 800;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: #e8eef5;
-}
-.cr-speed-pct {
-    font-family: 'Consolas', monospace;
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: #cfd5dd;
-    min-width: 42px;
-    text-align: right;
+    margin-bottom: 0.55rem;
+    padding: 0.4rem 0 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* Estados por nivel (via data-level) */
-.cr-speed-status[data-level="slow"]    .cr-speed-dot { background: #22c55e; }
+.cr-speed-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 2px;
+    flex-shrink: 0;
+    background: #6b7280;
+    align-self: center;
+    transition: background-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.cr-speed-label {
+    flex: 1;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #b6bcc4;
+    transition: color 0.25s ease;
+}
+
+.cr-speed-pct {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #e8eef5;
+    min-width: 52px;
+    text-align: right;
+    letter-spacing: 0.5px;
+}
+
+/* Estados por nivel (solo cambian color, sin animación ruidosa) */
+.cr-speed-status[data-level="slow"]    .cr-speed-dot { background: #22c55e; box-shadow: 0 0 4px rgba(34, 197, 94, 0.5); }
 .cr-speed-status[data-level="slow"]    .cr-speed-label { color: #22c55e; }
-.cr-speed-status[data-level="normal"]  .cr-speed-dot { background: #facc15; }
+
+.cr-speed-status[data-level="normal"]  .cr-speed-dot { background: #facc15; box-shadow: 0 0 4px rgba(250, 204, 21, 0.5); }
 .cr-speed-status[data-level="normal"]  .cr-speed-label { color: #facc15; }
-.cr-speed-status[data-level="fast"]    .cr-speed-dot { background: #f97316; }
+
+.cr-speed-status[data-level="fast"]    .cr-speed-dot { background: #f97316; box-shadow: 0 0 4px rgba(249, 115, 22, 0.5); }
 .cr-speed-status[data-level="fast"]    .cr-speed-label { color: #f97316; }
+
 .cr-speed-status[data-level="max"]     .cr-speed-dot {
     background: #ef4444;
-    animation: speedPulse 0.8s ease-in-out infinite;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);
+    animation: speedPulseDot 0.9s ease-in-out infinite;
 }
 .cr-speed-status[data-level="max"]     .cr-speed-label { color: #ef4444; }
 
-@keyframes speedPulse {
-    0%, 100% { box-shadow: 0 0 10px #ef4444; }
-    50%      { box-shadow: 0 0 22px #ef4444; transform: scale(1.15); }
+@keyframes speedPulseDot {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.45; }
 }
 
-/* Slider con track de gradiente semaforo */
+/* Slider: track plano oscuro, fill progresivo por --speed-pct y --speed-color */
 .cr-speed-slider {
     -webkit-appearance: none;
     appearance: none;
     width: 100%;
-    height: 14px;
-    border-radius: 7px;
+    height: 8px;
+    border-radius: 2px;
     outline: none;
     cursor: pointer;
-    background: linear-gradient(
-        90deg,
-        #16a34a 0%,
-        #22c55e 20%,
-        #facc15 45%,
-        #f97316 70%,
-        #ef4444 90%,
-        #b91c1c 100%
-    );
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45);
+
+    --speed-pct: 45;
+    --speed-color: #facc15;
+
+    background:
+        linear-gradient(
+            90deg,
+            var(--speed-color) 0%,
+            var(--speed-color) calc(var(--speed-pct) * 1%),
+            rgba(255, 255, 255, 0.055) calc(var(--speed-pct) * 1%),
+            rgba(255, 255, 255, 0.055) 100%
+        );
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+        inset 0 1px 2px rgba(0, 0, 0, 0.7),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.03);
+    transition: background 0.2s ease;
 }
 
-/* Thumb (WebKit) */
+/* Thumb (WebKit): rectangular metálico */
 .cr-speed-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: #ffffff;
-    border: 3px solid #0f1923;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+    width: 14px;
+    height: 22px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, #d1d5dc 0%, #9ba0a8 45%, #60656c 100%);
+    border: 1px solid #2a2d32;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.4),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.35),
+        0 1px 2px rgba(0, 0, 0, 0.7);
     cursor: grab;
-    transition: transform 0.15s ease;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    position: relative;
+}
+.cr-speed-slider::-webkit-slider-thumb:hover {
+    background: linear-gradient(180deg, #e1e5ec 0%, #a8adb5 45%, #6c7178 100%);
 }
 .cr-speed-slider::-webkit-slider-thumb:active {
-    transform: scale(1.15);
     cursor: grabbing;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.5),
+        0 0 0 1px rgba(255, 255, 255, 0.25),
+        0 2px 4px rgba(0, 0, 0, 0.7);
 }
 
 /* Thumb (Firefox) */
 .cr-speed-slider::-moz-range-thumb {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: #ffffff;
-    border: 3px solid #0f1923;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+    width: 14px;
+    height: 22px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, #d1d5dc 0%, #9ba0a8 45%, #60656c 100%);
+    border: 1px solid #2a2d32;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.4),
+        0 1px 2px rgba(0, 0, 0, 0.7);
     cursor: grab;
 }
 
-/* Escala debajo del slider */
+/* Escala de referencia: ticks finos + etiquetas técnicas */
 .cr-speed-scale {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 0.45rem;
-    font-size: 0.68rem;
-    letter-spacing: 0.5px;
-    color: #9aa4b1;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    margin-top: 0.55rem;
+    padding: 0 2px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #8a8f96;
+    position: relative;
+}
+
+.cr-speed-scale span {
+    position: relative;
+    text-align: left;
+    padding-top: 0.5rem;
+}
+.cr-speed-scale span:last-child { text-align: right; }
+
+/* Tick pequeño encima de cada etiqueta */
+.cr-speed-scale span::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.18);
+}
+.cr-speed-scale span:last-child::before {
+    left: auto;
+    right: 0;
 }
 
 .cr-speed-help {
-    margin-top: 0.65rem;
-    font-size: 0.72rem;
-    color: #9aa4b1;
+    margin-top: 0.7rem;
+    font-size: 0.68rem;
+    color: #7d828a;
     line-height: 1.5;
+    letter-spacing: 0.3px;
 }
-.cr-speed-help strong { color: #ef4444; }
+.cr-speed-help strong {
+    color: #ef4444;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
 
-/* ----- Slider flotante (móvil / overlay sobre video) ----- */
+/* ----- Slider flotante (SOLO móvil, overlay sutil sobre video) ----- */
 .cr-speed-floating {
+    display: none; /* oculto por defecto; el media-query móvil lo muestra */
     position: absolute;
     left: 50%;
-    top: 0.75rem;
+    top: 0.55rem;
     transform: translateX(-50%);
-    width: min(360px, 70vw);
-    background: rgba(8, 14, 20, 0.88);
-    backdrop-filter: saturate(180%) blur(14px);
-    -webkit-backdrop-filter: saturate(180%) blur(14px);
-    border: 1px solid var(--cr-border);
-    border-radius: 14px;
-    padding: 0.5rem 0.75rem 0.6rem;
+    width: min(240px, 56vw);
+    background: rgba(8, 14, 20, 0.55);
+    backdrop-filter: saturate(160%) blur(10px);
+    -webkit-backdrop-filter: saturate(160%) blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    padding: 0.3rem 0.55rem 0.4rem;
     z-index: 20;
-    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
     user-select: none;
     -webkit-user-select: none;
+    opacity: 0.85;
+    transition: opacity 0.2s ease, background 0.2s ease;
+}
+.cr-speed-floating:hover,
+.cr-speed-floating:focus-within,
+.cr-speed-floating:active {
+    opacity: 1;
+    background: rgba(8, 14, 20, 0.78);
+}
+
+/* Slider dentro del flotante: más delgado */
+.cr-speed-floating .cr-speed-slider {
+    height: 5px;
+    border-radius: 2px;
+}
+.cr-speed-floating .cr-speed-slider::-webkit-slider-thumb {
+    width: 11px;
+    height: 16px;
+    border-radius: 2px;
+}
+.cr-speed-floating .cr-speed-slider::-moz-range-thumb {
+    width: 11px;
+    height: 16px;
+    border-radius: 2px;
+}
+
+/* Bloque de rumbo dentro del flotante (móvil): minimalista */
+.cr-speed-floating-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding-top: 0.28rem;
+    margin-top: 0.28rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    font-family: 'Consolas', 'Courier New', monospace;
+    opacity: 0.75;
+}
+
+.cr-heading-ico {
+    display: inline-flex;
+    width: 11px;
+    height: 11px;
+    color: rgba(255, 100, 100, 0.85);
+    flex-shrink: 0;
+}
+
+.cr-heading-floating-val {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #ff8080;
+    letter-spacing: 0.3px;
+    min-width: 34px;
+}
+
+.cr-heading-floating-card {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    color: #e0e0e0;
+    opacity: 0.7;
+    margin-left: auto;
 }
 
 .cr-speed-floating-head {
     display: flex;
     align-items: center;
-    gap: 0.45rem;
-    margin-bottom: 0.35rem;
+    gap: 0.35rem;
+    margin-bottom: 0.28rem;
+    font-family: 'Consolas', 'Courier New', monospace;
 }
 
 .cr-speed-floating-lbl {
     flex: 1;
-    font-size: 0.72rem;
-    font-weight: 800;
-    letter-spacing: 1.5px;
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 1.2px;
     text-transform: uppercase;
-    color: #e8eef5;
+    color: #b8bec6;
     transition: color 0.2s ease;
+    opacity: 0.85;
 }
 
 .cr-speed-floating-pct {
-    font-family: 'Consolas', monospace;
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     font-weight: 700;
-    color: #cfd5dd;
+    color: #e2e6ec;
+    letter-spacing: 0.3px;
 }
 
-/* Estados por nivel en el flotante */
-.cr-speed-floating[data-level="slow"]    .cr-speed-floating-lbl { color: #22c55e; }
+/* Dot del flotante en móvil: pequeño y cuadrado */
+.cr-speed-floating .cr-speed-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 1px;
+}
+
+/* Estados por nivel en el flotante (solo tinte de color, sin halos ruidosos) */
+.cr-speed-floating[data-level="slow"]    .cr-speed-floating-lbl { color: #4ade80; }
 .cr-speed-floating[data-level="slow"]    .cr-speed-dot { background: #22c55e; }
-.cr-speed-floating[data-level="normal"]  .cr-speed-floating-lbl { color: #facc15; }
+.cr-speed-floating[data-level="normal"]  .cr-speed-floating-lbl { color: #fde047; }
 .cr-speed-floating[data-level="normal"]  .cr-speed-dot { background: #facc15; }
-.cr-speed-floating[data-level="fast"]    .cr-speed-floating-lbl { color: #f97316; }
+.cr-speed-floating[data-level="fast"]    .cr-speed-floating-lbl { color: #fb923c; }
 .cr-speed-floating[data-level="fast"]    .cr-speed-dot { background: #f97316; }
-.cr-speed-floating[data-level="max"]     .cr-speed-floating-lbl { color: #ef4444; }
-.cr-speed-floating[data-level="max"]     .cr-speed-dot {
-    background: #ef4444;
-    animation: speedPulse 0.8s ease-in-out infinite;
-}
-
-/* Halo rojo en el contorno cuando está en modo máximo */
-.cr-speed-floating[data-level="max"] {
-    border-color: rgba(239, 68, 68, 0.6);
-    box-shadow: 0 0 18px rgba(239, 68, 68, 0.35), 0 4px 18px rgba(0, 0, 0, 0.4);
-}
+.cr-speed-floating[data-level="max"]     .cr-speed-floating-lbl { color: #fca5a5; }
+.cr-speed-floating[data-level="max"]     .cr-speed-dot { background: #ef4444; }
 
 /* En pantallas pequeñas (móvil portrait) ajustamos tamaño */
 @media (max-width: 640px) {
@@ -1443,4 +1636,298 @@ body.control-remoto-body {
         padding: 0.4rem 0.65rem 0.5rem;
     }
     .cr-speed-floating-lbl { font-size: 0.68rem; }
+}
+
+/* ========================================
+   Barra vertical de velocidad (solo móvil) — costado derecho.
+   Interactiva: botones ▲ ▼ + track tappable para ajustar velocidad.
+   Look sobrio: pista oscura + relleno color por nivel, sin glow ruidoso.
+   Coexiste con el joystick de giro (joystick desplazado +38px). */
+.cr-speed-tape {
+    display: none;            /* visible solo en móvil vía media-query */
+    position: absolute;
+    right: max(4px, env(safe-area-inset-right, 0px));
+    top: max(48px, calc(env(safe-area-inset-top, 0px) + 40px));
+    bottom: max(20px, env(safe-area-inset-bottom, 0px));
+    width: 30px;
+    z-index: 12;
+    user-select: none;
+    -webkit-user-select: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 1px;
+    background: rgba(8, 14, 20, 0.55);
+    backdrop-filter: saturate(160%) blur(8px);
+    -webkit-backdrop-filter: saturate(160%) blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    opacity: 0.88;
+    transition: opacity 0.2s ease, background 0.2s ease;
+}
+
+.cr-speed-tape:hover,
+.cr-speed-tape:focus-within,
+.cr-speed-tape:active { opacity: 1; background: rgba(8, 14, 20, 0.78); }
+
+/* Botones +/- de la barra: cuadrados con icono chevron, área de tap amplia */
+.cr-speed-tape-btn {
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 7px;
+    color: #e2e6ec;
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+    touch-action: manipulation;
+    transition: background 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
+    font-family: inherit;
+}
+
+.cr-speed-tape-btn:hover { background: rgba(255, 255, 255, 0.12); }
+.cr-speed-tape-btn:active,
+.cr-speed-tape-btn.pressed {
+    transform: scale(0.92);
+    background: rgba(26, 115, 232, 0.55);
+    border-color: rgba(90, 168, 255, 0.7);
+}
+.cr-speed-tape-btn svg { display: block; }
+
+.cr-speed-tape-val {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: rgba(220, 225, 235, 0.88);
+    letter-spacing: -0.3px;
+    line-height: 1;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+}
+
+.cr-speed-tape-cap {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.52rem;
+    font-weight: 700;
+    color: rgba(170, 178, 188, 0.6);
+    letter-spacing: 1px;
+    line-height: 1;
+    pointer-events: none;
+}
+
+.cr-speed-tape-track {
+    flex: 1;
+    width: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 3px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    touch-action: none;            /* evita scroll mientras se arrastra */
+    margin: 2px 0;
+}
+
+.cr-speed-tape-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 0%;
+    background: #facc15;
+    transition: height 0.25s ease, background 0.25s ease;
+    border-radius: 0 0 2px 2px;
+    pointer-events: none;
+}
+
+.cr-speed-tape-tick {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.12);
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Color del relleno y del valor por nivel (igual semáforo que el slider) */
+.cr-speed-tape[data-level="slow"]   .cr-speed-tape-fill { background: #22c55e; }
+.cr-speed-tape[data-level="slow"]   .cr-speed-tape-val  { color: rgba(74, 222, 128, 0.85); }
+
+.cr-speed-tape[data-level="normal"] .cr-speed-tape-fill { background: #facc15; }
+.cr-speed-tape[data-level="normal"] .cr-speed-tape-val  { color: rgba(253, 224, 71, 0.85); }
+
+.cr-speed-tape[data-level="fast"]   .cr-speed-tape-fill { background: #f97316; }
+.cr-speed-tape[data-level="fast"]   .cr-speed-tape-val  { color: rgba(251, 146, 60, 0.9); }
+
+.cr-speed-tape[data-level="max"]    .cr-speed-tape-fill {
+    background: #ef4444;
+    box-shadow: 0 0 4px rgba(239, 68, 68, 0.5);
+}
+.cr-speed-tape[data-level="max"]    .cr-speed-tape-val  { color: rgba(252, 165, 165, 0.95); }
+
+/* Mostrar SOLO en móvil */
+@media (hover: none) and (pointer: coarse), (max-width: 900px) {
+    .cr-speed-tape { display: flex; }
+}
+
+/* Pantallas con poca altura: contraer el cap y reducir botones */
+@media (hover: none) and (pointer: coarse) and (max-height: 400px) {
+    .cr-speed-tape { width: 26px; gap: 2px; padding: 2px 1px; }
+    .cr-speed-tape-cap { display: none; }
+    .cr-speed-tape-val { font-size: 0.55rem; }
+    .cr-speed-tape-btn { width: 22px; height: 22px; border-radius: 6px; }
+    .cr-speed-tape-btn svg { width: 12px; height: 12px; }
+}
+
+/* ========================================
+   Grabación de video (botón desktop + botón móvil + indicador flotante)
+   ======================================== */
+
+/* Botón desktop en topbar */
+.cr-record-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+.cr-record-btn .cr-rec-ico {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #ef4444;
+    box-shadow: 0 0 4px rgba(239, 68, 68, 0.55);
+    transition: border-radius 0.15s ease, background 0.2s ease;
+}
+.cr-record-btn[aria-pressed="true"] {
+    background: rgba(239, 68, 68, 0.85);
+    border-color: rgba(239, 68, 68, 0.95);
+    color: white;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.45);
+}
+.cr-record-btn[aria-pressed="true"] .cr-rec-ico {
+    border-radius: 1px;       /* círculo → cuadrado al grabar */
+    background: white;
+    box-shadow: none;
+    animation: crRecBlink 1s ease-in-out infinite;
+}
+
+@keyframes crRecBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+}
+
+/* Botón móvil flotante (mismo lenguaje visual que .cr-mobile-sensor,
+   posicionado a la izquierda de éste) */
+.cr-mobile-record {
+    display: none;
+    position: absolute;
+    top: max(10px, env(safe-area-inset-top, 0px));
+    /* sensor está en right: max(12px, safe-area) + 30px (~42px); el sensor
+       mide ~88px de ancho con label; dejamos margen para no superponer */
+    right: calc(max(12px, env(safe-area-inset-right, 0px)) + 132px);
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.35rem 0.6rem;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+    color: #e8eaed;
+    font-size: 0.72rem;
+    font-weight: 600;
+    backdrop-filter: blur(4px);
+    z-index: 20;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background 0.18s, border-color 0.18s, transform 0.12s, box-shadow 0.18s;
+    font-family: inherit;
+}
+
+.cr-mobile-record .ico {
+    width: 14px;
+    height: 14px;
+    color: #ef4444;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s ease;
+}
+.cr-mobile-record .ico svg { width: 100%; height: 100%; display: block; }
+
+.cr-mobile-record:active { transform: scale(0.95); }
+.cr-mobile-record:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.cr-mobile-record[aria-pressed="true"] {
+    background: rgba(239, 68, 68, 0.85);
+    border-color: rgba(239, 68, 68, 0.95);
+    color: white;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+    animation: crRecPulse 1.2s ease-in-out infinite;
+}
+.cr-mobile-record[aria-pressed="true"] .ico { color: white; animation: crRecBlink 1s ease-in-out infinite; }
+
+@keyframes crRecPulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(239, 68, 68, 0.45); }
+    50%      { box-shadow: 0 0 16px rgba(239, 68, 68, 0.75); }
+}
+
+/* Indicador flotante "REC 0:00" — visible mientras se graba */
+.cr-rec-indicator {
+    display: none;
+    position: absolute;
+    top: max(10px, env(safe-area-inset-top, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.32rem 0.7rem;
+    background: rgba(15, 8, 8, 0.78);
+    border: 1px solid rgba(239, 68, 68, 0.6);
+    border-radius: 999px;
+    color: #fff;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    backdrop-filter: blur(4px);
+    z-index: 25;
+    pointer-events: none;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+}
+.cr-rec-indicator.visible { display: inline-flex; }
+
+.cr-rec-indicator-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ef4444;
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.85);
+    animation: crRecBlink 1s ease-in-out infinite;
+    flex-shrink: 0;
+}
+
+/* Mostrar el botón móvil de grabar solo en móvil (igual que sensor) */
+@media (hover: none) and (pointer: coarse), (max-width: 900px) {
+    .cr-mobile-record { display: inline-flex; }
+}
+
+/* Pantallas pequeñas: cuando el sensor pierde su label, aproximamos el
+   botón record para no dejar un hueco enorme. */
+@media (hover: none) and (pointer: coarse) and (max-height: 400px) {
+    .cr-mobile-record {
+        right: calc(max(10px, env(safe-area-inset-right, 0px)) + 78px);
+        padding: 0.3rem 0.5rem;
+    }
+    .cr-mobile-record .lbl { display: none; }
+}
+
+/* Ocultar botón móvil en escritorio */
+@media (hover: hover) and (pointer: fine) and (min-width: 901px) {
+    .cr-mobile-record { display: none; }
 }

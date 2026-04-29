@@ -1,0 +1,913 @@
+/* ========================================
+   Diver - Agente IA (chat con Gemini + visión YOLO en vivo)
+   Conecta el frontend al backend /api/agente/chat y lista detecciones
+   en tiempo real desde /api/yolo/detections.
+   ======================================== */
+
+const API_BASE = window.location.origin;
+
+const AGENT = {
+    socket: null,
+    state: {
+        serverConnected: false,
+        robotConnected: false,
+        yoloRunning: false,
+        yoloFalseStreak: 0,   // protege contra hipos transitorios del backend
+        streamAttached: false,// evita re-asignar img.src y causar blink
+        aiReady: false,
+        history: [],          // mensajes para enviar contexto al backend
+        voice: {
+            recognition: null,
+            listening: false,
+            ttsEnabled: false,
+            ttsSpeaking: false,
+            voice: null,       // SpeechSynthesisVoice elegida (masculina ES)
+            micHint: null
+        },
+        gestureReact: false  // reacción autónoma a gestos (mano alzada → saludo)
+    },
+    el: {},
+    detectPollTimer: null,
+    statusPollTimer: null,
+
+    init() {
+        this.cacheElements();
+        this.setupSocket();
+        this.setupChat();
+        this.setupWakeButton();
+        this.setupVoice();
+        this.setupGestureReactor();
+        this.checkAiHealth();
+        // Si YOLO ya está corriendo, engancharse al stream automáticamente
+        this.refreshYoloAndAttach();
+        this.startDetectionsPolling();
+    },
+
+    cacheElements() {
+        this.el = {
+            video: document.getElementById('ag-video'),
+            placeholder: document.getElementById('ag-video-placeholder'),
+            wake: document.getElementById('ag-wake'),
+            statusServer: document.getElementById('ag-status-server'),
+            statusRobot:  document.getElementById('ag-status-robot'),
+            statusYolo:   document.getElementById('ag-status-yolo'),
+            statusAi:     document.getElementById('ag-status-ai'),
+            mFps: document.getElementById('ag-m-fps'),
+            mCount: document.getElementById('ag-m-count'),
+            mBattery: document.getElementById('ag-m-battery'),
+            detectList: document.getElementById('ag-detect-list'),
+            detectSummary: document.getElementById('ag-detect-summary'),
+            watchOverlay: document.querySelector('.ag-watch-overlay'),
+            messages: document.getElementById('ag-messages'),
+            input: document.getElementById('ag-input'),
+            form: document.getElementById('ag-form'),
+            send: document.getElementById('ag-send'),
+            clear: document.getElementById('ag-clear'),
+            suggestions: document.getElementById('ag-suggestions'),
+            banner: document.getElementById('ag-banner'),
+            mic: document.getElementById('ag-mic'),
+            ttsToggle: document.getElementById('ag-tts-toggle'),
+            gestureToggle: document.getElementById('ag-gesture-toggle')
+        };
+    },
+
+    /* ============ Conexión / sockets ============ */
+    setupSocket() {
+        if (typeof io === 'undefined') return;
+        this.socket = io(API_BASE, { transports: ['websocket', 'polling'] });
+
+        this.socket.on('connect', () => this._setStatus('statusServer', true, 'Servidor'));
+        this.socket.on('disconnect', () => this._setStatus('statusServer', false, 'Servidor'));
+
+        this.socket.on('robot_connected', () => this._setStatus('statusRobot', true, 'Robot'));
+        this.socket.on('robot_disconnected', () => this._setStatus('statusRobot', false, 'Robot'));
+
+        this.socket.on('state_update', (data) => {
+            if (typeof data?.battery === 'number') {
+                this.el.mBattery.textContent = `${data.battery}%`;
+            }
+            if (typeof data?.connected === 'boolean') {
+                this._setStatus('statusRobot', data.connected, 'Robot');
+                this.state.robotConnected = data.connected;
+            }
+        });
+    },
+
+    _setStatus(key, connected, label) {
+        const el = this.el[key];
+        if (!el) return;
+        el.classList.remove('connected', 'disconnected', 'connecting');
+        el.classList.add(connected ? 'connected' : 'disconnected');
+        const txt = el.querySelector('.txt');
+        if (txt) txt.textContent = label;
+    },
+
+    /* ============ Vista YOLO ============ */
+    async refreshYoloAndAttach() {
+        try {
+            const r = await fetch(`${API_BASE}/api/yolo/status`).then(r => r.json());
+            if (r && r.running) {
+                this.state.yoloRunning = true;
+                this._setStatus('statusYolo', true, 'Visión');
+                this.attachYoloStream(r.fps);
+            } else {
+                this._setStatus('statusYolo', false, 'Visión');
+            }
+        } catch (e) { /* sin servidor aún */ }
+    },
+
+    attachYoloStream(fps) {
+        const img = this.el.video;
+        if (!img) return;
+        // Solo asignar src la PRIMERA vez (o tras un detach explícito).
+        // Re-asignarlo causa blink/intermitencia porque obliga al browser
+        // a soltar la conexión MJPEG y abrir otra.
+        if (!this.state.streamAttached) {
+            img.src = `${API_BASE}/api/yolo/stream`;
+            img.style.display = 'block';
+            this.state.streamAttached = true;
+
+            // Si el browser tira la conexión (timeout, error de red), reintentar
+            // UNA vez tras 1.5s en lugar de quedarse en placeholder.
+            img.onerror = () => {
+                console.warn('[AGENTE] Stream MJPEG falló, reintentando…');
+                this.state.streamAttached = false;
+                clearTimeout(this._reattachTimer);
+                this._reattachTimer = setTimeout(() => {
+                    if (this.state.yoloRunning) this.attachYoloStream();
+                }, 1500);
+            };
+        }
+        if (this.el.placeholder) this.el.placeholder.style.display = 'none';
+        if (typeof fps === 'number') this.el.mFps.textContent = fps.toFixed(1);
+        if (this.el.watchOverlay) this.el.watchOverlay.classList.add('visible');
+    },
+
+    detachYoloStream() {
+        if (this.el.video) {
+            this.el.video.onerror = null;
+            this.el.video.src = '';
+            this.el.video.style.display = 'none';
+        }
+        if (this.el.placeholder) this.el.placeholder.style.display = 'flex';
+        if (this.el.watchOverlay) this.el.watchOverlay.classList.remove('visible');
+        this.state.streamAttached = false;
+    },
+
+    setupWakeButton() {
+        this.el.wake?.addEventListener('click', async () => {
+            this.el.wake.disabled = true;
+            this.el.wake.textContent = 'Despertando…';
+            try {
+                const r = await fetch(`${API_BASE}/api/yolo/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        source: this.state.robotConnected ? 'robot' : 'webcam',
+                        camera_index: 0,
+                        conf: 0.4,
+                        // Modelo pose: detecta personas + 17 keypoints +
+                        // gestos derivados (mano_arriba, sentado, etc.)
+                        model: 'yolov8n-pose.pt'
+                    })
+                }).then(r => r.json());
+                if (r && r.status === 'ok') {
+                    this.state.yoloRunning = true;
+                    this.state.yoloFalseStreak = 0;
+                    this._setStatus('statusYolo', true, 'Visión');
+                    this.attachYoloStream();
+                } else {
+                    this._showBanner(`No pude activar la visión: ${r?.message || 'desconocido'}`, 'error');
+                    this.el.wake.disabled = false;
+                    this.el.wake.textContent = 'Activar visión';
+                }
+            } catch (e) {
+                this._showBanner('Error contactando al servidor.', 'error');
+                this.el.wake.disabled = false;
+                this.el.wake.textContent = 'Activar visión';
+            }
+        });
+    },
+
+    /* ============ Voz: STT (micrófono) + TTS (voz robótica) ============
+       STT: Web Speech Recognition (Chrome/Edge). Click → escucha →
+            transcribe al input → envía automáticamente al soltar.
+       TTS: Web Speech Synthesis con voz masculina española, pitch bajo
+            y tasa ligeramente lenta para tono robótico. Toggle persistido
+            en localStorage. */
+    setupVoice() {
+        // Restaurar preferencia de voz
+        try {
+            if (localStorage.getItem('diver_tts_enabled') === '1') {
+                this.state.voice.ttsEnabled = true;
+            }
+        } catch (e) { /* localStorage bloqueado, ignoramos */ }
+        this._renderTtsButton();
+
+        // ── Speech Synthesis: elegir voz masculina más sintética posible ──
+        // Estrategia: priorizar voces que en la práctica suenan a "robot/T-800":
+        //  1) Voces eSpeak / Pico / Festival (suenan sintéticas por sí solas)
+        //  2) Voces masculinas locales tipo "Microsoft Pablo" / "Diego"
+        //  3) Cualquier voz masculina en español
+        //  4) Fallback: primera voz disponible
+        if ('speechSynthesis' in window) {
+            const pickVoice = () => {
+                const voices = window.speechSynthesis.getVoices() || [];
+                if (!voices.length) return;
+                // Voces sintéticas conocidas (suenan más a robot)
+                const robotPatterns = [
+                    /espeak/i, /pico/i, /festival/i, /flite/i,
+                    /mb[\-\s]?rola/i, /synth/i, /robot/i
+                ];
+                // Voces masculinas humanas
+                const malePatterns = [
+                    /pablo/i, /diego/i, /jorge/i, /juan/i, /carlos/i,
+                    /andr[eé]s/i, /[aá]lvaro/i, /javier/i, /mateo/i,
+                    /miguel/i, /ra[uú]l/i, /alex/i, /enrique/i, /ricardo/i,
+                    /\bdavid\b/i, /\bmark\b/i, /\bgeorge\b/i, /\bguy\b/i
+                ];
+                const esVoices = voices.filter(v => /^es/i.test(v.lang || ''));
+
+                let chosen = null;
+                // 1) Algo sintético en cualquier idioma (es preferible)
+                chosen = esVoices.find(v => robotPatterns.some(p => p.test(v.name || ''))) ||
+                         voices.find(v => robotPatterns.some(p => p.test(v.name || '')));
+                // 2) Voz masculina en español
+                if (!chosen) {
+                    chosen = esVoices.find(v => malePatterns.some(p => p.test(v.name || '')));
+                }
+                // 3) Marcador "male" en el nombre
+                if (!chosen) {
+                    chosen = esVoices.find(v => /male/i.test(v.name || '')) || null;
+                }
+                if (!chosen && esVoices.length) chosen = esVoices[0];
+                if (!chosen && voices.length) chosen = voices[0];
+                this.state.voice.voice = chosen;
+                if (chosen) {
+                    console.log('[VOZ] elegida:', chosen.name, '/', chosen.lang);
+                }
+            };
+            pickVoice();
+            // Las voces se cargan async — re-elegir cuando estén listas
+            if ('onvoiceschanged' in window.speechSynthesis) {
+                window.speechSynthesis.onvoiceschanged = pickVoice;
+            }
+        }
+
+        // ── Toggle TTS ──
+        this.el.ttsToggle?.addEventListener('click', () => {
+            if (!('speechSynthesis' in window)) {
+                this._showBanner('Tu navegador no soporta voz sintética. Usa Chrome o Edge.', 'warn');
+                return;
+            }
+            this.state.voice.ttsEnabled = !this.state.voice.ttsEnabled;
+            try {
+                localStorage.setItem('diver_tts_enabled',
+                    this.state.voice.ttsEnabled ? '1' : '0');
+            } catch (e) { /* ignore */ }
+            if (!this.state.voice.ttsEnabled) {
+                try { window.speechSynthesis.cancel(); } catch (e) {}
+            } else {
+                // Pequeño "ack" auditivo para confirmar que está activa
+                this.speakReply('Voz activada.');
+            }
+            this._renderTtsButton();
+        });
+
+        // ── Speech Recognition (entrada por voz) ──
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) {
+            if (this.el.mic) {
+                this.el.mic.disabled = true;
+                this.el.mic.title = 'Tu navegador no soporta dictado por voz. Usa Chrome o Edge.';
+            }
+            return;
+        }
+
+        const recog = new SR();
+        recog.lang = 'es-ES';
+        recog.interimResults = true;
+        recog.continuous = false;
+        recog.maxAlternatives = 1;
+
+        let lastFinal = '';
+
+        recog.onresult = (ev) => {
+            let interim = '';
+            for (let i = ev.resultIndex; i < ev.results.length; i++) {
+                const r = ev.results[i];
+                if (r.isFinal) lastFinal += r[0].transcript;
+                else interim += r[0].transcript;
+            }
+            if (interim) this._showMicHint(interim);
+            if (lastFinal) this._showMicHint(lastFinal, true);
+        };
+        recog.onerror = (ev) => {
+            this.state.voice.listening = false;
+            this._renderMicButton();
+            this._hideMicHint();
+            const code = ev.error || '';
+            if (code === 'not-allowed' || code === 'service-not-allowed') {
+                this._showBanner('Permiso de micrófono denegado. Habilítalo en el navegador.', 'error');
+            } else if (code && code !== 'aborted' && code !== 'no-speech') {
+                this._showBanner('Error de voz: ' + code, 'error');
+            }
+        };
+        recog.onend = () => {
+            this.state.voice.listening = false;
+            this._renderMicButton();
+            this._hideMicHint();
+            const text = lastFinal.trim();
+            lastFinal = '';
+            if (text) {
+                // Concatenar con lo que ya tuviera el input (o reemplazar)
+                this.el.input.value = text;
+                this.sendMessage();
+            }
+        };
+
+        this.state.voice.recognition = recog;
+
+        this.el.mic?.addEventListener('click', () => {
+            if (this.state.voice.listening) {
+                try { recog.stop(); } catch (e) {}
+                return;
+            }
+            // Pausar TTS para no auto-escucharse
+            try { window.speechSynthesis?.cancel(); } catch (e) {}
+            this.el.input.value = '';
+            lastFinal = '';
+            try {
+                recog.start();
+                this.state.voice.listening = true;
+                this._renderMicButton();
+                this._showMicHint('Escuchando…');
+            } catch (e) {
+                console.warn('No pude iniciar reconocimiento:', e);
+                this.state.voice.listening = false;
+                this._renderMicButton();
+            }
+        });
+    },
+
+    _renderMicButton() {
+        const btn = this.el.mic;
+        if (!btn) return;
+        const on = this.state.voice.listening;
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        btn.title = on ? 'Escuchando… toca para detener'
+                       : 'Hablar con Diver (dictado por voz)';
+    },
+
+    /* ============ Reacción a gestos (autónoma) ============
+       Al activarlo, el backend vigila las detecciones de YOLO. Cuando ve
+       un gesto de saludo (mano arriba, brazos arriba), dispara la acción
+       'Hello' en el robot. Recibimos un evento socket 'gesture_reaction'
+       con detalles para mostrar en chat. */
+    setupGestureReactor() {
+        // Restaurar preferencia
+        try {
+            if (localStorage.getItem('diver_gesture_react') === '1') {
+                this.state.gestureReact = true;
+            }
+        } catch (e) {}
+
+        // Sincronizar con backend al cargar
+        this._syncGestureState();
+
+        // Click en toggle → llama API y actualiza
+        this.el.gestureToggle?.addEventListener('click', () => {
+            const next = !this.state.gestureReact;
+            const path = next ? '/api/gestures/start' : '/api/gestures/stop';
+            fetch(`${API_BASE}${path}`, { method: 'POST' })
+                .then(r => r.json())
+                .then(r => {
+                    this.state.gestureReact = !!r.enabled;
+                    try {
+                        localStorage.setItem('diver_gesture_react',
+                            this.state.gestureReact ? '1' : '0');
+                    } catch (e) {}
+                    this._renderGestureButton();
+                    this._showBanner(
+                        this.state.gestureReact
+                            ? 'Reacción a gestos activa — saludaré si me saludan.'
+                            : 'Reacción a gestos desactivada.',
+                        'warn'
+                    );
+                })
+                .catch(e => {
+                    this._showBanner('No pude cambiar reacción a gestos.', 'error');
+                });
+        });
+
+        // Suscribirse al evento del backend
+        if (this.socket) {
+            this.socket.on('gesture_reaction', (data) => {
+                this._onGestureReaction(data || {});
+            });
+        }
+
+        this._renderGestureButton();
+    },
+
+    _syncGestureState() {
+        fetch(`${API_BASE}/api/gestures/state`).then(r => r.json())
+            .then(r => {
+                this.state.gestureReact = !!r.enabled;
+                this._renderGestureButton();
+                // Si el usuario tenía preferencia "on" y backend está "off"
+                // (porque app.py se reinició), re-activamos automáticamente.
+                let wantOn = false;
+                try { wantOn = localStorage.getItem('diver_gesture_react') === '1'; }
+                catch (e) {}
+                if (wantOn && !this.state.gestureReact) {
+                    fetch(`${API_BASE}/api/gestures/start`, { method: 'POST' })
+                        .then(r => r.json())
+                        .then(r => {
+                            this.state.gestureReact = !!r.enabled;
+                            this._renderGestureButton();
+                        }).catch(() => {});
+                }
+            }).catch(() => {});
+    },
+
+    _renderGestureButton() {
+        const btn = this.el.gestureToggle;
+        if (!btn) return;
+        const on = !!this.state.gestureReact;
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        btn.title = on
+            ? 'Reacción a gestos ACTIVA — saludaré si te veo saludar. Toca para apagar.'
+            : 'Activar reacción autónoma a gestos (saluda al ver mano arriba)';
+    },
+
+    _onGestureReaction(data) {
+        // Mostrar lo que pasó como mensaje del bot en el chat
+        const gestureNames = {
+            mano_arriba: 'mano arriba',
+            ambas_manos_arriba: 'ambas manos arriba',
+            brazos_arriba: 'brazos arriba',
+            manos_juntas: 'manos juntas',
+            t_pose: 'T-pose'
+        };
+        const gName = gestureNames[data.gesture] || data.gesture || 'gesto';
+        const sayText = (data.say && data.ok)
+            ? data.say
+            : (data.ok ? `Detecté ${gName} y reaccioné.`
+                       : `No pude reaccionar a ${gName}: ${data.msg || 'error'}`);
+        this.appendMessage('bot', `🎯 ${sayText} (gesto: ${gName})`,
+                           [{ name: data.action, ok: data.ok }]);
+        if (data.ok) this.speakReply(sayText);
+    },
+
+    _renderTtsButton() {
+        const btn = this.el.ttsToggle;
+        if (!btn) return;
+        const on = !!this.state.voice.ttsEnabled;
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        btn.title = on ? 'Voz activa — toca para silenciar'
+                       : 'Activar voz robótica de Diver';
+        const onIcon = btn.querySelector('.ag-tts-on');
+        const offIcon = btn.querySelector('.ag-tts-off');
+        if (onIcon)  onIcon.style.display  = on ? 'block' : 'none';
+        if (offIcon) offIcon.style.display = on ? 'none'  : 'block';
+    },
+
+    _showMicHint(text, isFinal) {
+        if (!this.el.mic) return;
+        if (!this.state.voice.micHint) {
+            const hint = document.createElement('div');
+            hint.className = 'ag-mic-hint';
+            this.el.mic.style.position = this.el.mic.style.position || 'relative';
+            this.el.mic.appendChild(hint);
+            this.state.voice.micHint = hint;
+        }
+        this.state.voice.micHint.textContent = (text || '…').slice(0, 80);
+        if (isFinal) {
+            clearTimeout(this._micHintTimer);
+            this._micHintTimer = setTimeout(() => this._hideMicHint(), 700);
+        }
+    },
+
+    _hideMicHint() {
+        if (this.state.voice.micHint) {
+            this.state.voice.micHint.remove();
+            this.state.voice.micHint = null;
+        }
+    },
+
+    _playRobotBeep(freq, ms) {
+        // Pitido corto sintético — añade carácter robótico antes/después
+        // del habla (estilo R2D2 / "compute"). Usa Web Audio API y se
+        // limpia solo. Si AudioContext no existe en este browser, no hace nada.
+        try {
+            if (!this._audioCtx) {
+                const Ctx = window.AudioContext || window.webkitAudioContext;
+                if (!Ctx) return;
+                this._audioCtx = new Ctx();
+            }
+            const ctx = this._audioCtx;
+            // Algunos browsers suspenden el contexto hasta interacción
+            if (ctx.state === 'suspended') { try { ctx.resume(); } catch (e) {} }
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'square';        // square = más sintético
+            osc.frequency.value = freq;
+            gain.gain.value = 0.0001;   // attack rápido para evitar click
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            const now = ctx.currentTime;
+            gain.gain.exponentialRampToValueAtTime(0.08, now + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + ms / 1000);
+            osc.start(now);
+            osc.stop(now + ms / 1000 + 0.05);
+        } catch (e) { /* fail silently */ }
+    },
+
+    speakReply(text) {
+        if (!this.state.voice.ttsEnabled) return;
+        if (!('speechSynthesis' in window)) return;
+        if (!text) return;
+        try {
+            // Quitar emojis y signos extraños — la voz no debe leerlos
+            const clean = String(text)
+                .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}🐾]/gu, '')
+                .replace(/[`*_~]+/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+            if (!clean) return;
+            try { window.speechSynthesis.cancel(); } catch (e) {}
+            const utt = new SpeechSynthesisUtterance(clean);
+            // Forzar idioma español aunque la voz por defecto sea otra
+            utt.lang = (this.state.voice.voice && this.state.voice.voice.lang) || 'es-ES';
+            if (this.state.voice.voice) utt.voice = this.state.voice.voice;
+            // Tuning robótico-masculino:
+            //  pitch 0.4  → muy grave (lo más bajo audible sin clipping)
+            //  rate  0.85 → enfatiza la metalicidad
+            utt.pitch  = 0.4;
+            utt.rate   = 0.85;
+            utt.volume = 1.0;
+            utt.onstart = () => {
+                this.state.voice.ttsSpeaking = true;
+                this.el.ttsToggle?.classList.add('speaking');
+                // Pitido corto al iniciar (estilo "R2D2 acknowledge")
+                this._playRobotBeep(220, 90);
+            };
+            const stop = () => {
+                this.state.voice.ttsSpeaking = false;
+                this.el.ttsToggle?.classList.remove('speaking');
+            };
+            utt.onend = () => {
+                stop();
+                this._playRobotBeep(180, 70);  // pitido al terminar
+            };
+            utt.onerror = stop;
+            window.speechSynthesis.speak(utt);
+        } catch (e) {
+            console.warn('TTS error:', e);
+        }
+    },
+
+    /* ============ Polling detecciones YOLO ============
+       Dos timers separados para no saturar el navegador:
+       - Detecciones: cada 1.5s (rápido, lista en pantalla)
+       - Status (fps): cada 4s (lento, métrica de feedback)
+       Ya no llamamos a `/api/yolo/status` y `/api/yolo/detections` en paralelo
+       cada segundo — eso causaba intermitencia en el MJPEG por presión
+       de conexiones (Chrome topea a 6 por origen).
+
+       /api/yolo/detections ya retorna {running, detections}, así que es
+       la única fuente para detectar transiciones de estado. */
+    startDetectionsPolling() {
+        clearInterval(this.detectPollTimer);
+        clearInterval(this.statusPollTimer);
+
+        // Polling rápido: detecciones + estado de running
+        this.detectPollTimer = setInterval(async () => {
+            try {
+                const det = await fetch(`${API_BASE}/api/yolo/detections`)
+                    .then(r => r.json()).catch(() => null);
+                if (!det) return;
+
+                const running = !!det.running;
+                if (running) {
+                    this.state.yoloFalseStreak = 0;
+                    if (!this.state.yoloRunning) {
+                        this.state.yoloRunning = true;
+                        this._setStatus('statusYolo', true, 'Visión');
+                    }
+                    if (!this.state.streamAttached) this.attachYoloStream();
+                } else {
+                    // Anti-flicker: solo aceptamos "no running" tras 3 lecturas
+                    // consecutivas en falso (≈4.5s). Evita tirar el stream por
+                    // un hipo del backend.
+                    this.state.yoloFalseStreak += 1;
+                    if (this.state.yoloFalseStreak >= 3 && this.state.yoloRunning) {
+                        this.state.yoloRunning = false;
+                        this._setStatus('statusYolo', false, 'Visión');
+                        this.detachYoloStream();
+                    }
+                }
+                if (Array.isArray(det.detections)) {
+                    this.renderDetections(det.detections);
+                }
+            } catch (e) { /* ignore */ }
+        }, 1500);
+
+        // Polling lento: solo para refrescar el contador de FPS
+        this.statusPollTimer = setInterval(async () => {
+            if (!this.state.yoloRunning) return;
+            try {
+                const s = await fetch(`${API_BASE}/api/yolo/status`)
+                    .then(r => r.json()).catch(() => null);
+                if (s && typeof s.fps === 'number') {
+                    this.el.mFps.textContent = s.fps.toFixed(1);
+                }
+            } catch (e) { /* ignore */ }
+        }, 4000);
+    },
+
+    renderDetections(detections) {
+        const list = this.el.detectList;
+        if (!list) return;
+
+        // Agrupar por clase + recolectar gestos + interacciones.
+        // yolo_detector emite "label", opcionalmente "gesture" (modelo pose)
+        // y opcionalmente "holding" (lista de objetos que la persona toca).
+        const grouped = new Map();
+        const gestures = [];
+        const interactions = [];   // ["persona con celular", ...]
+        for (const d of detections) {
+            const key = d.label || d.class_name || d.class || 'desconocido';
+            const cur = grouped.get(key) || { count: 0, conf: 0 };
+            cur.count += 1;
+            if (typeof d.confidence === 'number' && d.confidence > cur.conf) {
+                cur.conf = d.confidence;
+            }
+            grouped.set(key, cur);
+            if (d.gesture) gestures.push(d.gesture);
+            if (Array.isArray(d.holding) && d.holding.length) {
+                for (const obj of d.holding) {
+                    interactions.push(`persona con ${obj}`);
+                }
+            }
+        }
+
+        list.innerHTML = '';
+        if (grouped.size === 0) {
+            list.innerHTML = '<li class="ag-detect-empty">Sin detecciones aún…</li>';
+            this.el.mCount.textContent = '0';
+            this._setSummary('--');
+            return;
+        }
+
+        // Primero: gestos (ámbar) e interacciones (cyan), arriba de los objetos.
+        const gestureCounts = new Map();
+        for (const g of gestures) gestureCounts.set(g, (gestureCounts.get(g) || 0) + 1);
+        for (const [g, n] of gestureCounts) {
+            const li = document.createElement('li');
+            li.style.borderLeftColor = '#f59e0b';
+            li.style.background = 'rgba(245, 158, 11, 0.08)';
+            li.style.borderColor = 'rgba(245, 158, 11, 0.35)';
+            li.innerHTML = `
+                <span class="lbl" style="color:#fcd34d;">🤚 ${this._escape(this._translateGesture(g))}</span>
+                <span class="count" style="background:rgba(245,158,11,0.15);color:#fbbf24;">x${n}</span>
+            `;
+            list.appendChild(li);
+        }
+
+        const interactionCounts = new Map();
+        for (const i of interactions) interactionCounts.set(i, (interactionCounts.get(i) || 0) + 1);
+        for (const [text, n] of interactionCounts) {
+            const li = document.createElement('li');
+            li.style.borderLeftColor = '#22d3ee';
+            li.style.background = 'rgba(34, 211, 238, 0.08)';
+            li.style.borderColor = 'rgba(34, 211, 238, 0.35)';
+            li.innerHTML = `
+                <span class="lbl" style="color:#a5f3fc;">🔗 ${this._escape(text)}</span>
+                ${n > 1 ? `<span class="count" style="background:rgba(34,211,238,0.15);color:#67e8f9;">x${n}</span>` : ''}
+            `;
+            list.appendChild(li);
+        }
+
+        // Luego objetos detectados (top 6)
+        const sorted = [...grouped.entries()]
+            .sort((a, b) => b[1].conf - a[1].conf)
+            .slice(0, 6);
+        for (const [cls, info] of sorted) {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <span class="lbl">${this._escape(this._translateClass(cls))}</span>
+                <span class="count">x${info.count}</span>
+                <span class="conf">${Math.round(info.conf * 100)}%</span>
+            `;
+            list.appendChild(li);
+        }
+        this.el.mCount.textContent = String(detections.length);
+        const summaryParts = [];
+        if (grouped.size) summaryParts.push(`${grouped.size} clase${grouped.size === 1 ? '' : 's'}`);
+        if (gestureCounts.size) summaryParts.push(`${gestureCounts.size} gesto${gestureCounts.size === 1 ? '' : 's'}`);
+        this._setSummary(summaryParts.join(' · ') || '--');
+    },
+
+    _translateGesture(g) {
+        const t = {
+            mano_arriba: 'mano arriba',
+            ambas_manos_arriba: 'ambas manos arriba',
+            brazos_arriba: 'brazos arriba',
+            señalando_derecha: 'señala a la derecha',
+            señalando_izquierda: 'señala a la izquierda',
+            sentado: 'persona sentada',
+            t_pose: 'brazos en cruz (T-pose)',
+            manos_juntas: 'manos juntas',
+            brazos_cruzados: 'brazos cruzados',
+            agachado: 'agachado'
+        };
+        return t[g] || g;
+    },
+
+    _setSummary(text) {
+        const span = this.el.detectSummary?.querySelector('span:last-child');
+        if (span) span.textContent = text;
+    },
+
+    /* ============ Health del agente IA ============ */
+    async checkAiHealth() {
+        try {
+            const r = await fetch(`${API_BASE}/api/agente/health`).then(r => r.json());
+            if (r && r.ok) {
+                this.state.aiReady = true;
+                this._setStatus('statusAi', true, 'IA');
+            } else {
+                this.state.aiReady = false;
+                this._setStatus('statusAi', false, 'IA');
+                this._showBanner(r?.message || 'IA no configurada', 'warn');
+            }
+        } catch (e) {
+            this._setStatus('statusAi', false, 'IA');
+            this._showBanner('No puedo contactar al backend del agente.', 'error');
+        }
+    },
+
+    /* ============ Chat ============ */
+    setupChat() {
+        this.el.form?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.sendMessage();
+        });
+        this.el.input?.addEventListener('keydown', (e) => {
+            // Enter envía; Shift+Enter saltaría línea pero el campo es input simple
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.sendMessage();
+            }
+        });
+        this.el.suggestions?.querySelectorAll('.ag-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                const prompt = chip.dataset.prompt;
+                if (prompt) {
+                    this.el.input.value = prompt;
+                    this.sendMessage();
+                }
+            });
+        });
+        this.el.clear?.addEventListener('click', () => this.clearConversation());
+    },
+
+    async sendMessage() {
+        const text = (this.el.input.value || '').trim();
+        if (!text) return;
+        this.el.input.value = '';
+        this.el.input.focus();
+
+        this.appendMessage('user', text);
+        this.state.history.push({ role: 'user', text });
+        if (this.el.suggestions) this.el.suggestions.style.display = 'none';
+
+        const typingNode = this.appendTyping();
+        this.el.send.disabled = true;
+
+        try {
+            const r = await fetch(`${API_BASE}/api/agente/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: text,
+                    history: this.state.history.slice(-24) // más contexto para diálogo real
+                })
+            }).then(r => r.json());
+
+            typingNode.remove();
+
+            const reply = (r && r.reply) ? String(r.reply) : '🐾';
+            const actions = (r && Array.isArray(r.actions)) ? r.actions : [];
+            this.appendMessage('bot', reply, actions);
+            this.state.history.push({ role: 'model', text: reply });
+            this.speakReply(reply);
+        } catch (e) {
+            typingNode.remove();
+            const errMsg = '⚠ No pude contactar al servidor. Revisa que `app.py` esté corriendo.';
+            this.appendMessage('bot', errMsg, [{ name: 'error', ok: false }]);
+            this.speakReply('No pude contactar al servidor.');
+        } finally {
+            this.el.send.disabled = false;
+        }
+    },
+
+    appendMessage(role, text, actions) {
+        const wrap = document.createElement('div');
+        wrap.className = `ag-msg ag-msg-${role}`;
+
+        const bubble = document.createElement('div');
+        bubble.className = 'ag-bubble';
+        // Dejamos que el bot use saltos de línea simples; escapamos HTML.
+        bubble.innerHTML = this._escape(text).replace(/\n/g, '<br>');
+        wrap.appendChild(bubble);
+
+        // Por preferencia del usuario: no mostramos las "etiquetas de acción"
+        // bajo el mensaje. La acción ya se ejecuta en el robot; el chat
+        // queda limpio mostrando sólo la respuesta de Diver.
+        // (El parámetro `actions` sigue llegando, simplemente no lo
+        //  renderizamos. Si en el futuro se quiere reactivar, basta con
+        //  volver a iterar y crear los `ag-action-tag`.)
+
+        this.el.messages.appendChild(wrap);
+        this._scrollToBottom();
+        return wrap;
+    },
+
+    appendTyping() {
+        const wrap = document.createElement('div');
+        wrap.className = 'ag-msg ag-msg-bot';
+        wrap.innerHTML = `
+            <div class="ag-bubble" style="padding:0;">
+                <div class="ag-typing"><span></span><span></span><span></span></div>
+            </div>`;
+        this.el.messages.appendChild(wrap);
+        this._scrollToBottom();
+        return wrap;
+    },
+
+    clearConversation() {
+        this.state.history = [];
+        if (this.el.suggestions) this.el.suggestions.style.display = '';
+        this.el.messages.innerHTML = `
+            <div class="ag-msg ag-msg-bot">
+                <div class="ag-bubble">
+                    <p>Listo, conversación limpia. Háblame normal y seguimos desde aquí. 🐾</p>
+                </div>
+            </div>`;
+    },
+
+    /* ============ Helpers ============ */
+    _scrollToBottom() {
+        requestAnimationFrame(() => {
+            this.el.messages.scrollTop = this.el.messages.scrollHeight;
+        });
+    },
+
+    _showBanner(message, kind) {
+        const el = this.el.banner;
+        if (!el) return;
+        el.textContent = message;
+        el.classList.remove('hidden', 'error', 'warn');
+        if (kind) el.classList.add(kind);
+        clearTimeout(this._bannerTimer);
+        this._bannerTimer = setTimeout(() => el.classList.add('hidden'), 6000);
+    },
+
+    _escape(s) {
+        return String(s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    },
+
+    _translateClass(cls) {
+        // Traducción rápida de las clases COCO más comunes
+        const t = {
+            person: 'persona',
+            chair: 'silla',
+            'dining table': 'mesa',
+            'cell phone': 'celular',
+            laptop: 'laptop',
+            book: 'libro',
+            bottle: 'botella',
+            cup: 'taza',
+            tv: 'pantalla',
+            keyboard: 'teclado',
+            mouse: 'ratón',
+            backpack: 'mochila',
+            handbag: 'bolso',
+            'potted plant': 'planta',
+            dog: 'perro',
+            cat: 'gato',
+            car: 'auto',
+            bicycle: 'bicicleta',
+            motorcycle: 'moto',
+            bus: 'bus'
+        };
+        return t[cls] || cls;
+    }
+};
+
+window.addEventListener('DOMContentLoaded', () => AGENT.init());

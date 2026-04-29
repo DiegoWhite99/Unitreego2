@@ -273,7 +273,7 @@ class TestMapeoLandingCompleto(unittest.TestCase):
         import re
 
         # Leer landing.html y extraer data-action values
-        landing_path = os.path.join(os.path.dirname(__file__), '..', 'website', 'landing.html')
+        landing_path = os.path.join(os.path.dirname(__file__), '..', 'src', 'landing.html')
         with open(landing_path, 'r', encoding='utf-8') as f:
             html = f.read()
 

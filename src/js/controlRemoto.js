@@ -98,6 +98,7 @@ const ControlRemoto = {
         this.initTraceCanvas();
         this.restoreLiveScan();
         this.setupSpeedControl();
+        this.setupVideoRecording();
         this.loadInitialData();
         this.startStatusPolling();
         this.refreshYoloStatus();
@@ -929,10 +930,10 @@ const ControlRemoto = {
         // Rango del slider: 15 – 100 (%). Internamente va a 0.15–1.00.
         // Zonas: <35 lento, <60 normal, <85 rapido, >=85 emergencia.
         const zoneFor = (pct) => {
-            if (pct >= 85) return { level: 'max',    label: '⚠ EMERGENCIA' };
-            if (pct >= 60) return { level: 'fast',   label: 'RÁPIDO' };
-            if (pct >= 35) return { level: 'normal', label: 'NORMAL' };
-            return { level: 'slow', label: 'LENTO' };
+            if (pct >= 85) return { level: 'max',    label: 'EMERGENCIA', color: '#ef4444' };
+            if (pct >= 60) return { level: 'fast',   label: 'RÁPIDO',     color: '#f97316' };
+            if (pct >= 35) return { level: 'normal', label: 'NORMAL',     color: '#facc15' };
+            return { level: 'slow', label: 'LENTO', color: '#22c55e' };
         };
 
         // Carga valor guardado o usa el default del objeto movement
@@ -954,29 +955,372 @@ const ControlRemoto = {
             if (sliderDesktop && fromEl !== sliderDesktop) sliderDesktop.value = pct;
             if (sliderMobile  && fromEl !== sliderMobile)  sliderMobile.value  = pct;
 
-            // Actualiza labels y estado visual
+            // Actualiza labels y estado visual del slider
             const zone = zoneFor(pct);
             [statusDesktop, statusMobile].forEach(el => el && el.setAttribute('data-level', zone.level));
             [labelDesktop, labelMobile].forEach(el => { if (el) el.textContent = zone.label; });
             [pctDesktop, pctMobile].forEach(el => { if (el) el.textContent = pct + '%'; });
 
-            // Feedback en la métrica existente de "Velocidad" (solo el factor configurado,
-            // no la velocidad real reportada por el robot)
-            const metricSpeed = this.el?.metricSpeed;
+            // Variables CSS para pintar SOLO la parte llena del track en su color
+            [sliderDesktop, sliderMobile].forEach(el => {
+                if (!el) return;
+                el.style.setProperty('--speed-pct', String(pct));
+                el.style.setProperty('--speed-color', zone.color);
+            });
+
+            // --- Métrica "Velocidad" del panel Telemetría: reflejar el slider ---
+            const metricSpeed = document.getElementById('cr-m-speed');
+            const metricSpeedBar = document.getElementById('cr-m-speed-bar');
+            const metricSpeedBox = document.getElementById('cr-metric-speed');
+
             if (metricSpeed) {
-                // Si no hay telemetría viva, mostramos el factor configurado
-                const current = metricSpeed.textContent || '';
-                if (current === '' || current === '0.0 m/s' || current.startsWith('--')) {
-                    metricSpeed.textContent = factor.toFixed(2) + ' ×';
-                }
+                // Texto: porcentaje + etiqueta corta ("45% · NORMAL")
+                const shortLabel = zone.label.replace(/^⚠ /, '');
+                metricSpeed.textContent = pct + '% · ' + shortLabel;
             }
+            if (metricSpeedBar) {
+                metricSpeedBar.style.width = pct + '%';
+            }
+            if (metricSpeedBox) {
+                metricSpeedBox.setAttribute('data-level', zone.level);
+            }
+
+            // --- Barra vertical de velocidad (solo móvil, costado derecho) ---
+            const tape = document.getElementById('cr-speed-tape');
+            const tapeFill = document.getElementById('cr-speed-tape-fill');
+            const tapeVal = document.getElementById('cr-speed-tape-val');
+            const tapeTrackEl = document.getElementById('cr-speed-tape-track');
+            if (tape) tape.setAttribute('data-level', zone.level);
+            if (tapeFill) tapeFill.style.height = pct + '%';
+            if (tapeVal) tapeVal.textContent = pct + '%';
+            if (tapeTrackEl) tapeTrackEl.setAttribute('aria-valuenow', String(pct));
         };
 
         sliderDesktop?.addEventListener('input', (e) => apply(parseInt(e.target.value, 10), sliderDesktop));
         sliderMobile?.addEventListener('input',  (e) => apply(parseInt(e.target.value, 10), sliderMobile));
 
+        // --- Barra vertical interactiva (móvil): botones +/- y track tappable ---
+        const tapeUp    = document.getElementById('cr-speed-tape-up');
+        const tapeDown  = document.getElementById('cr-speed-tape-down');
+        const tapeTrack = document.getElementById('cr-speed-tape-track');
+        const STEP = 5;
+
+        const currentPct = () => {
+            const v = sliderMobile?.value ?? sliderDesktop?.value;
+            const n = parseInt(v, 10);
+            return isNaN(n) ? Math.round((this.movement?.speedFactor || 0.45) * 100) : n;
+        };
+
+        tapeUp?.addEventListener('click', () => apply(currentPct() + STEP, null));
+        tapeDown?.addEventListener('click', () => apply(currentPct() - STEP, null));
+
+        // Tap/drag sobre el track: la posición vertical se traduce a %.
+        // Top = 100%, bottom = 0%; se cuantiza al STEP para encajar con el slider.
+        if (tapeTrack) {
+            const pctFromY = (clientY) => {
+                const rect = tapeTrack.getBoundingClientRect();
+                const ratio = 1 - (clientY - rect.top) / rect.height;
+                const raw = ratio * 100;
+                return Math.max(15, Math.min(100, Math.round(raw / STEP) * STEP));
+            };
+            let dragging = false;
+            tapeTrack.addEventListener('pointerdown', (e) => {
+                dragging = true;
+                tapeTrack.setPointerCapture?.(e.pointerId);
+                apply(pctFromY(e.clientY), null);
+                e.preventDefault();
+            });
+            tapeTrack.addEventListener('pointermove', (e) => {
+                if (!dragging) return;
+                apply(pctFromY(e.clientY), null);
+            });
+            const stop = (e) => {
+                dragging = false;
+                try { tapeTrack.releasePointerCapture?.(e.pointerId); } catch {}
+            };
+            tapeTrack.addEventListener('pointerup', stop);
+            tapeTrack.addEventListener('pointercancel', stop);
+        }
+
         // Estado inicial
         apply(initial, null);
+    },
+
+    /* ============ Grabación de video ============
+       Captura el <img id="cr-video"> (stream MJPEG same-origin) hacia un
+       canvas oculto y graba el resultado con MediaRecorder. Al detener,
+       genera un Blob y dispara la descarga como archivo .webm/.mp4. */
+    setupVideoRecording() {
+        const btnDesktop = document.getElementById('cr-record');
+        const btnMobile  = document.getElementById('cr-mobile-record');
+        if (!btnDesktop && !btnMobile) return;
+
+        // Sin soporte de MediaRecorder (algunos iOS muy viejos): ocultar UI.
+        if (typeof MediaRecorder === 'undefined' || !HTMLCanvasElement.prototype.captureStream) {
+            btnDesktop?.style.setProperty('display', 'none', 'important');
+            btnMobile?.style.setProperty('display', 'none', 'important');
+            return;
+        }
+
+        // Estado de grabación se cuelga de this para que setYoloRunning
+        // pueda detenerlo si el stream cae mientras se está grabando.
+        this.recording = {
+            active: false,
+            recorder: null,
+            chunks: [],
+            canvas: null,
+            ctx: null,
+            drawTimer: null,
+            timerInterval: null,
+            startTs: 0,
+            mimeType: ''
+        };
+
+        const toggle = () => {
+            if (!this.state.yoloRunning) {
+                alert('Activa el stream YOLO para poder grabar video.');
+                return;
+            }
+            if (this.recording.active) this.stopVideoRecording();
+            else this.startVideoRecording();
+        };
+
+        btnDesktop?.addEventListener('click', toggle);
+        btnMobile?.addEventListener('click', toggle);
+    },
+
+    /* startVideoRecording — produce SIEMPRE MP4 (H.264) cuando es posible.
+       Estrategia:
+         1. Si hay WebCodecs (VideoEncoder) + mp4-muxer cargado, usamos esa
+            ruta: VideoEncoder genera chunks AVC y el muxer los empaqueta
+            directamente en un contenedor MP4. Esto funciona en Chrome /
+            Edge / Safari modernos AUN cuando MediaRecorder no exponga MP4.
+         2. Fallback: MediaRecorder. Intentamos primero variantes MP4 y, si
+            no están disponibles, dejamos webm con la extensión correcta. */
+    async startVideoRecording() {
+        const r = this.recording;
+        if (!r || r.active) return;
+        const videoEl = this.el.video;
+        if (!videoEl || !videoEl.src) {
+            alert('No hay stream de video activo.');
+            return;
+        }
+
+        const w = videoEl.naturalWidth  || 640;
+        const h = videoEl.naturalHeight || 480;
+        const canvas = document.createElement('canvas');
+        canvas.width  = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+
+        // --- Ruta WebCodecs + mp4-muxer (MP4 real garantizado) ---
+        const canUseWebCodecs = typeof window.VideoEncoder !== 'undefined'
+                              && typeof window.VideoFrame !== 'undefined'
+                              && typeof window.Mp4Muxer !== 'undefined';
+        if (canUseWebCodecs) {
+            try {
+                await this._startRecordingMp4(videoEl, canvas, ctx, w, h);
+                return;
+            } catch (e) {
+                console.warn('[REC] Ruta MP4 WebCodecs falló, usando MediaRecorder:', e);
+            }
+        }
+
+        // --- Fallback MediaRecorder ---
+        let mimeType = '';
+        const candidates = [
+            'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+            'video/mp4;codecs=avc1,mp4a',
+            'video/mp4;codecs=h264,aac',
+            'video/mp4;codecs=avc1',
+            'video/mp4;codecs=h264',
+            'video/mp4',
+            'video/webm;codecs=h264',
+            'video/webm;codecs=vp9',
+            'video/webm;codecs=vp8',
+            'video/webm'
+        ];
+        for (const m of candidates) {
+            if (MediaRecorder.isTypeSupported(m)) { mimeType = m; break; }
+        }
+        if (!mimeType) {
+            alert('Tu navegador no soporta grabación de video.');
+            return;
+        }
+        if (!mimeType.includes('mp4')) {
+            console.warn('[REC] MP4 no soportado en este navegador; usando webm:', mimeType);
+        }
+
+        const stream = canvas.captureStream(30);
+        const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 2_500_000 });
+        const chunks = [];
+        recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+        recorder.onstop = () => {
+            const blob = new Blob(chunks, { type: mimeType.split(';')[0] });
+            const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+            this._downloadRecordingBlob(blob, ext);
+        };
+
+        r.drawTimer = setInterval(() => {
+            try {
+                if (videoEl.naturalWidth && videoEl.naturalHeight) {
+                    ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+                }
+            } catch (e) { /* frame no listo aun */ }
+        }, 1000 / 30);
+
+        recorder.start(1000);
+        r.active = true;
+        r.useWebCodecs = false;
+        r.recorder = recorder;
+        r.chunks = chunks;
+        r.canvas = canvas;
+        r.ctx = ctx;
+        r.startTs = Date.now();
+        r.mimeType = mimeType;
+        this._showRecordingUI();
+    },
+
+    /* Ruta WebCodecs: VideoEncoder + Mp4Muxer.Muxer
+       - Codifica cada frame como AVC (H.264) baseline.
+       - El muxer agrupa los chunks en un contenedor .mp4 reproducible
+         por cualquier player (VLC, QuickTime, Windows Media, etc.). */
+    async _startRecordingMp4(videoEl, canvas, ctx, w, h) {
+        const r = this.recording;
+        const { Muxer, ArrayBufferTarget } = window.Mp4Muxer;
+
+        const target = new ArrayBufferTarget();
+        const muxer = new Muxer({
+            target,
+            video: { codec: 'avc', width: w, height: h, frameRate: 30 },
+            fastStart: 'in-memory'
+        });
+
+        const encoder = new VideoEncoder({
+            output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+            error: (e) => console.error('[REC] VideoEncoder:', e)
+        });
+
+        // avc1.42E01E = H.264 Baseline @ Level 3.0 — máxima compatibilidad.
+        // Si el navegador rechaza el codec, lanzamos para caer al fallback.
+        const support = await VideoEncoder.isConfigSupported({
+            codec: 'avc1.42E01E', width: w, height: h, bitrate: 2_500_000, framerate: 30
+        });
+        if (!support || !support.supported) {
+            throw new Error('avc1 no soportado por VideoEncoder');
+        }
+
+        encoder.configure({
+            codec: 'avc1.42E01E',
+            width: w,
+            height: h,
+            bitrate: 2_500_000,
+            framerate: 30,
+            avc: { format: 'avc' }
+        });
+
+        r.useWebCodecs = true;
+        r.encoder = encoder;
+        r.muxer = muxer;
+        r.muxTarget = target;
+        r.canvas = canvas;
+        r.ctx = ctx;
+        r.frameCount = 0;
+        r.startTs = Date.now();
+        r.active = true;
+
+        const startPerf = performance.now();
+        r.drawTimer = setInterval(() => {
+            try {
+                if (!videoEl.naturalWidth || !videoEl.naturalHeight) return;
+                ctx.drawImage(videoEl, 0, 0, w, h);
+                const tsMicro = Math.round((performance.now() - startPerf) * 1000);
+                const frame = new VideoFrame(canvas, { timestamp: tsMicro });
+                // keyframe cada ~2 s (60 frames a 30 fps) para que el archivo
+                // sea seekable y, si se trunca, los frames previos se vean.
+                encoder.encode(frame, { keyFrame: r.frameCount % 60 === 0 });
+                frame.close();
+                r.frameCount++;
+                // Reactivamos backpressure: si la cola del encoder se llena,
+                // skipemos el siguiente frame en lugar de acumular memoria.
+            } catch (e) {
+                console.warn('[REC] frame error:', e);
+            }
+        }, 1000 / 30);
+
+        this._showRecordingUI();
+    },
+
+    _showRecordingUI() {
+        const r = this.recording;
+        const indicator = document.getElementById('cr-rec-indicator');
+        const timeEl = document.getElementById('cr-rec-time');
+        indicator?.classList.add('visible');
+        const fmt = (ms) => {
+            const t = Math.floor(ms / 1000);
+            return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+        };
+        if (timeEl) timeEl.textContent = '0:00';
+        r.timerInterval = setInterval(() => {
+            if (timeEl) timeEl.textContent = fmt(Date.now() - r.startTs);
+        }, 250);
+        document.getElementById('cr-record')?.setAttribute('aria-pressed', 'true');
+        document.getElementById('cr-mobile-record')?.setAttribute('aria-pressed', 'true');
+        const lbl = document.querySelector('#cr-record .cr-rec-lbl');
+        if (lbl) lbl.textContent = 'STOP';
+    },
+
+    _downloadRecordingBlob(blob, ext) {
+        const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `daiver-${ts}.${ext}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+    },
+
+    async stopVideoRecording() {
+        const r = this.recording;
+        if (!r || !r.active) return;
+
+        if (r.drawTimer) { clearInterval(r.drawTimer); r.drawTimer = null; }
+        if (r.timerInterval) { clearInterval(r.timerInterval); r.timerInterval = null; }
+
+        if (r.useWebCodecs && r.encoder && r.muxer) {
+            try {
+                await r.encoder.flush();
+                r.muxer.finalize();
+                const blob = new Blob([r.muxTarget.buffer], { type: 'video/mp4' });
+                this._downloadRecordingBlob(blob, 'mp4');
+            } catch (e) {
+                console.error('[REC] Error finalizando MP4:', e);
+                alert('Error al guardar el video: ' + (e?.message || e));
+            } finally {
+                try { r.encoder.close(); } catch (_) {}
+            }
+        } else if (r.recorder && r.recorder.state !== 'inactive') {
+            try { r.recorder.stop(); } catch (e) { /* ignore */ }
+        }
+
+        r.active = false;
+        r.recorder = null;
+        r.encoder = null;
+        r.muxer = null;
+        r.muxTarget = null;
+        r.chunks = [];
+        r.canvas = null;
+        r.ctx = null;
+
+        document.getElementById('cr-rec-indicator')?.classList.remove('visible');
+        document.getElementById('cr-record')?.setAttribute('aria-pressed', 'false');
+        document.getElementById('cr-mobile-record')?.setAttribute('aria-pressed', 'false');
+        const lbl = document.querySelector('#cr-record .cr-rec-lbl');
+        if (lbl) lbl.textContent = 'REC';
+        const timeEl = document.getElementById('cr-rec-time');
+        if (timeEl) timeEl.textContent = '0:00';
     },
 
     /* ============ YOLO ============ */
@@ -1025,6 +1369,15 @@ const ControlRemoto = {
             pill.classList.add(running ? 'connected' : 'disconnected');
             const txt = pill.querySelector('.txt');
             if (txt) txt.textContent = running ? 'YOLO ON' : 'YOLO OFF';
+        }
+        // Habilitar grabación solo cuando hay stream; si se detiene mientras
+        // grabamos, parar la grabación para no producir un video corrupto.
+        const recBtnD = document.getElementById('cr-record');
+        const recBtnM = document.getElementById('cr-mobile-record');
+        if (recBtnD) recBtnD.disabled = !running;
+        if (recBtnM) recBtnM.disabled = !running;
+        if (!running && this.recording && this.recording.active) {
+            this.stopVideoRecording();
         }
     },
 
@@ -1297,9 +1650,11 @@ const ControlRemoto = {
        Convierte el heading (radianes) a grados 0–360 y actualiza el badge
        y la etiqueta cardinal (N / NE / E / SE / S / SO / O / NO). */
     updateHeadingStrip() {
-        const label = document.getElementById('cr-heading-label');
-        const card  = document.getElementById('cr-heading-card');
-        if (!label && !card) return;
+        const label    = document.getElementById('cr-heading-label');
+        const card     = document.getElementById('cr-heading-card');
+        const panel    = document.getElementById('cr-m-heading');
+        const floatVal = document.getElementById('cr-heading-floating-val');
+        const floatCd  = document.getElementById('cr-heading-floating-card');
 
         const h = (this.trace && this.trace.pose) ? this.trace.pose.heading : 0;
         let deg = (h * 180 / Math.PI) % 360;
@@ -1309,8 +1664,15 @@ const ControlRemoto = {
         const cards = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
         const idx = Math.round(deg / 45) % 8;
 
-        if (label) label.textContent = degInt + '°';
-        if (card)  card.textContent  = cards[idx];
+        if (label)    label.textContent    = degInt + '°';
+        if (card)     card.textContent     = cards[idx];
+        if (panel)    panel.textContent    = degInt + '° ' + cards[idx];
+        if (floatVal) floatVal.textContent = degInt + '°';
+        if (floatCd)  floatCd.textContent  = cards[idx];
+
+        // Rotar aguja de la mini brújula (web, panel Telemetría)
+        const needle = document.getElementById('cr-compass-needle');
+        if (needle) needle.setAttribute('transform', `rotate(${degInt} 20 20)`);
     },
 
     advanceTraceFromVelocity(v, dt) {

@@ -23,12 +23,12 @@ Thumbs.db
 
 
 # paginas pruebas
-website/demo_jarvis.html
-website/error_503.html
+src/demo_jarvis.html
+src/error_503.html
 
 # logs y mas
 /config/config.py
-/website/lading
+/src/lading
 __pycache__/
 *.pyc
 logs/
