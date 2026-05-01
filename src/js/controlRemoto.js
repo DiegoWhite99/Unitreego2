@@ -62,6 +62,8 @@ const ControlRemoto = {
         lastTick: null,
         tickTimer: null,
         heat: new Map(),
+        heatTs: new Map(),       // ts (Date.now) del ultimo hit por voxel — canal "tiempo" 4D
+        heatStartTs: 0,          // ts del primer punto del scan (para normalizar edad al guardar)
         heatCellSize: 0.08,      // 8 cm por celda XY (antes 15 cm; mas detalle fino)
         heatCellSizeZ: 0.12,     // 12 cm por capa Z (resolucion vertical del voxel)
         lastHeatPersistTs: 0,    // throttle del auto-save a localStorage
@@ -799,6 +801,8 @@ const ControlRemoto = {
         if (!confirm('Borrar el mapa de calor y reiniciar el punto de origen aqui?')) return;
         this.trace.history = [];
         this.trace.heat = new Map();
+        this.trace.heatTs = new Map();
+        this.trace.heatStartTs = 0;
         this.trace.pose = { x: 0, y: 0, heading: 0 };
         this.trace.totalMeters = 0.0;
         this.trace.lastPoseForDistance = null;
@@ -822,48 +826,90 @@ const ControlRemoto = {
                 alert('Camina primero un poco con el robot para registrar una ruta (mínimo 4 puntos).');
                 return;
             }
-            // Muestreamos: un waypoint cada ~40 cm para que el seguidor no
-            // se atasque persiguiendo puntos cada 5 cm.
+            // Muestreo grueso: un waypoint cada ~60 cm (antes 40 cm). El
+            // backend se atasca con waypoints muy juntos y el SLAM del Go2
+            // genera drift que se transformaba en waypoints fantasma.
             const sampled = [pts[0]];
             for (const p of pts) {
                 const last = sampled.at(-1);
-                if (Math.hypot(p.x - last.x, p.y - last.y) >= 0.40) sampled.push(p);
+                if (Math.hypot(p.x - last.x, p.y - last.y) >= 0.60) sampled.push(p);
             }
-            // Serializa el heatmap 3D (Map -> array de [ix, iy, iz, v]).
-            // Filtramos voxels de confianza 1 (ruido de un solo hit).
+            // Garantiza que el ultimo waypoint este incluido aun si quedo
+            // a <60 cm del previo (no perdemos el destino final).
+            const tail = pts[pts.length - 1];
+            const lastSampled = sampled[sampled.length - 1];
+            if (Math.hypot(tail.x - lastSampled.x, tail.y - lastSampled.y) > 0.05) {
+                sampled.push(tail);
+            }
+            // Douglas-Peucker: elimina puntos que estan casi en linea recta
+            // entre sus vecinos. Quita el "zigzag" de drift sin tocar las
+            // esquinas reales. Tolerancia 12 cm (mayor = ruta mas suelta).
+            const simplified = sampled.length >= 3
+                ? this._douglasPeucker(sampled, 0.12)
+                : sampled;
+
+            // Serializa el heatmap 3D (Map -> array [ix,iy,iz,v,age]).
+            // age en [0..1]: 1 = capturado al final del scan, 0 = al inicio.
+            const now = Date.now();
+            const span = Math.max(1, now - (this.trace.heatStartTs || now));
             const heatArr = [];
             for (const [k, v] of this.trace.heat) {
-                if (v < 2) continue;  // umbral minimo para descartar ruido aislado
+                if (v < 2) continue;  // descarta ruido aislado
                 const parts = k.split(',').map(Number);
                 const ix = parts[0], iy = parts[1];
                 const iz = parts.length > 2 ? parts[2] : 0;
-                heatArr.push([ix, iy, iz, v]);
+                const ts = this.trace.heatTs.get(k) || now;
+                const age = Math.max(0, Math.min(1, 1 - (now - ts) / span));
+                heatArr.push([ix, iy, iz, v, +age.toFixed(3)]);
             }
+            const payload = {
+                savedAt: now,
+                heatStartTs: this.trace.heatStartTs,
+                points: simplified,
+                totalMeters: this.trace.totalMeters,
+                heatCellSize: this.trace.heatCellSize,
+                heatCellSizeZ: this.trace.heatCellSizeZ,
+                heat: heatArr,
+            };
             try {
-                localStorage.setItem('daiver:lastRoute', JSON.stringify({
-                    savedAt: Date.now(),
-                    points: sampled,
-                    totalMeters: this.trace.totalMeters,
-                    heatCellSize: this.trace.heatCellSize,
-                    heatCellSizeZ: this.trace.heatCellSizeZ,
-                    heat: heatArr,
-                }));
+                localStorage.setItem('daiver:lastRoute', JSON.stringify(payload));
             } catch (err) {
-                // QuotaExceededError: el heat es muy grande. Guarda sin heat
-                // y avisa; la Auto-Ruta podra pedirlo via IndexedDB mas tarde.
                 console.warn('heat demasiado grande para localStorage, se guardara sin heat', err);
-                localStorage.setItem('daiver:lastRoute', JSON.stringify({
-                    savedAt: Date.now(),
-                    points: sampled,
-                    totalMeters: this.trace.totalMeters,
-                    heatCellSize: this.trace.heatCellSize,
-                    heatCellSizeZ: this.trace.heatCellSizeZ,
-                    heat: [],
-                    heatTruncated: true,
-                }));
+                payload.heat = [];
+                payload.heatTruncated = true;
+                localStorage.setItem('daiver:lastRoute', JSON.stringify(payload));
             }
             window.location.href = '/autoroute';
         });
+    },
+
+    /* Ramer-Douglas-Peucker: simplifica una polilinea descartando puntos
+       que estan a menos de `epsilon` (m) de la cuerda entre sus vecinos.
+       Conserva esquinas reales y elimina drift colineal. */
+    _douglasPeucker(points, epsilon) {
+        if (points.length < 3) return points.slice();
+        const a = points[0], b = points[points.length - 1];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const denom = dx * dx + dy * dy;
+        let dmax = 0, idx = 0;
+        for (let i = 1; i < points.length - 1; i++) {
+            const p = points[i];
+            let d;
+            if (denom === 0) {
+                d = Math.hypot(p.x - a.x, p.y - a.y);
+            } else {
+                const t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / denom;
+                const tx = a.x + t * dx, ty = a.y + t * dy;
+                d = Math.hypot(p.x - tx, p.y - ty);
+            }
+            if (d > dmax) { dmax = d; idx = i; }
+        }
+        if (dmax > epsilon) {
+            const left  = this._douglasPeucker(points.slice(0, idx + 1), epsilon);
+            const right = this._douglasPeucker(points.slice(idx),       epsilon);
+            return left.slice(0, -1).concat(right);
+        }
+        return [a, b];
     },
 
     /* ============ Auto-rotar a landscape ============
@@ -1329,7 +1375,7 @@ const ControlRemoto = {
             source: this.state.robotConnected ? 'robot' : 'webcam',
             camera_index: 0,
             conf: 0.4,
-            model: 'yolov8n.pt'
+            model: 'yolov8n-pose.pt'
         };
         const res = await this.apiCall('/api/yolo/start', 'POST', payload);
         if (res && res.status === 'ok') {
@@ -1529,50 +1575,65 @@ const ControlRemoto = {
 
     /* ============ Lidar heatmap + paredes ============
        Recibimos puntos del lidar en coordenadas del mapa del robot. Los
-       acumulamos en una grid 2D (key `ix,iy`) para formar un heatmap de
-       densidad — cuanto más tiempo vea una superficie, más brillante. El
-       trayecto del robot (pose del lidar) sobrescribe esto al dibujar. */
+       acumulamos en una grid 3D (key `ix,iy,iz`) para formar un heatmap de
+       densidad — cuanto más tiempo vea una superficie, más brillante. Por
+       cada voxel guardamos también el ts del último hit (canal "tiempo"
+       que la auto-ruta usa para fade por edad). */
     onLidarPoints(data) {
         if (!data) return;
         const cell = this.trace.heatCellSize;
         const cellZ = this.trace.heatCellSizeZ;
         const heat = this.trace.heat;
+        const heatTs = this.trace.heatTs;
+        const now = Date.now();
+        if (!this.trace.heatStartTs) this.trace.heatStartTs = now;
+
         // Preferimos xyz (3D real). Fallback a xy (backend antiguo).
         const xyz = Array.isArray(data.xyz) ? data.xyz : null;
         if (xyz) {
-            // xyz viene aplanado [x0,y0,z0, x1,y1,z1, ...]
             for (let i = 0; i + 2 < xyz.length; i += 3) {
                 const ix = Math.round(xyz[i] / cell);
                 const iy = Math.round(xyz[i + 1] / cell);
                 const iz = Math.round(xyz[i + 2] / cellZ);
                 const k = ix + ',' + iy + ',' + iz;
                 heat.set(k, Math.min(255, (heat.get(k) || 0) + 1));
+                heatTs.set(k, now);
             }
         } else if (Array.isArray(data.xy)) {
             const xy = data.xy;
             for (let i = 0; i + 1 < xy.length; i += 2) {
                 const ix = Math.round(xy[i] / cell);
                 const iy = Math.round(xy[i + 1] / cell);
-                // Sin Z, asumimos capa 0 (plano medio).
                 const k = ix + ',' + iy + ',0';
                 heat.set(k, Math.min(255, (heat.get(k) || 0) + 1));
+                heatTs.set(k, now);
             }
         }
+
         // Evita crecimiento ilimitado: cuando hay muchas voxels, decae
         // solo los de baja confianza (ruido) y preserva los firmes.
         if (heat.size > 40000) {
             for (const [k, v] of heat) {
-                if (v <= 1) heat.delete(k);
+                if (v <= 1) { heat.delete(k); heatTs.delete(k); }
                 else heat.set(k, v - 1);
             }
         }
 
         if (data.pose) {
             this.trace.lidarPose = data.pose;
+            // Trail de pose con filtro de saltos del SLAM. Solo aceptamos
+            // desplazamientos plausibles (>5 cm para anti-jitter, <60 cm
+            // para descartar drift/relocalizaciones que generan waypoints
+            // fantasma al guardar la ruta).
             const last = this.trace.history.at(-1);
-            if (!last || Math.hypot(data.pose.x - last.x, data.pose.y - last.y) > 0.05) {
+            if (!last) {
                 this.trace.history.push({ x: data.pose.x, y: data.pose.y });
-                if (this.trace.history.length > 600) this.trace.history.shift();
+            } else {
+                const d = Math.hypot(data.pose.x - last.x, data.pose.y - last.y);
+                if (d > 0.05 && d < 0.60) {
+                    this.trace.history.push({ x: data.pose.x, y: data.pose.y });
+                    if (this.trace.history.length > 600) this.trace.history.shift();
+                }
             }
 
             // Suma distancia real desde la pose anterior (filtramos saltos
@@ -1598,14 +1659,21 @@ const ControlRemoto = {
         if (now - this.trace.lastHeatPersistTs < 10000) return;
         this.trace.lastHeatPersistTs = now;
         try {
+            // Normaliza la edad de cada voxel a [0..1]: 1 = capturado ahora,
+            // 0 = capturado al inicio del escaneo. Asi la auto-ruta puede
+            // dibujar fade por antiguedad sin necesitar timestamps absolutos.
+            const span = Math.max(1, now - (this.trace.heatStartTs || now));
             const arr = [];
             for (const [k, v] of this.trace.heat) {
                 if (v < 2) continue;
                 const parts = k.split(',').map(Number);
-                arr.push([parts[0], parts[1], parts.length > 2 ? parts[2] : 0, v]);
+                const ts = this.trace.heatTs.get(k) || now;
+                const age = Math.max(0, Math.min(1, 1 - (now - ts) / span));
+                arr.push([parts[0], parts[1], parts.length > 2 ? parts[2] : 0, v, +age.toFixed(3)]);
             }
             localStorage.setItem('daiver:liveScan', JSON.stringify({
                 savedAt: now,
+                heatStartTs: this.trace.heatStartTs,
                 heatCellSize: this.trace.heatCellSize,
                 heatCellSizeZ: this.trace.heatCellSizeZ,
                 heat: arr,
@@ -1625,9 +1693,19 @@ const ControlRemoto = {
             if (!data) return;
             if (data.heatCellSize) this.trace.heatCellSize = data.heatCellSize;
             if (data.heatCellSizeZ) this.trace.heatCellSizeZ = data.heatCellSizeZ;
+            if (typeof data.heatStartTs === 'number') this.trace.heatStartTs = data.heatStartTs;
             if (Array.isArray(data.heat)) {
+                const now = Date.now();
+                const savedAt = data.savedAt || now;
+                const span = Math.max(1, savedAt - (data.heatStartTs || savedAt));
                 for (const h of data.heat) {
-                    this.trace.heat.set(h[0] + ',' + h[1] + ',' + (h[2] || 0), h[3]);
+                    const k = h[0] + ',' + h[1] + ',' + (h[2] || 0);
+                    this.trace.heat.set(k, h[3]);
+                    // Si guardamos age normalizado (formato nuevo, 5 elems),
+                    // reconstruimos un ts absoluto plausible. Si no, asumimos
+                    // que todo se capturo cerca del savedAt.
+                    const age = h.length >= 5 ? h[4] : 1;
+                    this.trace.heatTs.set(k, savedAt - (1 - age) * span);
                 }
             }
             if (Array.isArray(data.history)) {

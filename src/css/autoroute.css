@@ -75,6 +75,10 @@
     cursor: grabbing;
 }
 
+.ar-map-wrap canvas.ar-orbiting {
+    cursor: move;
+}
+
 /* Toolbar flotante superior-izquierda */
 .ar-map-toolbar {
     position: absolute;

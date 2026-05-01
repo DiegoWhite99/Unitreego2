@@ -28,11 +28,14 @@ from .tools import call_robot_action
 
 
 GESTURE_REACTIONS = {
-    "mano_arriba":         {"action": "hello",  "say": "¡Hola! 🐾"},
-    "ambas_manos_arriba":  {"action": "hello",  "say": "¡Aquí estoy!"},
-    "brazos_arriba":       {"action": "hello",  "say": "¡Te veo!"},
-    "manos_juntas":        {"action": "heart",  "say": "🐾"},
-    "t_pose":              {"action": "wiggle", "say": "Modo T-pose detectado."},
+    "mano_arriba":         {"action": "hello",     "say": "¡Hola! 🐾"},
+    "ambas_manos_arriba":  {"action": "hello",     "say": "¡Aquí estoy!"},
+    "brazos_arriba":       {"action": "hello",     "say": "¡Te veo!"},
+    "manos_juntas":        {"action": "heart",     "say": "🐾"},
+    "t_pose":              {"action": "wiggle",    "say": "Modo T-pose detectado."},
+    "mano_abajo":          {"action": "lie",       "say": "Me acuesto 🐶"},
+    "manos_en_cadera":     {"action": "sit",       "say": "Me siento."},
+    "puños_arriba":        {"action": "frontjump", "say": "¡Salto!"},
 }
 
 
@@ -142,6 +145,33 @@ class GestureReactor:
             "diagnostic":         diagnostic,
         }
 
+    def _fire(self, gesture_key: str, action: str, say: str) -> None:
+        """Dispara una acción del robot respetando el cooldown por gesto.
+        Centraliza el cooldown + log + emit para que el _loop pueda invocar
+        tanto gestos simples como compuestos (p. ej. mano_pecho_a_cadera)."""
+        now = time.time()
+        last = self._last_fire_at.get(gesture_key, 0)
+        if now - last < self._cooldown_s:
+            return
+        self._last_fire_at[gesture_key] = now
+        self._last_fired_gesture = gesture_key
+        self._last_fired_ts = now
+        print(f"[GESTOS] gesto detectado '{gesture_key}' → acción '{action}'")
+        try:
+            result = call_robot_action(action)
+        except Exception as ex:
+            result = {"ok": False, "msg": str(ex)}
+        try:
+            socketio.emit("gesture_reaction", {
+                "gesture": gesture_key,
+                "action":  action,
+                "say":     say,
+                "ok":      bool(result.get("ok")),
+                "msg":     result.get("msg") or "",
+            })
+        except Exception as ex:
+            print(f"[GESTOS] no pude emitir socket: {ex}")
+
     def _loop(self) -> None:
         while not self._stop.is_set():
             self._last_tick_ts = time.time()
@@ -198,30 +228,11 @@ class GestureReactor:
                         f"gestos vistos: {sorted(seen_gestures)}"
                     )
 
-                now = time.time()
+                # Cada gesto reconocido dispara su acción respetando
+                # cooldown por gesto (no hay gestos compuestos).
                 for g in seen_gestures:
-                    last = self._last_fire_at.get(g, 0)
-                    if now - last < self._cooldown_s:
-                        continue
-                    self._last_fire_at[g] = now
-                    self._last_fired_gesture = g
-                    self._last_fired_ts = now
                     spec = GESTURE_REACTIONS[g]
-                    print(f"[GESTOS] gesto detectado '{g}' → acción '{spec['action']}'")
-                    try:
-                        result = call_robot_action(spec["action"])
-                    except Exception as ex:
-                        result = {"ok": False, "msg": str(ex)}
-                    try:
-                        socketio.emit("gesture_reaction", {
-                            "gesture": g,
-                            "action":  spec["action"],
-                            "say":     spec.get("say", ""),
-                            "ok":      bool(result.get("ok")),
-                            "msg":     result.get("msg") or "",
-                        })
-                    except Exception as ex:
-                        print(f"[GESTOS] no pude emitir socket: {ex}")
+                    self._fire(g, spec["action"], spec.get("say", ""))
             except Exception as ex:
                 self._last_skip_reason = f"error: {ex}"
                 print(f"[GESTOS] error en loop: {ex}")

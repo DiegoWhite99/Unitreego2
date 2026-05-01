@@ -141,8 +141,35 @@ async def autoroute_follow_loop() -> None:
         if state.get("translate_to_pose"):
             pose_x = proximity_sensor["_pose_x"]
             pose_y = proximity_sensor["_pose_y"]
+            pose_yaw = proximity_sensor["_pose_yaw"]
             waypoints = state["waypoints"]
-            if waypoints:
+            if len(waypoints) >= 2:
+                # Origen guardado y heading guardado (wp0 -> wp1).
+                wp0x = float(waypoints[0]["x"])
+                wp0y = float(waypoints[0]["y"])
+                wp1x = float(waypoints[1]["x"])
+                wp1y = float(waypoints[1]["y"])
+                saved_heading = math.atan2(wp1y - wp0y, wp1x - wp0x)
+                # Rotacion a aplicar: lo que el robot tendria que rotar para
+                # encarar wp[1] desde su heading actual.
+                delta_yaw = _normalize_angle(pose_yaw - saved_heading)
+                cos_d = math.cos(delta_yaw)
+                sin_d = math.sin(delta_yaw)
+                rotated = []
+                for w in waypoints:
+                    dx = float(w["x"]) - wp0x
+                    dy = float(w["y"]) - wp0y
+                    nx = pose_x + dx * cos_d - dy * sin_d
+                    ny = pose_y + dx * sin_d + dy * cos_d
+                    rotated.append({"x": nx, "y": ny})
+                state["waypoints"] = rotated
+                emit_log(
+                    "info",
+                    f"Auto-Ruta: ruta anclada a la pose actual "
+                    f"(origen {pose_x:+.2f},{pose_y:+.2f}; "
+                    f"rotacion {math.degrees(delta_yaw):+.1f}°).",
+                )
+            elif waypoints:
                 ox = float(waypoints[0]["x"]) - pose_x
                 oy = float(waypoints[0]["y"]) - pose_y
                 state["waypoints"] = [

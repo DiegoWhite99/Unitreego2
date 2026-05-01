@@ -67,6 +67,7 @@ const AGENT = {
             banner: document.getElementById('ag-banner'),
             mic: document.getElementById('ag-mic'),
             ttsToggle: document.getElementById('ag-tts-toggle'),
+            voiceSelect: document.getElementById('ag-voice-select'),
             gestureToggle: document.getElementById('ag-gesture-toggle')
         };
     },
@@ -189,12 +190,12 @@ const AGENT = {
         });
     },
 
-    /* ============ Voz: STT (micrófono) + TTS (voz robótica) ============
+    /* ============ Voz: STT (micrófono) + TTS (voz natural masculina) ====
        STT: Web Speech Recognition (Chrome/Edge). Click → escucha →
             transcribe al input → envía automáticamente al soltar.
-       TTS: Web Speech Synthesis con voz masculina española, pitch bajo
-            y tasa ligeramente lenta para tono robótico. Toggle persistido
-            en localStorage. */
+       TTS: Web Speech Synthesis con voz masculina española natural
+            (Microsoft Neural / Pablo / Jorge / Diego), tono parejo y
+            tasa normal. Sin pitch hundido ni patrones robóticos. */
     setupVoice() {
         // Restaurar preferencia de voz
         try {
@@ -204,54 +205,112 @@ const AGENT = {
         } catch (e) { /* localStorage bloqueado, ignoramos */ }
         this._renderTtsButton();
 
-        // ── Speech Synthesis: elegir voz masculina más sintética posible ──
-        // Estrategia: priorizar voces que en la práctica suenan a "robot/T-800":
-        //  1) Voces eSpeak / Pico / Festival (suenan sintéticas por sí solas)
-        //  2) Voces masculinas locales tipo "Microsoft Pablo" / "Diego"
-        //  3) Cualquier voz masculina en español
-        //  4) Fallback: primera voz disponible
+        // ── Speech Synthesis: voz LATINA masculina + selector manual ──
+        // Estrategia: priorizamos español de Latinoamérica (es-MX, es-AR,
+        // es-CO, es-US, es-419) sobre español de España (es-ES). Dentro
+        // de eso, voces neuronales > masculinas conocidas > resto. El
+        // operador puede sobrescribir con el dropdown del header.
         if ('speechSynthesis' in window) {
+            const LATIN_RE = /^es-(MX|AR|CO|US|419|CL|PE|VE|UY|PY|BO|EC|HN|GT|NI|CR|PA|DO|PR|SV)/i;
+            const SPAIN_RE = /^es-ES/i;
+            const naturalPatterns = [
+                /natural/i, /neural/i, /online/i, /studio/i, /wavenet/i
+            ];
+            const malePatterns = [
+                /pablo/i, /diego/i, /jorge/i, /juan/i, /carlos/i,
+                /andr[eé]s/i, /[aá]lvaro/i, /javier/i, /mateo/i,
+                /miguel/i, /ra[uú]l/i, /alex/i, /enrique/i, /ricardo/i,
+                /sebasti[aá]n/i, /lorenzo/i, /tom[aá]s/i, /pedro/i,
+                /daniel/i, /antonio/i, /\bgonzalo\b/i, /\bf[eé]lix\b/i,
+                /\bmateo\b/i, /\bdavid\b/i, /\bmark\b/i, /\bguy\b/i
+            ];
+
+            const autoPick = (voices) => {
+                const latin = voices.filter(v => LATIN_RE.test(v.lang || ''));
+                const spain = voices.filter(v => SPAIN_RE.test(v.lang || ''));
+                const otherEs = voices.filter(v =>
+                    /^es/i.test(v.lang || '') && !latin.includes(v) && !spain.includes(v));
+
+                const findBest = (pool) => {
+                    return pool.find(v =>
+                        malePatterns.some(p => p.test(v.name || '')) &&
+                        naturalPatterns.some(p => p.test(v.name || ''))
+                    ) || pool.find(v => naturalPatterns.some(p => p.test(v.name || '')))
+                      || pool.find(v => malePatterns.some(p => p.test(v.name || '')))
+                      || pool.find(v => /male/i.test(v.name || ''))
+                      || pool[0]
+                      || null;
+                };
+                return findBest(latin) || findBest(otherEs) || findBest(spain) || voices[0] || null;
+            };
+
+            const fillSelect = (voices, currentName) => {
+                const sel = this.el.voiceSelect;
+                if (!sel) return;
+                while (sel.options.length > 1) sel.remove(1);
+                const latin = voices.filter(v => LATIN_RE.test(v.lang || ''));
+                const spain = voices.filter(v => SPAIN_RE.test(v.lang || ''));
+                const otherEs = voices.filter(v =>
+                    /^es/i.test(v.lang || '') && !latin.includes(v) && !spain.includes(v));
+                const addGroup = (label, pool) => {
+                    if (!pool.length) return;
+                    const og = document.createElement('optgroup');
+                    og.label = label;
+                    pool.forEach(v => {
+                        const o = document.createElement('option');
+                        o.value = v.name;
+                        o.textContent = `${v.name} · ${v.lang}`;
+                        if (v.name === currentName) o.selected = true;
+                        og.appendChild(o);
+                    });
+                    sel.appendChild(og);
+                };
+                addGroup('Latinoamérica', latin);
+                addGroup('España', spain);
+                addGroup('Otras español', otherEs);
+            };
+
             const pickVoice = () => {
                 const voices = window.speechSynthesis.getVoices() || [];
                 if (!voices.length) return;
-                // Voces sintéticas conocidas (suenan más a robot)
-                const robotPatterns = [
-                    /espeak/i, /pico/i, /festival/i, /flite/i,
-                    /mb[\-\s]?rola/i, /synth/i, /robot/i
-                ];
-                // Voces masculinas humanas
-                const malePatterns = [
-                    /pablo/i, /diego/i, /jorge/i, /juan/i, /carlos/i,
-                    /andr[eé]s/i, /[aá]lvaro/i, /javier/i, /mateo/i,
-                    /miguel/i, /ra[uú]l/i, /alex/i, /enrique/i, /ricardo/i,
-                    /\bdavid\b/i, /\bmark\b/i, /\bgeorge\b/i, /\bguy\b/i
-                ];
-                const esVoices = voices.filter(v => /^es/i.test(v.lang || ''));
 
+                let saved = '';
+                try { saved = localStorage.getItem('diver_voice_name') || ''; } catch (e) {}
                 let chosen = null;
-                // 1) Algo sintético en cualquier idioma (es preferible)
-                chosen = esVoices.find(v => robotPatterns.some(p => p.test(v.name || ''))) ||
-                         voices.find(v => robotPatterns.some(p => p.test(v.name || '')));
-                // 2) Voz masculina en español
-                if (!chosen) {
-                    chosen = esVoices.find(v => malePatterns.some(p => p.test(v.name || '')));
-                }
-                // 3) Marcador "male" en el nombre
-                if (!chosen) {
-                    chosen = esVoices.find(v => /male/i.test(v.name || '')) || null;
-                }
-                if (!chosen && esVoices.length) chosen = esVoices[0];
-                if (!chosen && voices.length) chosen = voices[0];
+                if (saved) chosen = voices.find(v => v.name === saved) || null;
+                if (!chosen) chosen = autoPick(voices);
+
                 this.state.voice.voice = chosen;
+                fillSelect(voices, chosen ? chosen.name : '');
                 if (chosen) {
                     console.log('[VOZ] elegida:', chosen.name, '/', chosen.lang);
                 }
             };
             pickVoice();
-            // Las voces se cargan async — re-elegir cuando estén listas
             if ('onvoiceschanged' in window.speechSynthesis) {
                 window.speechSynthesis.onvoiceschanged = pickVoice;
             }
+
+            // Cambio manual desde el dropdown
+            this.el.voiceSelect?.addEventListener('change', () => {
+                const name = this.el.voiceSelect.value;
+                const voices = window.speechSynthesis.getVoices() || [];
+                if (!name) {
+                    // "Auto"
+                    try { localStorage.removeItem('diver_voice_name'); } catch (e) {}
+                    this.state.voice.voice = autoPick(voices);
+                } else {
+                    const v = voices.find(x => x.name === name);
+                    if (v) {
+                        this.state.voice.voice = v;
+                        try { localStorage.setItem('diver_voice_name', name); } catch (e) {}
+                    }
+                }
+                // Pequeño preview para que el usuario escuche el cambio
+                if (this.state.voice.ttsEnabled) {
+                    this.speakReply('Voz lista.');
+                }
+            });
         }
 
         // ── Toggle TTS ──
@@ -541,26 +600,21 @@ const AGENT = {
             // Forzar idioma español aunque la voz por defecto sea otra
             utt.lang = (this.state.voice.voice && this.state.voice.voice.lang) || 'es-ES';
             if (this.state.voice.voice) utt.voice = this.state.voice.voice;
-            // Tuning robótico-masculino:
-            //  pitch 0.4  → muy grave (lo más bajo audible sin clipping)
-            //  rate  0.85 → enfatiza la metalicidad
-            utt.pitch  = 0.4;
-            utt.rate   = 0.85;
+            // Tono natural: pitch 1.0 (la voz ya es masculina latina por
+            // selección), rate apenas por debajo de 1 para cadencia
+            // colombiana. Sin pitch hundido — eso suena robótico.
+            utt.pitch  = 1.0;
+            utt.rate   = 0.98;
             utt.volume = 1.0;
             utt.onstart = () => {
                 this.state.voice.ttsSpeaking = true;
                 this.el.ttsToggle?.classList.add('speaking');
-                // Pitido corto al iniciar (estilo "R2D2 acknowledge")
-                this._playRobotBeep(220, 90);
             };
             const stop = () => {
                 this.state.voice.ttsSpeaking = false;
                 this.el.ttsToggle?.classList.remove('speaking');
             };
-            utt.onend = () => {
-                stop();
-                this._playRobotBeep(180, 70);  // pitido al terminar
-            };
+            utt.onend = stop;
             utt.onerror = stop;
             window.speechSynthesis.speak(utt);
         } catch (e) {

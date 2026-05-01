@@ -746,3 +746,26 @@ body.agente-body {
     .ag-suggestions { padding: 0.5rem 0.7rem; }
     .ag-chip { font-size: 0.68rem; padding: 0.25rem 0.55rem; }
 }
+
+/* Selector de voz en el header del chat */
+.ag-voice-select {
+    background: rgba(255, 255, 255, 0.06);
+    color: #cfd2d6;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    padding: 4px 6px;
+    font-size: 11px;
+    max-width: 200px;
+    outline: none;
+    cursor: pointer;
+}
+.ag-voice-select:hover {
+    border-color: rgba(90, 168, 255, 0.5);
+}
+.ag-voice-select option {
+    background: #0a1120;
+    color: #cfd2d6;
+}
+@media (max-width: 600px) {
+    .ag-voice-select { max-width: 110px; font-size: 10px; }
+}

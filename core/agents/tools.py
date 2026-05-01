@@ -23,7 +23,7 @@ from ..poses import (
     robot_wiggle_safe,
 )
 from ..runtime import run_async
-from ..state import robot_state
+from ..state import proximity_sensor, robot_state
 
 
 # ────────────────────────────────────────────────────────────────────
@@ -201,6 +201,17 @@ def move_robot(
     else:
         return {"ok": False, "msg": f"Dirección desconocida: {direccion}"}
 
+    # Cuando es el agente quien decide mover, el sensor de proximidad NO
+    # debe abortarle el comando: el agente ya razonó si tenía sentido. El
+    # frenado físico por obstáculo a <30cm sigue siendo la última línea de
+    # defensa, pero la ventana FORCE evita que el alerta de "veo persona
+    # cerca" cancele la orden. La ventana cubre la duración + un margen.
+    try:
+        proximity_sensor["_force_until"] = time.time() + float(duracion_s) + 0.5
+        proximity_sensor["_alert_active"] = False
+    except Exception:
+        pass
+
     try:
         steps = max(1, int(duracion_s * 5))
         for _ in range(steps):
@@ -250,6 +261,9 @@ def look_around() -> dict[str, Any]:
             "mano_arriba":          "alguien con la mano arriba",
             "ambas_manos_arriba":   "alguien con ambas manos arriba",
             "brazos_arriba":        "alguien con los brazos arriba",
+            "puños_arriba":         "alguien con los puños arriba (celebrando)",
+            "manos_en_cadera":      "alguien con las manos en la cadera (le pide al robot sentarse)",
+            "mano_abajo":           "alguien con la mano bajo la cadera (le pide al robot acostarse)",
             "señalando_derecha":    "alguien señalando a la derecha",
             "señalando_izquierda":  "alguien señalando a la izquierda",
             "sentado":              "alguien sentado",

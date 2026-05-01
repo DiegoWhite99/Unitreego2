@@ -43,10 +43,16 @@
                         &#x2728; Nueva ruta vacia
                     </button>
                     <button id="ar-edit-undo" class="cr-btn ghost" disabled>&#x21A9; Deshacer</button>
+                    <button id="ar-edit-linear" class="cr-btn ghost" title="Reemplaza la ruta con una linea recta entre origen y final (util cuando el SLAM la curvo por drift)">
+                        &#x2500; Recta origen-final
+                    </button>
                     <button id="ar-edit-clear" class="cr-btn ghost" disabled>&#x1F5D1; Limpiar</button>
                     <button id="ar-edit-save" class="cr-btn" disabled>&#x1F4BE; Guardar ruta</button>
                     <button id="ar-save-scan" class="cr-btn ghost" title="Descargar el mapa de calor escaneado como JSON">
                         &#x1F4E6; Guardar datos escaneados
+                    </button>
+                    <button id="ar-reset-view" class="cr-btn ghost" title="Vuelve la camara al angulo por defecto">
+                        &#x21BB; Vista
                     </button>
                 </div>
 
@@ -56,14 +62,17 @@
                     <div class="ar-map-hint-body">
                         <p>Activa <em>Editar</em> y haz click para poner el <strong>origen</strong> (verde) y los siguientes waypoints.</p>
                         <p>Arrastra un waypoint para moverlo. Shift+click para borrar uno.</p>
+                        <p><strong>Click derecho + arrastrar</strong>: rota la vista 360&deg; para inspeccionar el lidar 4D desde otro angulo.</p>
                     </div>
                 </div>
 
                 <!-- Leyenda inferior -->
                 <div class="ar-map-legend">
-                    <span class="lg lg-route"></span>Recorrido
+                    <span class="lg lg-route"></span>Ruta planificada
                     <span class="lg lg-origin"></span>Origen
                     <span class="lg lg-wp"></span>Waypoint
+                    <span class="lg" style="background:#ffc400;box-shadow:0 0 4px rgba(255,196,0,.8)"></span>Camino real (testigo)
+                    <span class="lg" style="background:#66ccff;box-shadow:0 0 4px rgba(102,204,255,.8)"></span>Simulacion test
                     <span class="lg lg-heat"></span>Obstaculos
                 </div>
 
@@ -137,17 +146,18 @@
                 <div class="ar-controls">
                     <button id="ar-start" class="cr-btn">&#9654; Iniciar ruta</button>
                     <button id="ar-stop" class="cr-btn danger" disabled>&#9632; Detener</button>
+                    <button id="ar-sim" class="cr-btn ghost" title="Simula la ruta sin mover el robot, para verificar antes de ejecutar">&#x1F9EA; Probar ruta (sin robot)</button>
                     <button id="ar-yolo-toggle" class="cr-btn ghost">Camara ON/OFF</button>
                 </div>
                 <label class="ar-translate-opt">
-                    <input type="checkbox" id="ar-translate-to-pose">
-                    <span>Ajustar origen al robot antes de iniciar</span>
+                    <input type="checkbox" id="ar-translate-to-pose" checked>
+                    <span>Anclar ruta a la posicion y orientacion actual del robot</span>
                 </label>
                 <label class="ar-translate-opt ar-smooth-opt">
                     <input type="checkbox" id="ar-smooth-mode">
                     <span>&#x1F30A; Modo fluido &mdash; recorrido sin paradas entre waypoints</span>
                 </label>
-                <p class="ar-hint">Por defecto el robot sigue los waypoints en coordenadas absolutas del lidar (replica exacto lo que caminaste). Activa la casilla si la ruta se grabo sin sensor o queres arrancar desde donde este el robot.</p>
+                <p class="ar-hint">Recomendado: dejala activada. El robot arranca desde donde esta y la ruta se rota para que el primer tramo coincida con su orientacion actual. Desactivala solo si la ruta y la pose actual estan en el mismo frame del lidar (misma sesion sin reiniciar).</p>
             </section>
         </aside>
     </main>

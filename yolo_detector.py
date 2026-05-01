@@ -575,6 +575,16 @@ class YoloDetector:
             dist(r_wr, l_sh) < near_t * 1.3):
             return "brazos_cruzados"
 
+        # ───── Puños arriba (celebración / "salta") ─────
+        # Ambas muñecas sobre la nariz Y los codos cerca de los hombros
+        # (brazos doblados, no extendidos). Es el gesto de victoria.
+        # Va ANTES de ambas_manos_arriba para tener prioridad.
+        if (l_wr and r_wr and nose and l_sh and r_sh and l_el and r_el and
+            l_wr[1] < nose[1] and r_wr[1] < nose[1] and
+            l_el[1] > l_sh[1] - shoulder_w * 0.3 and
+            r_el[1] > r_sh[1] - shoulder_w * 0.3):
+            return "puños_arriba"
+
         # ───── Ambas manos arriba (sobre la cabeza) ─────
         if (l_wr and r_wr and nose and
             l_wr[1] < nose[1] and r_wr[1] < nose[1]):
@@ -590,6 +600,36 @@ class YoloDetector:
             return "mano_arriba"
         if r_wr and r_sh and r_wr[1] < r_sh[1] - 30:
             return "mano_arriba"
+
+        # ───── Manos en la cadera (akimbo) → sentarse ─────
+        # Ambas muñecas cerca de su cadera del mismo lado, en altura y
+        # en horizontal, con codo doblado (codo más arriba que la muñeca).
+        # Tolerancia generosa porque la mano apoyada no siempre cae justo
+        # sobre el hueso de la cadera.
+        if (l_wr and r_wr and l_hip and r_hip and l_el and r_el):
+            l_close = (
+                abs(l_wr[0] - l_hip[0]) < shoulder_w * 0.6
+                and abs(l_wr[1] - l_hip[1]) < shoulder_w * 0.5
+                and l_el[1] < l_wr[1]
+            )
+            r_close = (
+                abs(r_wr[0] - r_hip[0]) < shoulder_w * 0.6
+                and abs(r_wr[1] - r_hip[1]) < shoulder_w * 0.5
+                and r_el[1] < r_wr[1]
+            )
+            if l_close and r_close:
+                return "manos_en_cadera"
+
+        # ───── Mano abajo (señalando al suelo) ─────
+        # Muñeca claramente más baja que la cadera + codo por debajo del
+        # hombro. Para evitar falsos positivos por brazos en reposo, pedimos
+        # que la muñeca esté MUY abajo (más de medio shoulder_w bajo cadera).
+        if (l_wr and l_hip and l_el and l_sh and
+            l_wr[1] > l_hip[1] + shoulder_w * 0.5 and l_el[1] > l_sh[1]):
+            return "mano_abajo"
+        if (r_wr and r_hip and r_el and r_sh and
+            r_wr[1] > r_hip[1] + shoulder_w * 0.5 and r_el[1] > r_sh[1]):
+            return "mano_abajo"
 
         # ───── Señalando (brazo extendido lateral) ─────
         if r_wr and r_sh and abs(r_wr[0] - r_sh[0]) > shoulder_w * 1.2 and abs(r_wr[1] - r_sh[1]) < shoulder_w * 0.5:
