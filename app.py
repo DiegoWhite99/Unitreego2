@@ -20,6 +20,7 @@ from api import register_blueprints
 from api.sockets import register_socket_handlers
 from core.perception import qr as qr_module
 from core.runtime import app, socketio
+from core.state import robot_state
 
 
 # ────────────────────────────────────────────────────────────────────

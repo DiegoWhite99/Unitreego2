@@ -160,7 +160,9 @@ const RutaGuiada = {
             source: this.state.robotConnected ? 'robot' : 'webcam',
             camera_index: 0,
             conf: 0.4,
-            model: 'yolov8n-pose.pt',
+            model: 'yolov8n.pt',
+            imgsz: 416,
+            with_objects: false,
         });
         if (res && res.status === 'ok') {
             this.el.video.src = `${API}/api/yolo/stream?t=${Date.now()}`;

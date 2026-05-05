@@ -10,18 +10,22 @@ const UserEnd = {
     state: {
         serverConnected: false,
         robotConnected: false,
-        yoloRunning: false
+        yoloRunning: false,
+        faceIdRunning: false
     },
     yoloPollTimer: null,
+    faceIdPollTimer: null,
 
     init() {
         this.setupNavigation();
         this.setupSocket();
         this.setupControls();
         this.setupYoloControls();
+        this.setupFaceIdControls();
         this.loadInitialData();
         this.startStatusPolling();
         this.refreshYoloStatus();
+        this.refreshFaceIdStatus();
     },
 
     setupNavigation() {
@@ -346,12 +350,18 @@ const UserEnd = {
         const cameraEl = document.getElementById('yolo-camera');
         const confEl = document.getElementById('yolo-conf');
         const modelEl = document.getElementById('yolo-model');
+        const imgszEl = document.getElementById('yolo-imgsz');
+        const targetFpsEl = document.getElementById('yolo-target-fps');
+        const extraObjectsEl = document.getElementById('yolo-extra-objects');
 
         const payload = {
             source: sourceEl ? sourceEl.value : 'robot',
             camera_index: cameraEl ? parseInt(cameraEl.value, 10) || 0 : 0,
             conf: confEl ? parseFloat(confEl.value) || 0.35 : 0.35,
-            model: modelEl ? modelEl.value : 'yolov8n.pt'
+            model: modelEl ? modelEl.value : 'yolov8n.pt',
+            imgsz: imgszEl ? parseInt(imgszEl.value, 10) || 320 : 320,
+            target_fps: targetFpsEl ? parseFloat(targetFpsEl.value) || 6 : 6,
+            with_objects: Boolean(extraObjectsEl?.checked)
         };
 
         if (payload.source === 'robot' && !this.state.robotConnected) {
@@ -395,7 +405,7 @@ const UserEnd = {
         if (!data) return;
 
         this.setYoloRunning(Boolean(data.running));
-        this.updateFps(data.running ? data.fps : null);
+        this.updateFps(data.running ? data.fps : null, data.running ? data.inference_ms : null, data.device);
 
         if (data.running) {
             this.attachYoloStream();
@@ -425,13 +435,11 @@ const UserEnd = {
     startYoloPolling() {
         this.stopYoloPolling();
         this.yoloPollTimer = window.setInterval(async () => {
-            const [det, status] = await Promise.all([
-                this.apiCall('/api/yolo/detections', 'GET'),
-                this.apiCall('/api/yolo/status', 'GET')
-            ]);
+            const snap = await this.apiCall('/api/yolo/snapshot?compact=1', 'GET');
+            const status = snap?.yolo || null;
 
             if (status) {
-                this.updateFps(status.running ? status.fps : null);
+                this.updateFps(status.running ? status.fps : null, status.running ? status.inference_ms : null, status.device);
                 if (!status.running) {
                     this.setYoloRunning(false);
                     this.detachYoloStream();
@@ -441,10 +449,10 @@ const UserEnd = {
                 }
             }
 
-            if (det && Array.isArray(det.detections)) {
-                this.renderWaypoints(det.detections);
+            if (snap && Array.isArray(snap.detections)) {
+                this.renderWaypoints(snap.detections);
             }
-        }, 800);
+        }, 900);
     },
 
     stopYoloPolling() {
@@ -462,10 +470,17 @@ const UserEnd = {
         if (stopBtn) stopBtn.disabled = !running;
     },
 
-    updateFps(fps) {
+    updateFps(fps, inferenceMs = null, device = null) {
         const el = document.getElementById('yolo-fps');
         if (!el) return;
-        el.textContent = fps == null ? 'FPS: --' : `FPS: ${fps}`;
+        if (fps == null) {
+            el.textContent = 'FPS: --';
+            return;
+        }
+        const parts = [`FPS: ${fps}`];
+        if (inferenceMs != null) parts.push(`${Math.round(inferenceMs)} ms`);
+        if (device) parts.push(String(device).toUpperCase());
+        el.textContent = parts.join(' | ');
     },
 
     renderWaypoints(detections) {
@@ -487,22 +502,43 @@ const UserEnd = {
             const dir = this.translateDirection(d.direction);
             const dist = this.translateDistance(d.distance_hint);
             const [nx, ny] = d.norm_center || [0, 0];
+            const label = this.formatDetectionLabel(d);
+            const meta = this.formatDetectionMeta(d);
 
             return `
                 <div class="waypoint-item waypoint-dir-${d.direction}">
                     <div class="waypoint-head">
                         <span class="waypoint-index">#${idx + 1}</span>
-                        <span class="waypoint-label">${this.escapeHtml(d.label)}</span>
+                        <span class="waypoint-label">${this.escapeHtml(label)}</span>
                         <span class="waypoint-conf">${pct}%</span>
                     </div>
                     <div class="waypoint-meta">
                         <span class="waypoint-tag tag-${d.direction}">${dir}</span>
                         <span class="waypoint-tag tag-${d.distance_hint}">${dist}</span>
+                        ${meta}
                         <span class="waypoint-coord">x:${nx.toFixed(2)} y:${ny.toFixed(2)}</span>
                     </div>
                 </div>
             `;
         }).join('');
+    },
+
+    formatDetectionLabel(d) {
+        if (d.kind === 'face' && d.known && d.person_name) return d.person_name;
+        if (d.person_category) return this.translatePersonCategory(d.person_category);
+        return d.label || 'deteccion';
+    },
+
+    formatDetectionMeta(d) {
+        const tags = [];
+        if (d.gesture) tags.push(this.translateGesture(d.gesture));
+        if (d.kind === 'face' && d.known && d.person_name) tags.push('Face ID');
+        if (d.age_group) tags.push(this.translatePersonCategory(d.age_group));
+        if (d.apparent_gender) tags.push(this.translatePersonCategory(d.apparent_gender));
+        if (Array.isArray(d.holding) && d.holding.length) {
+            tags.push(`con ${d.holding.join(', ')}`);
+        }
+        return tags.map(tag => `<span class="waypoint-tag">${this.escapeHtml(tag)}</span>`).join('');
     },
 
     translateDirection(d) {
@@ -511,6 +547,21 @@ const UserEnd = {
 
     translateDistance(d) {
         return ({ near: 'Cerca', mid: 'Media', far: 'Lejos' })[d] || d;
+    },
+
+    translatePersonCategory(value) {
+        return ({
+            nino: 'Niño/a',
+            joven: 'Joven',
+            adulto: 'Adulto/a',
+            adulto_mayor: 'Adulto/a mayor',
+            hombre: 'Hombre',
+            mujer: 'Mujer'
+        })[value] || value;
+    },
+
+    translateGesture(value) {
+        return String(value).replace(/_/g, ' ');
     },
 
     escapeHtml(str) {
@@ -537,6 +588,100 @@ const UserEnd = {
             frontpounce: 'Salto Agresivo'
         };
         return names[action] || action;
+    },
+
+    setupFaceIdControls() {
+        document.getElementById('btn-face-id-start')?.addEventListener('click', () => this.startFaceId());
+        document.getElementById('btn-face-id-stop')?.addEventListener('click', () => this.stopFaceId());
+    },
+
+    async startFaceId() {
+        if (!this.state.yoloRunning) {
+            this.addLog('error', 'Enciende primero la camara YOLO para usar Face ID');
+            return;
+        }
+
+        this.addLog('info', 'Activando detector de reconocimiento facial...');
+        const response = await this.apiCall('/api/faces/greetings/start', 'POST');
+
+        if (response && response.status === 'ok') {
+            this.addLog('success', response.message || 'Detector de Face ID activado');
+            this.setFaceIdRunning(true);
+            this.startFaceIdPolling();
+        } else {
+            this.addLog('error', response?.message || 'No se pudo activar Face ID');
+            this.setFaceIdRunning(false);
+        }
+    },
+
+    async stopFaceId() {
+        this.addLog('info', 'Desactivando detector de reconocimiento facial...');
+        this.stopFaceIdPolling();
+
+        const response = await this.apiCall('/api/faces/greetings/stop', 'POST');
+        if (response && response.status === 'ok') {
+            this.addLog('success', response.message || 'Detector de Face ID desactivado');
+        } else {
+            this.addLog('warning', response?.message || 'No se pudo desactivar Face ID');
+        }
+        this.setFaceIdRunning(false);
+    },
+
+    async refreshFaceIdStatus() {
+        const data = await this.apiCall('/api/faces/greetings/state', 'GET');
+        if (!data) return;
+
+        const isRunning = Boolean(data.enabled ?? data.running);
+        this.setFaceIdRunning(isRunning);
+
+        if (isRunning) {
+            this.startFaceIdPolling();
+        }
+    },
+
+    startFaceIdPolling() {
+        this.stopFaceIdPolling();
+        this.faceIdPollTimer = window.setInterval(async () => {
+            const status = await this.apiCall('/api/faces/greetings/state', 'GET');
+
+            if (status) {
+                if (!Boolean(status.enabled ?? status.running)) {
+                    this.setFaceIdRunning(false);
+                    this.stopFaceIdPolling();
+                }
+            }
+        }, 3000);
+    },
+
+    stopFaceIdPolling() {
+        if (this.faceIdPollTimer) {
+            window.clearInterval(this.faceIdPollTimer);
+            this.faceIdPollTimer = null;
+        }
+    },
+
+    setFaceIdRunning(running) {
+        this.state.faceIdRunning = running;
+        const startBtn = document.getElementById('btn-face-id-start');
+        const stopBtn = document.getElementById('btn-face-id-stop');
+        const statusEl = document.getElementById('face-id-status');
+
+        if (startBtn) startBtn.disabled = running;
+        if (stopBtn) stopBtn.disabled = !running;
+
+        if (statusEl) {
+            if (running) {
+                statusEl.textContent = 'Activo';
+                statusEl.style.background = 'rgba(34,197,94,0.12)';
+                statusEl.style.color = 'var(--dv-green)';
+                statusEl.style.borderColor = 'rgba(34,197,94,0.35)';
+            } else {
+                statusEl.textContent = 'Desactivado';
+                statusEl.style.background = 'rgba(239,68,68,0.12)';
+                statusEl.style.color = 'var(--dv-alert)';
+                statusEl.style.borderColor = 'rgba(239,68,68,0.35)';
+            }
+        }
     }
 };
 

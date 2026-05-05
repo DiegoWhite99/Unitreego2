@@ -29,12 +29,7 @@ from .tools import call_robot_action
 
 GESTURE_REACTIONS = {
     "mano_arriba":         {"action": "hello",     "say": "¡Hola! 🐾"},
-    "ambas_manos_arriba":  {"action": "hello",     "say": "¡Aquí estoy!"},
-    "brazos_arriba":       {"action": "hello",     "say": "¡Te veo!"},
     "manos_juntas":        {"action": "heart",     "say": "🐾"},
-    "t_pose":              {"action": "wiggle",    "say": "Modo T-pose detectado."},
-    "mano_abajo":          {"action": "lie",       "say": "Me acuesto 🐶"},
-    "manos_en_cadera":     {"action": "sit",       "say": "Me siento."},
     "puños_arriba":        {"action": "frontjump", "say": "¡Salto!"},
 }
 

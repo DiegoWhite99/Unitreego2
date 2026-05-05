@@ -686,6 +686,31 @@
         body.theme-light .yolo-input:focus, body.theme-light .input-field:focus {
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
         }
+        .yolo-controls .yolo-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            min-height: 2.25rem;
+            text-transform: none;
+            letter-spacing: 0;
+            color: var(--dv-text);
+        }
+        .yolo-toggle input {
+            width: 1rem;
+            height: 1rem;
+            accent-color: var(--dv-green);
+        }
+        .face-id-controls {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            margin-top: 0.85rem;
+        }
+        .face-id-controls .yolo-badge {
+            min-width: 112px;
+            text-align: center;
+        }
 
         .yolo-badge {
             background: var(--dv-aqua-soft);
@@ -1226,17 +1251,44 @@
 
                             <label for="yolo-model">Modelo:</label>
                             <select id="yolo-model" class="yolo-input">
-                                <option value="yolov8n-pose.pt" selected>YOLOv8n-pose (gestos ON)</option>
+                                <option value="yolov8n-pose.pt">YOLOv8n-pose (gestos ON)</option>
                                 <option value="yolov8s-pose.pt">YOLOv8s-pose (gestos, equilibrado)</option>
-                                <option value="yolov8n.pt">YOLOv8n (rápido, sin gestos)</option>
+                                <option value="yolov8n.pt" selected>YOLOv8n (rápido, sin gestos)</option>
                                 <option value="yolov8s.pt">YOLOv8s (equilibrado, sin gestos)</option>
                                 <option value="yolov8m.pt">YOLOv8m (preciso, sin gestos)</option>
                             </select>
+
+                            <label for="yolo-imgsz">Resolución IA:</label>
+                            <select id="yolo-imgsz" class="yolo-input">
+                                <option value="320" selected>320 (muy rápido)</option>
+                                <option value="416">416 (rápido)</option>
+                                <option value="512">512 (balance)</option>
+                                <option value="640">640 (preciso)</option>
+                            </select>
+
+                            <label for="yolo-target-fps">FPS IA:</label>
+                            <select id="yolo-target-fps" class="yolo-input">
+                                <option value="4">4 (CPU lenta)</option>
+                                <option value="6" selected>6 (estable)</option>
+                                <option value="10">10 (rápido)</option>
+                                <option value="15">15 (GPU)</option>
+                            </select>
+
+                            <label for="yolo-extra-objects">Objetos extra:</label>
+                            <label class="yolo-toggle">
+                                <input type="checkbox" id="yolo-extra-objects">
+                                <span>COCO con pose</span>
+                            </label>
                         </div>
 
                         <div class="action-buttons">
                             <button id="btn-yolo-start" class="dv-btn primary">Encender Cámara</button>
                             <button id="btn-yolo-stop" class="dv-btn danger" disabled>Apagar Cámara</button>
+                        </div>
+                        <div class="face-id-controls">
+                            <span id="face-id-status" class="yolo-badge">Desactivado</span>
+                            <button id="btn-face-id-start" class="dv-btn primary">Activar Face ID</button>
+                            <button id="btn-face-id-stop" class="dv-btn danger" disabled>Apagar Face ID</button>
                         </div>
                     </div>
                 </div>

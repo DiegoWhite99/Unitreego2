@@ -24,7 +24,8 @@ const AGENT = {
             voice: null,       // SpeechSynthesisVoice elegida (masculina ES)
             micHint: null
         },
-        gestureReact: false  // reacción autónoma a gestos (mano alzada → saludo)
+        gestureReact: false, // reacción autónoma a gestos (mano alzada → saludo)
+        faceGreeting: true   // saludo autónomo cuando reconoce un rostro local
     },
     el: {},
     detectPollTimer: null,
@@ -37,6 +38,7 @@ const AGENT = {
         this.setupWakeButton();
         this.setupVoice();
         this.setupGestureReactor();
+        this.setupFaceGreetingReactor();
         this.checkAiHealth();
         // Si YOLO ya está corriendo, engancharse al stream automáticamente
         this.refreshYoloAndAttach();
@@ -68,7 +70,8 @@ const AGENT = {
             mic: document.getElementById('ag-mic'),
             ttsToggle: document.getElementById('ag-tts-toggle'),
             voiceSelect: document.getElementById('ag-voice-select'),
-            gestureToggle: document.getElementById('ag-gesture-toggle')
+            gestureToggle: document.getElementById('ag-gesture-toggle'),
+            faceToggle: document.getElementById('ag-face-toggle')
         };
     },
 
@@ -169,7 +172,9 @@ const AGENT = {
                         conf: 0.4,
                         // Modelo pose: detecta personas + 17 keypoints +
                         // gestos derivados (mano_arriba, sentado, etc.)
-                        model: 'yolov8n-pose.pt'
+                        model: 'yolov8n-pose.pt',
+                        imgsz: 416,
+                        with_objects: false
                     })
                 }).then(r => r.json());
                 if (r && r.status === 'ok') {
@@ -519,6 +524,91 @@ const AGENT = {
         if (data.ok) this.speakReply(sayText);
     },
 
+    /* ============ Saludo por reconocimiento facial ============ */
+    setupFaceGreetingReactor() {
+        try {
+            const stored = localStorage.getItem('diver_face_greeting');
+            if (stored === '0') this.state.faceGreeting = false;
+        } catch (e) {}
+
+        this._syncFaceGreetingState();
+
+        this.el.faceToggle?.addEventListener('click', () => {
+            const next = !this.state.faceGreeting;
+            const path = next ? '/api/faces/greetings/start' : '/api/faces/greetings/stop';
+            fetch(`${API_BASE}${path}`, { method: 'POST' })
+                .then(r => r.json())
+                .then(r => {
+                    this.state.faceGreeting = !!r.enabled;
+                    try {
+                        localStorage.setItem('diver_face_greeting',
+                            this.state.faceGreeting ? '1' : '0');
+                    } catch (e) {}
+                    this._renderFaceGreetingButton();
+                    this._showBanner(
+                        this.state.faceGreeting
+                            ? 'Saludo por rostro activo.'
+                            : 'Saludo por rostro desactivado.',
+                        'warn'
+                    );
+                })
+                .catch(() => this._showBanner('No pude cambiar saludo por rostro.', 'error'));
+        });
+
+        if (this.socket) {
+            this.socket.on('face_greeting', (data) => {
+                this._onFaceGreeting(data || {});
+            });
+        }
+
+        this._renderFaceGreetingButton();
+    },
+
+    _syncFaceGreetingState() {
+        fetch(`${API_BASE}/api/faces/greetings/state`).then(r => r.json())
+            .then(r => {
+                this.state.faceGreeting = !!r.enabled;
+                this._renderFaceGreetingButton();
+                let wantOn = true;
+                try { wantOn = localStorage.getItem('diver_face_greeting') !== '0'; }
+                catch (e) {}
+                if (wantOn && !this.state.faceGreeting) {
+                    fetch(`${API_BASE}/api/faces/greetings/start`, { method: 'POST' })
+                        .then(r => r.json())
+                        .then(r => {
+                            this.state.faceGreeting = !!r.enabled;
+                            this._renderFaceGreetingButton();
+                        }).catch(() => {});
+                }
+                if (!wantOn && this.state.faceGreeting) {
+                    fetch(`${API_BASE}/api/faces/greetings/stop`, { method: 'POST' })
+                        .then(r => r.json())
+                        .then(r => {
+                            this.state.faceGreeting = !!r.enabled;
+                            this._renderFaceGreetingButton();
+                        }).catch(() => {});
+                }
+            }).catch(() => {});
+    },
+
+    _renderFaceGreetingButton() {
+        const btn = this.el.faceToggle;
+        if (!btn) return;
+        const on = !!this.state.faceGreeting;
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        btn.title = on
+            ? 'Saludo por rostro ACTIVO — diré hola al reconocer a alguien.'
+            : 'Activar saludo automático al reconocer rostros registrados';
+    },
+
+    _onFaceGreeting(data) {
+        const name = data.person_name || 'alguien conocido';
+        const sayText = data.say || `Hola, ${name}.`;
+        this.appendMessage('bot', sayText, [{ name: 'face_greeting', ok: true }]);
+        this.state.history.push({ role: 'model', text: sayText });
+        this.speakReply(sayText);
+    },
+
     _renderTtsButton() {
         const btn = this.el.ttsToggle;
         if (!btn) return;
@@ -691,6 +781,8 @@ const AGENT = {
         const grouped = new Map();
         const gestures = [];
         const interactions = [];   // ["persona con celular", ...]
+        const knownFaces = [];
+        let unknownFaces = 0;
         for (const d of detections) {
             const key = d.label || d.class_name || d.class || 'desconocido';
             const cur = grouped.get(key) || { count: 0, conf: 0 };
@@ -700,6 +792,18 @@ const AGENT = {
             }
             grouped.set(key, cur);
             if (d.gesture) gestures.push(d.gesture);
+            if (d.kind === 'face' || key === 'rostro') {
+                if (d.known && d.person_name) {
+                    knownFaces.push({
+                        name: d.person_name,
+                        conf: typeof d.recognition_confidence === 'number'
+                            ? d.recognition_confidence
+                            : 0
+                    });
+                } else {
+                    unknownFaces += 1;
+                }
+            }
             if (Array.isArray(d.holding) && d.holding.length) {
                 for (const obj of d.holding) {
                     interactions.push(`persona con ${obj}`);
@@ -715,7 +819,38 @@ const AGENT = {
             return;
         }
 
-        // Primero: gestos (ámbar) e interacciones (cyan), arriba de los objetos.
+        // Primero: rostros conocidos, gestos e interacciones, arriba de objetos.
+        const faceCounts = new Map();
+        for (const f of knownFaces) {
+            const cur = faceCounts.get(f.name) || { count: 0, conf: 0 };
+            cur.count += 1;
+            cur.conf = Math.max(cur.conf, f.conf || 0);
+            faceCounts.set(f.name, cur);
+        }
+        for (const [name, info] of faceCounts) {
+            const li = document.createElement('li');
+            li.style.borderLeftColor = '#38bdf8';
+            li.style.background = 'rgba(56, 189, 248, 0.08)';
+            li.style.borderColor = 'rgba(56, 189, 248, 0.35)';
+            li.innerHTML = `
+                <span class="lbl" style="color:#bae6fd;">Rostro: ${this._escape(name)}</span>
+                ${info.count > 1 ? `<span class="count" style="background:rgba(56,189,248,0.15);color:#7dd3fc;">x${info.count}</span>` : ''}
+                <span class="conf">${Math.round((info.conf || 0) * 100)}%</span>
+            `;
+            list.appendChild(li);
+        }
+        if (unknownFaces > 0) {
+            const li = document.createElement('li');
+            li.style.borderLeftColor = '#94a3b8';
+            li.style.background = 'rgba(148, 163, 184, 0.08)';
+            li.style.borderColor = 'rgba(148, 163, 184, 0.28)';
+            li.innerHTML = `
+                <span class="lbl" style="color:#cbd5e1;">Rostro desconocido</span>
+                <span class="count" style="background:rgba(148,163,184,0.15);color:#cbd5e1;">x${unknownFaces}</span>
+            `;
+            list.appendChild(li);
+        }
+
         const gestureCounts = new Map();
         for (const g of gestures) gestureCounts.set(g, (gestureCounts.get(g) || 0) + 1);
         for (const [g, n] of gestureCounts) {
@@ -746,6 +881,7 @@ const AGENT = {
 
         // Luego objetos detectados (top 6)
         const sorted = [...grouped.entries()]
+            .filter(([cls]) => cls !== 'rostro')
             .sort((a, b) => b[1].conf - a[1].conf)
             .slice(0, 6);
         for (const [cls, info] of sorted) {
@@ -760,6 +896,7 @@ const AGENT = {
         this.el.mCount.textContent = String(detections.length);
         const summaryParts = [];
         if (grouped.size) summaryParts.push(`${grouped.size} clase${grouped.size === 1 ? '' : 's'}`);
+        if (faceCounts.size) summaryParts.push(`${faceCounts.size} conocido${faceCounts.size === 1 ? '' : 's'}`);
         if (gestureCounts.size) summaryParts.push(`${gestureCounts.size} gesto${gestureCounts.size === 1 ? '' : 's'}`);
         this._setSummary(summaryParts.join(' · ') || '--');
     },

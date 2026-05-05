@@ -1375,7 +1375,9 @@ const ControlRemoto = {
             source: this.state.robotConnected ? 'robot' : 'webcam',
             camera_index: 0,
             conf: 0.4,
-            model: 'yolov8n-pose.pt'
+            model: 'yolov8n-pose.pt',
+            imgsz: 416,
+            with_objects: false
         };
         const res = await this.apiCall('/api/yolo/start', 'POST', payload);
         if (res && res.status === 'ok') {

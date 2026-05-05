@@ -27,12 +27,18 @@ def api_yolo_status():
 def api_yolo_start():
     """Inicia inferencia YOLO. Source default: 'robot' (camara del Go2).
 
-    Cuerpo: { "source": "robot"|"webcam", "camera_index": N, "model": ..., "conf": ... }"""
+    Cuerpo: { "source": "robot"|"webcam", "camera_index": N,
+              "model": ..., "conf": ..., "imgsz": 320,
+              "target_fps": 6,
+              "with_objects": false }"""
     data = request.get_json() or {}
     source = data.get("source", "robot")
     camera_index = int(data.get("camera_index", 0))
     model_name = data.get("model", "yolov8n.pt")
     conf = float(data.get("conf", 0.35))
+    imgsz = int(data.get("imgsz", 320))
+    target_fps = float(data.get("target_fps", 6.0))
+    with_objects = _as_bool(data.get("with_objects", False))
 
     if source == "robot" and not robot_state["connected"]:
         msg = "Conecta primero el robot para usar su camara."
@@ -44,12 +50,27 @@ def api_yolo_start():
         camera_index=camera_index,
         model_name=model_name,
         conf=conf,
+        imgsz=imgsz,
+        with_objects=with_objects,
+        target_fps=target_fps,
     )
     if result.get("ok"):
         emit_log("success", result.get("message", "YOLO iniciado"))
         return jsonify({"status": "ok", "message": result["message"]})
     emit_log("error", result.get("message", "Error YOLO"))
     return jsonify({"status": "error", "message": result.get("message")}), 500
+
+
+def _as_bool(value, default: bool = False) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on", "si", "sí"}
+    return default
 
 
 @bp.route("/api/yolo/stop", methods=["POST"])
@@ -61,10 +82,34 @@ def api_yolo_stop():
 
 @bp.route("/api/yolo/detections", methods=["GET"])
 def api_yolo_detections():
+    compact = _as_bool(request.args.get("compact"), default=False)
+    limit_raw = request.args.get("limit")
+    try:
+        limit = int(limit_raw) if limit_raw is not None else None
+    except Exception:
+        limit = None
     return jsonify({
         "status":     "ok",
         "running":    yolo_detector.is_running(),
-        "detections": yolo_detector.get_detections(),
+        "detections": yolo_detector.get_detections(compact=compact, limit=limit),
+    })
+
+
+@bp.route("/api/yolo/snapshot", methods=["GET"])
+def api_yolo_snapshot():
+    """Estado + detecciones en una sola llamada para bajar latencia HTTP."""
+    compact = _as_bool(request.args.get("compact"), default=True)
+    limit_raw = request.args.get("limit")
+    try:
+        limit = int(limit_raw) if limit_raw is not None else None
+    except Exception:
+        limit = None
+    status = yolo_detector.status()
+    return jsonify({
+        "status": "ok",
+        "running": bool(status.get("running")),
+        "detections": yolo_detector.get_detections(compact=compact, limit=limit),
+        "yolo": status,
     })
 
 

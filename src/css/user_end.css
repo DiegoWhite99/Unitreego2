@@ -185,6 +185,20 @@ body {
     font-size: 0.85rem;
 }
 
+.yolo-controls .yolo-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 2.1rem;
+    color: var(--color-text);
+}
+
+.yolo-toggle input {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--color-primary);
+}
+
 .yolo-badge {
     background: rgba(26, 115, 232, 0.22);
     color: #cfe1ff;

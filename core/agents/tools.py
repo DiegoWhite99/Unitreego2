@@ -247,12 +247,23 @@ def look_around() -> dict[str, Any]:
 
         groups: dict[str, int] = {}
         gestures: list[str] = []
+        known_faces: list[str] = []
+        unknown_faces = 0
+        person_types: dict[str, int] = {}
         for d in dets:
             cls = d.get("label") or d.get("class_name") or "algo"
             groups[cls] = groups.get(cls, 0) + 1
             g = d.get("gesture")
             if g:
                 gestures.append(g)
+            category = d.get("person_category")
+            if category:
+                person_types[str(category)] = person_types.get(str(category), 0) + 1
+            if d.get("kind") == "face" or cls == "rostro":
+                if d.get("known") and d.get("person_name"):
+                    known_faces.append(str(d.get("person_name")))
+                else:
+                    unknown_faces += 1
 
         items = sorted(groups.items(), key=lambda kv: -kv[1])
         obj_parts = [f"{n} {cls}{'s' if n>1 else ''}" for cls, n in items[:5]]
@@ -273,6 +284,26 @@ def look_around() -> dict[str, Any]:
             "agachado":             "alguien agachado",
         }
         gest_parts = [gesture_names_es.get(g, g) for g in set(gestures)]
+        person_type_names_es = {
+            "nino": "niño/a",
+            "joven": "joven",
+            "adulto": "adulto/a",
+            "adulto_mayor": "adulto/a mayor",
+            "hombre": "hombre",
+            "mujer": "mujer",
+        }
+        person_type_plural_es = {
+            "nino": "niños/as",
+            "joven": "jovenes",
+            "adulto": "adultos/as",
+            "adulto_mayor": "adultos/as mayores",
+            "hombre": "hombres",
+            "mujer": "mujeres",
+        }
+        person_type_parts = [
+            f"{n} {(person_type_names_es if n == 1 else person_type_plural_es).get(cls, cls)}"
+            for cls, n in sorted(person_types.items(), key=lambda kv: -kv[1])
+        ]
 
         interactions: list[str] = []
         for d in dets:
@@ -281,8 +312,17 @@ def look_around() -> dict[str, Any]:
         interactions = list(set(interactions))
 
         chunks: list[str] = []
+        if known_faces:
+            names = sorted(set(known_faces))
+            chunks.append("reconozco a " + ", ".join(names))
+        elif unknown_faces:
+            chunks.append(
+                f"{unknown_faces} rostro{'s' if unknown_faces != 1 else ''} visible"
+            )
         if gest_parts:
             chunks.append(", ".join(gest_parts))
+        if person_type_parts:
+            chunks.append(", ".join(person_type_parts))
         if interactions:
             chunks.append(", ".join(interactions))
         if obj_parts:
@@ -295,6 +335,7 @@ def look_around() -> dict[str, Any]:
             "classes":      dict(items),
             "gestures":     list(set(gestures)),
             "interactions": interactions,
+            "person_types":  person_types,
         }
     except Exception as e:
         return {"ok": False, "msg": str(e)}
