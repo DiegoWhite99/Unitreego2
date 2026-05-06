@@ -68,6 +68,7 @@ const ControlRemoto = {
         heatCellSizeZ: 0.12,     // 12 cm por capa Z (resolucion vertical del voxel)
         lastHeatPersistTs: 0,    // throttle del auto-save a localStorage
         lidarPose: null,
+        lastHeadingRad: 0,      // ultimo heading valido para mantener aguja estable
         totalMeters: 0.0,
         lastPoseForDistance: null,
         metersPerStep: 0.30,
@@ -807,46 +808,27 @@ const ControlRemoto = {
         this.trace.totalMeters = 0.0;
         this.trace.lastPoseForDistance = null;
         this.trace.lidarPose = null;
+        this.trace.lastHeadingRad = 0;
         this.trace.lastHeatPersistTs = 0;
         try { localStorage.removeItem('daiver:liveScan'); } catch (_) {}
         this.updateTraceStats();
+        this.updateHeadingStrip();
         this.drawTrace();
     },
 
-    /* ============ Guardar ruta y abrir Auto-Ruta ============
-       Serializa la trayectoria registrada y la deja en localStorage para
-       que la página de auto-ruta la cargue. Si hay menos de 4 puntos,
-       avisa y no navega. */
+    /* ============ Guardar escaneo y abrir Auto-Ruta ============
+       Serializa el heatmap del lidar y lo deja en localStorage para que
+       Auto-Ruta cargue el mapa. Los waypoints se crean MANUALMENTE en
+       la pantalla de Auto-Ruta (se eliminó la autogeneración). */
     setupSaveRoute() {
         const btn = document.getElementById('cr-save-route');
         if (!btn) return;
         btn.addEventListener('click', () => {
             const pts = this.trace.history.filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
-            if (pts.length < 4) {
-                alert('Camina primero un poco con el robot para registrar una ruta (mínimo 4 puntos).');
+            if (this.trace.heat.size < 8) {
+                alert('Aún no hay suficiente mapeo lidar. Muévete con el robot para escanear el entorno y vuelve a intentar.');
                 return;
             }
-            // Muestreo grueso: un waypoint cada ~60 cm (antes 40 cm). El
-            // backend se atasca con waypoints muy juntos y el SLAM del Go2
-            // genera drift que se transformaba en waypoints fantasma.
-            const sampled = [pts[0]];
-            for (const p of pts) {
-                const last = sampled.at(-1);
-                if (Math.hypot(p.x - last.x, p.y - last.y) >= 0.60) sampled.push(p);
-            }
-            // Garantiza que el ultimo waypoint este incluido aun si quedo
-            // a <60 cm del previo (no perdemos el destino final).
-            const tail = pts[pts.length - 1];
-            const lastSampled = sampled[sampled.length - 1];
-            if (Math.hypot(tail.x - lastSampled.x, tail.y - lastSampled.y) > 0.05) {
-                sampled.push(tail);
-            }
-            // Douglas-Peucker: elimina puntos que estan casi en linea recta
-            // entre sus vecinos. Quita el "zigzag" de drift sin tocar las
-            // esquinas reales. Tolerancia 12 cm (mayor = ruta mas suelta).
-            const simplified = sampled.length >= 3
-                ? this._douglasPeucker(sampled, 0.12)
-                : sampled;
 
             // Serializa el heatmap 3D (Map -> array [ix,iy,iz,v,age]).
             // age en [0..1]: 1 = capturado al final del scan, 0 = al inicio.
@@ -865,11 +847,12 @@ const ControlRemoto = {
             const payload = {
                 savedAt: now,
                 heatStartTs: this.trace.heatStartTs,
-                points: simplified,
+                points: [],
                 totalMeters: this.trace.totalMeters,
                 heatCellSize: this.trace.heatCellSize,
                 heatCellSizeZ: this.trace.heatCellSizeZ,
                 heat: heatArr,
+                source: 'lidar_heat_only',
             };
             try {
                 localStorage.setItem('daiver:lastRoute', JSON.stringify(payload));
@@ -879,6 +862,7 @@ const ControlRemoto = {
                 payload.heatTruncated = true;
                 localStorage.setItem('daiver:lastRoute', JSON.stringify(payload));
             }
+            alert('Mapa guardado. En Auto-Ruta crea los waypoints manualmente sobre el mapa lidar.');
             window.location.href = '/autoroute';
         });
     },
@@ -1623,6 +1607,11 @@ const ControlRemoto = {
 
         if (data.pose) {
             this.trace.lidarPose = data.pose;
+            if (Number.isFinite(data.pose.yaw)) {
+                this.trace.lastHeadingRad = data.pose.yaw;
+                this.trace.pose.heading = data.pose.yaw;
+                this.updateHeadingStrip();
+            }
             // Trail de pose con filtro de saltos del SLAM. Solo aceptamos
             // desplazamientos plausibles (>5 cm para anti-jitter, <60 cm
             // para descartar drift/relocalizaciones que generan waypoints
@@ -1736,7 +1725,10 @@ const ControlRemoto = {
         const floatVal = document.getElementById('cr-heading-floating-val');
         const floatCd  = document.getElementById('cr-heading-floating-card');
 
-        const h = (this.trace && this.trace.pose) ? this.trace.pose.heading : 0;
+        let h = (this.trace && Number.isFinite(this.trace.lastHeadingRad))
+            ? this.trace.lastHeadingRad
+            : ((this.trace && this.trace.pose) ? this.trace.pose.heading : 0);
+        if (!Number.isFinite(h)) h = 0;
         let deg = (h * 180 / Math.PI) % 360;
         if (deg < 0) deg += 360;
         const degInt = Math.round(deg);
@@ -1752,7 +1744,7 @@ const ControlRemoto = {
 
         // Rotar aguja de la mini brújula (web, panel Telemetría)
         const needle = document.getElementById('cr-compass-needle');
-        if (needle) needle.setAttribute('transform', `rotate(${degInt} 20 20)`);
+        if (needle) needle.setAttribute('transform', 'rotate(0 20 20)');
     },
 
     advanceTraceFromVelocity(v, dt) {

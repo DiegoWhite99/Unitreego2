@@ -48,9 +48,16 @@
                     </button>
                     <button id="ar-edit-clear" class="cr-btn ghost" disabled>&#x1F5D1; Limpiar</button>
                     <button id="ar-edit-save" class="cr-btn" disabled>&#x1F4BE; Guardar ruta</button>
+                    <button id="ar-label-mode" class="cr-btn ghost" aria-pressed="false" title="Permite agregar etiquetas de texto sobre el mapa">
+                        &#x1F3F7; Etiquetas
+                    </button>
                     <button id="ar-save-scan" class="cr-btn ghost" title="Descargar el mapa de calor escaneado como JSON">
                         &#x1F4E6; Guardar datos escaneados
                     </button>
+                    <button id="ar-import-scan" class="cr-btn ghost" title="Cargar un JSON de escaneo para reconstruir el mapa">
+                        &#x1F4C2; Cargar JSON
+                    </button>
+                    <input id="ar-import-file" type="file" accept="application/json,.json" hidden>
                     <button id="ar-reset-view" class="cr-btn ghost" title="Vuelve la camara al angulo por defecto">
                         &#x21BB; Vista
                     </button>
@@ -61,7 +68,9 @@
                     <div><strong>Modo edicion:</strong> <span id="ar-edit-mode-label">OFF</span></div>
                     <div class="ar-map-hint-body">
                         <p>Activa <em>Editar</em> y haz click para poner el <strong>origen</strong> (verde) y los siguientes waypoints.</p>
+                        <p>Activa <em>Etiquetas</em> para escribir nombres como <strong>Oficina 1</strong> y marcarlos en el mapa.</p>
                         <p>Arrastra un waypoint para moverlo. Shift+click para borrar uno.</p>
+                        <p><strong>Rueda del mouse</strong>: zoom de profundidad en el mapa.</p>
                         <p><strong>Click derecho + arrastrar</strong>: rota la vista 360&deg; para inspeccionar el lidar 4D desde otro angulo.</p>
                     </div>
                 </div>
@@ -146,6 +155,7 @@
                 <div class="ar-controls">
                     <button id="ar-start" class="cr-btn">&#9654; Iniciar ruta</button>
                     <button id="ar-stop" class="cr-btn danger" disabled>&#9632; Detener</button>
+                    <button id="ar-scan-360" class="cr-btn ghost" title="Gira en sitio para mapear alrededor con lidar">&#x21BB; Escaneo 360&deg;</button>
                     <button id="ar-sim" class="cr-btn ghost" title="Simula la ruta sin mover el robot, para verificar antes de ejecutar">&#x1F9EA; Probar ruta (sin robot)</button>
                     <button id="ar-yolo-toggle" class="cr-btn ghost">Camara ON/OFF</button>
                 </div>
@@ -157,7 +167,7 @@
                     <input type="checkbox" id="ar-smooth-mode">
                     <span>&#x1F30A; Modo fluido &mdash; recorrido sin paradas entre waypoints</span>
                 </label>
-                <p class="ar-hint">Recomendado: dejala activada. El robot arranca desde donde esta y la ruta se rota para que el primer tramo coincida con su orientacion actual. Desactivala solo si la ruta y la pose actual estan en el mismo frame del lidar (misma sesion sin reiniciar).</p>
+                <p class="ar-hint">Para mapear mejor, usa <strong>Escaneo 360°</strong> y/o mueve el robot manualmente mientras el lidar actualiza el heatmap. Los waypoints ahora se crean solo de forma manual.</p>
             </section>
         </aside>
     </main>

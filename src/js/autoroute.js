@@ -35,6 +35,7 @@ const AutoRoute = {
     // Estado de edicion
     edit: {
         on: false,
+        labelMode: false,
         history: [],      // snapshots de points para undo
         draggingIdx: -1,
         dragStart: null,
@@ -46,6 +47,7 @@ const AutoRoute = {
         originX: 0,
         originY: 0,
         scale: 40,        // px por metro
+        zoom: 1,          // zoom manual (rueda del mouse)
         yaw: 0,           // rotacion alrededor de (centerX, centerY) — vista 4D orbitable
         centerX: 0,
         centerY: 0,
@@ -59,6 +61,8 @@ const AutoRoute = {
         startX: 0,
         startY: 0,
         startYaw: 0,
+        pendingX: 0,
+        hasPending: false,
     },
 
     // Trail real: histórico de poses del robot recibidas vía lidar_points.
@@ -79,6 +83,17 @@ const AutoRoute = {
         trail: [],             // simTrail
     },
 
+    scan360: {
+        active: false,
+        intervalId: null,
+        timeoutId: null,
+    },
+
+    perf: {
+        orbitHeatMinIntervalMs: 80,
+        lastOrbitHeatBuildTs: 0,
+    },
+
     // Render loop: RAF + dirty flag. Solo redibuja cuando hace falta.
     _needsRedraw: true,
     _rafHandle: null,
@@ -86,6 +101,8 @@ const AutoRoute = {
     // que cambia solo cuando cambian la geometría base (route+heat+canvas).
     _heatCache: null,
     _heatCacheKey: '',
+    _worldBoundsDirty: true,
+    _worldBoundsCache: null,
     _viewKey: '',
     _viewBoundsLocked: null,   // {minX,maxX,minY,maxY} estables
 
@@ -103,8 +120,21 @@ const AutoRoute = {
 
     markDirty() { this._needsRedraw = true; },
 
+    invalidateWorldBounds() {
+        this._worldBoundsDirty = true;
+    },
+
     startRenderLoop() {
         const tick = (now) => {
+            if (this.orbit.active && this.orbit.hasPending) {
+                const dx = this.orbit.pendingX - this.orbit.startX;
+                const nextYaw = this.orbit.startYaw + dx * (Math.PI / 360);
+                if (Math.abs(nextYaw - this.view.yaw) > 0.0005) {
+                    this.view.yaw = nextYaw;
+                    this._needsRedraw = true;
+                }
+                this.orbit.hasPending = false;
+            }
             if (this.sim.active) {
                 this.advanceSim(now);
                 this._needsRedraw = true;
@@ -136,6 +166,7 @@ const AutoRoute = {
             wpTotal:      document.getElementById('ar-wp-total'),
             btnStart:     document.getElementById('ar-start'),
             btnStop:      document.getElementById('ar-stop'),
+            btnScan360:   document.getElementById('ar-scan-360'),
             btnSim:       document.getElementById('ar-sim'),
             btnYolo:      document.getElementById('ar-yolo-toggle'),
             btnEdit:      document.getElementById('ar-edit-toggle'),
@@ -144,7 +175,10 @@ const AutoRoute = {
             btnLinear:    document.getElementById('ar-edit-linear'),
             btnClear:     document.getElementById('ar-edit-clear'),
             btnSave:      document.getElementById('ar-edit-save'),
+            btnLabelMode: document.getElementById('ar-label-mode'),
             btnSaveScan:  document.getElementById('ar-save-scan'),
+            btnImportScan: document.getElementById('ar-import-scan'),
+            fileImport:    document.getElementById('ar-import-file'),
             btnResetView: document.getElementById('ar-reset-view'),
             chkTranslate: document.getElementById('ar-translate-to-pose'),
             chkSmooth:    document.getElementById('ar-smooth-mode'),
@@ -166,13 +200,14 @@ const AutoRoute = {
         try {
             const raw = localStorage.getItem('daiver:lastRoute');
             if (!raw) {
-                this.route = { points: [], totalMeters: 0, heat: [], heatCellSize: 0.15 };
+                this.route = { points: [], labels: [], totalMeters: 0, heat: [], heatCellSize: 0.15, heatCellSizeZ: 0.12 };
                 return;
             }
             const data = JSON.parse(raw);
             if (!data || !Array.isArray(data.points)) return;
             this.route = {
                 points: data.points.slice(),
+                labels: Array.isArray(data.labels) ? data.labels.slice() : [],
                 totalMeters: data.totalMeters || 0,
                 savedAt: data.savedAt,
                 heat: Array.isArray(data.heat) ? data.heat : [],
@@ -191,9 +226,11 @@ const AutoRoute = {
                     }
                 } catch (_) { /* ignore */ }
             }
+            this.invalidateWorldBounds();
         } catch (err) {
             console.warn('No se pudo cargar ruta', err);
-            this.route = { points: [], totalMeters: 0, heat: [], heatCellSize: 0.08, heatCellSizeZ: 0.12 };
+            this.route = { points: [], labels: [], totalMeters: 0, heat: [], heatCellSize: 0.08, heatCellSizeZ: 0.12 };
+            this.invalidateWorldBounds();
         }
     },
 
@@ -385,8 +422,13 @@ const AutoRoute = {
         this.el.cycPlus.addEventListener('click', () => this.bumpCycles(+1));
         this.el.btnStart.addEventListener('click', () => this.startRoute());
         this.el.btnStop.addEventListener('click', () => this.stopRoute());
+        this.el.btnScan360?.addEventListener('click', () => this.toggleScan360());
         this.el.btnSim?.addEventListener('click', () => this.toggleSim());
         this.el.btnYolo.addEventListener('click', () => this.toggleYolo());
+
+        window.addEventListener('beforeunload', () => {
+            if (this.scan360.active) this.stopScan360(false);
+        });
 
         if (!this.hasRoute()) this.el.btnStart.disabled = true;
     },
@@ -398,6 +440,7 @@ const AutoRoute = {
     },
 
     async startRoute() {
+        if (this.scan360.active) await this.stopScan360(false);
         if (!this.hasRoute()) {
             alert('No hay ruta. Edita el mapa para poner al menos dos waypoints.');
             return;
@@ -465,6 +508,66 @@ const AutoRoute = {
         this.setRun(false);
     },
 
+    async toggleScan360() {
+        if (this.scan360.active) {
+            await this.stopScan360();
+            return;
+        }
+        if (!this.state.robotConnected) {
+            alert('Conecta el robot antes de iniciar el escaneo 360°');
+            return;
+        }
+        if (this.state.running) {
+            alert('Deten la auto-ruta antes de hacer escaneo 360°');
+            return;
+        }
+
+        const spinZ = 0.55;
+        const durationMs = 12000;
+        const pulseMs = 350;
+
+        const first = await this.api('/api/move', 'POST', { x: 0, y: 0, z: spinZ });
+        if (!first || first.status !== 'ok') {
+            alert('No se pudo iniciar giro 360°: ' + ((first && first.message) || 'error'));
+            return;
+        }
+
+        this.scan360.active = true;
+        if (this.el.btnScan360) {
+            this.el.btnScan360.classList.remove('ghost');
+            this.el.btnScan360.textContent = 'Detener escaneo';
+        }
+
+        this.scan360.intervalId = setInterval(() => {
+            this.api('/api/move', 'POST', { x: 0, y: 0, z: spinZ });
+        }, pulseMs);
+
+        this.scan360.timeoutId = setTimeout(() => {
+            this.stopScan360(false);
+        }, durationMs);
+    },
+
+    async stopScan360(showAlert = true) {
+        if (!this.scan360.active) return;
+        this.scan360.active = false;
+        if (this.scan360.intervalId) {
+            clearInterval(this.scan360.intervalId);
+            this.scan360.intervalId = null;
+        }
+        if (this.scan360.timeoutId) {
+            clearTimeout(this.scan360.timeoutId);
+            this.scan360.timeoutId = null;
+        }
+        await this.api('/api/stop', 'POST');
+        if (this.el.btnScan360) {
+            this.el.btnScan360.classList.add('ghost');
+            this.el.btnScan360.innerHTML = '&#x21BB; Escaneo 360&deg;';
+        }
+        if (showAlert) {
+            alert('Escaneo 360° detenido.');
+        }
+    },
+
     async toggleYolo() {
         const status = await this.api('/api/yolo/status', 'GET');
         if (status && status.running) {
@@ -510,8 +613,11 @@ const AutoRoute = {
         this.el.btnLinear?.addEventListener('click', () => this.linearizeRoute());
         this.el.btnClear.addEventListener('click', () => this.clearPoints());
         this.el.btnSave.addEventListener('click', () => this.savePoints());
+        this.el.btnLabelMode?.addEventListener('click', () => this.toggleLabelMode());
         this.el.btnBlank?.addEventListener('click', () => this.startBlank());
         this.el.btnSaveScan?.addEventListener('click', () => this.downloadScan());
+        this.el.btnImportScan?.addEventListener('click', () => this.el.fileImport?.click());
+        this.el.fileImport?.addEventListener('change', (e) => this.importScanFromFile(e));
         this.el.btnResetView?.addEventListener('click', () => this.resetView());
 
         // Input numerico: agregar waypoint por coordenadas exactas
@@ -535,13 +641,16 @@ const AutoRoute = {
 
     startBlank() {
         const n = this.route ? this.route.points.length : 0;
+        const l = this.route && Array.isArray(this.route.labels) ? this.route.labels.length : 0;
         const msg = n > 0
             ? `Descartar los ${n} waypoints actuales y empezar una ruta vacia?`
             : 'Entrar en modo edicion con ruta vacia?';
         if (!confirm(msg)) return;
-        if (n > 0) this.pushHistory();
+        if (n > 0 || l > 0) this.pushHistory();
         this.route.points = [];
-        this.edit.dirty = n > 0;
+        this.route.labels = [];
+        this.edit.dirty = (n > 0 || l > 0);
+        this.invalidateWorldBounds();
         // Activar modo edicion si no lo esta
         if (!this.edit.on) this.toggleEdit();
         this.render();
@@ -552,8 +661,10 @@ const AutoRoute = {
         const payload = {
             savedAt: new Date().toISOString(),
             heatCellSize: this.route?.heatCellSize || 0.15,
+            heatCellSizeZ: this.route?.heatCellSizeZ || 0.12,
             heat: heat,
             points: this.route?.points || [],
+            labels: this.route?.labels || [],
             note: 'Daiver CUN - datos escaneados del lidar Go2',
         };
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -570,10 +681,29 @@ const AutoRoute = {
 
     toggleEdit() {
         this.edit.on = !this.edit.on;
+        if (!this.edit.on && this.edit.labelMode) {
+            this.edit.labelMode = false;
+            if (this.el.btnLabelMode) {
+                this.el.btnLabelMode.setAttribute('aria-pressed', 'false');
+                this.el.btnLabelMode.classList.add('ghost');
+            }
+        }
         this.el.btnEdit.setAttribute('aria-pressed', this.edit.on ? 'true' : 'false');
         this.el.editModeLbl.textContent = this.edit.on ? 'ON' : 'OFF';
         if (this.canvas) this.canvas.classList.toggle('ar-editing', this.edit.on);
         this.refreshEditorButtons();
+    },
+
+    toggleLabelMode() {
+        if (!this.edit.on) this.toggleEdit();
+        this.edit.labelMode = !this.edit.labelMode;
+        if (this.el.btnLabelMode) {
+            this.el.btnLabelMode.setAttribute('aria-pressed', this.edit.labelMode ? 'true' : 'false');
+            this.el.btnLabelMode.classList.toggle('ghost', !this.edit.labelMode);
+        }
+        if (this.edit.labelMode) {
+            alert('Modo etiquetas activo. Haz click en el mapa para escribir una etiqueta. Shift+click elimina la etiqueta mas cercana.');
+        }
     },
 
     refreshEditorButtons() {
@@ -586,15 +716,26 @@ const AutoRoute = {
 
     pushHistory() {
         if (!this.route) return;
-        this.edit.history.push(this.route.points.map(p => ({ x: p.x, y: p.y })));
+        this.edit.history.push({
+            points: this.route.points.map(p => ({ ...p })),
+            labels: (this.route.labels || []).map(l => ({ ...l })),
+        });
         if (this.edit.history.length > 40) this.edit.history.shift();
         this.edit.dirty = true;
     },
 
     undo() {
         if (!this.edit.history.length) return;
-        this.route.points = this.edit.history.pop();
+        const snapshot = this.edit.history.pop();
+        if (Array.isArray(snapshot)) {
+            this.route.points = snapshot;
+            this.route.labels = this.route.labels || [];
+        } else {
+            this.route.points = Array.isArray(snapshot.points) ? snapshot.points : [];
+            this.route.labels = Array.isArray(snapshot.labels) ? snapshot.labels : [];
+        }
         this.edit.dirty = this.edit.history.length > 0;
+        this.invalidateWorldBounds();
         this.render();
     },
 
@@ -603,6 +744,7 @@ const AutoRoute = {
         if (!confirm('Borrar todos los waypoints?')) return;
         this.pushHistory();
         this.route.points = [];
+        this.invalidateWorldBounds();
         this.render();
     },
 
@@ -643,6 +785,7 @@ const AutoRoute = {
         next.push({ x: b.x, y: b.y, ts: b.ts || Date.now(), source: b.source || 'click' });
         this.route.points = next;
         this.edit.dirty = true;
+        this.invalidateWorldBounds();
         this.render();
     },
 
@@ -651,8 +794,10 @@ const AutoRoute = {
         const payload = {
             savedAt: Date.now(),
             points: this.route.points,
+            labels: this.route.labels || [],
             totalMeters: this.computeRouteLength(this.route.points),
             heatCellSize: this.route.heatCellSize,
+            heatCellSizeZ: this.route.heatCellSizeZ,
             heat: this.route.heat,
         };
         localStorage.setItem('daiver:lastRoute', JSON.stringify(payload));
@@ -670,13 +815,50 @@ const AutoRoute = {
             ts: Date.now(),
             source: opts.source || 'click',
         });
+        this.invalidateWorldBounds();
         this.render();
+    },
+
+    addLabelAt(worldX, worldY, text) {
+        if (!this.route.labels) this.route.labels = [];
+        this.pushHistory();
+        this.route.labels.push({
+            x: +worldX.toFixed(3),
+            y: +worldY.toFixed(3),
+            text: String(text || '').trim().slice(0, 48),
+            ts: Date.now(),
+        });
+        this.render();
+    },
+
+    removeLabel(idx) {
+        const labels = this.route && this.route.labels;
+        if (!labels || idx < 0 || idx >= labels.length) return;
+        this.pushHistory();
+        labels.splice(idx, 1);
+        this.render();
+    },
+
+    pickLabelAt(px, py) {
+        const labels = (this.route && this.route.labels) || [];
+        let best = -1;
+        let bestD = 16 * 16;
+        for (let i = 0; i < labels.length; i++) {
+            const [sx, sy] = this.worldToScreen(labels[i].x, labels[i].y);
+            const d = (sx - px) ** 2 + (sy - py) ** 2;
+            if (d < bestD) {
+                bestD = d;
+                best = i;
+            }
+        }
+        return best;
     },
 
     removeWaypoint(idx) {
         if (idx < 0 || idx >= this.route.points.length) return;
         this.pushHistory();
         this.route.points.splice(idx, 1);
+        this.invalidateWorldBounds();
         this.render();
     },
 
@@ -685,6 +867,7 @@ const AutoRoute = {
         this.route.points[idx] = { x: worldX, y: worldY };
         this.edit.dirty = true;
         this.refreshEditorButtons();
+        this.invalidateWorldBounds();
         this.markDirty();
     },
 
@@ -726,6 +909,7 @@ const AutoRoute = {
         c.addEventListener('pointerup',   (e) => this.onPointerUp(e));
         c.addEventListener('pointercancel', (e) => this.onPointerUp(e));
         c.addEventListener('contextmenu', (e) => e.preventDefault());
+        c.addEventListener('wheel', (e) => this.onWheelZoom(e), { passive: false });
 
         // Hover: mostrar coordenadas del mundo bajo el cursor
         c.addEventListener('mousemove', (e) => this.onHoverCoords(e));
@@ -735,6 +919,7 @@ const AutoRoute = {
     },
 
     onHoverCoords(e) {
+        if (this.orbit.active) return;
         const { x: px, y: py } = this.clientToCanvas(e);
         const [wx, wy] = this.screenToWorld(px, py);
         const tip = this.el.coordTip;
@@ -769,6 +954,8 @@ const AutoRoute = {
             this.orbit.startX = x;
             this.orbit.startY = y;
             this.orbit.startYaw = this.view.yaw;
+            this.orbit.pendingX = x;
+            this.orbit.hasPending = true;
             try { this.canvas.setPointerCapture(e.pointerId); } catch {}
             this.canvas.classList.add('ar-orbiting');
             e.preventDefault();
@@ -776,6 +963,22 @@ const AutoRoute = {
         }
 
         if (!this.edit.on || this.state.running) return;
+
+        if (this.edit.labelMode) {
+            const labelIdx = this.pickLabelAt(x, y);
+            if (e.shiftKey && labelIdx >= 0) {
+                this.removeLabel(labelIdx);
+                return;
+            }
+            const [wx, wy] = this.screenToWorld(x, y);
+            const value = prompt('Texto de etiqueta (ej: Oficina 1):', '');
+            if (!value) return;
+            const text = value.trim();
+            if (!text) return;
+            this.addLabelAt(wx, wy, text);
+            return;
+        }
+
         const idx = this.pickWaypointAt(x, y);
 
         if (idx >= 0 && e.shiftKey) {
@@ -799,12 +1002,9 @@ const AutoRoute = {
     onPointerMove(e) {
         if (this.orbit.active) {
             const { x, y } = this.clientToCanvas(e);
-            // 1 px de drag horizontal ≈ 0.5° de rotacion.
-            const dx = x - this.orbit.startX;
-            this.view.yaw = this.orbit.startYaw + dx * (Math.PI / 360);
-            this._heatCache = null;
-            this._heatCacheKey = '';
-            this.markDirty();
+            this.orbit.pendingX = x;
+            this.orbit.startY = y;
+            this.orbit.hasPending = true;
             return;
         }
         if (this.edit.draggingIdx < 0) return;
@@ -815,9 +1015,15 @@ const AutoRoute = {
 
     onPointerUp(e) {
         if (this.orbit.active) {
+            if (this.orbit.hasPending) {
+                const dx = this.orbit.pendingX - this.orbit.startX;
+                this.view.yaw = this.orbit.startYaw + dx * (Math.PI / 360);
+                this.orbit.hasPending = false;
+            }
             this.orbit.active = false;
             try { this.canvas.releasePointerCapture(e.pointerId); } catch {}
             this.canvas.classList.remove('ar-orbiting');
+            this.markDirty();
             return;
         }
         if (this.edit.draggingIdx < 0) return;
@@ -827,34 +1033,53 @@ const AutoRoute = {
         this.canvas.classList.remove('ar-dragging');
     },
 
+    onWheelZoom(e) {
+        if (!this.canvas) return;
+        e.preventDefault();
+        const factor = Math.exp(-e.deltaY * 0.0013);
+        const cur = this.view.zoom || 1;
+        const next = Math.max(0.45, Math.min(4.5, cur * factor));
+        if (Math.abs(next - cur) < 0.0001) return;
+        this.view.zoom = next;
+        this._heatCache = null;
+        this._heatCacheKey = '';
+        this.markDirty();
+    },
+
     /* -------------------- Proyeccion world <-> screen -------------------- */
     computeView() {
-        // Calcula los extremos del mundo a partir del heatmap y la ruta.
-        // OJO: NO usamos la pose ni el sim para los bounds — eso haría que
-        // el heatmap recachee en cada tick. La pose se dibuja sobre la
-        // misma view fija (si sale de cuadro, igual se dibuja).
-        const pts = this.route ? this.route.points : [];
-        const heat = this.route ? this.route.heat : [];
-        const cell = this.route ? (this.route.heatCellSize || 0.15) : 0.15;
+        let minX;
+        let maxX;
+        let minY;
+        let maxY;
 
-        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-        const absorb = (x, y) => {
-            if (x < minX) minX = x; if (x > maxX) maxX = x;
-            if (y < minY) minY = y; if (y > maxY) maxY = y;
-        };
-        for (const p of pts) absorb(p.x, p.y);
-        // heat puede venir como [ix,iy,v] (legado), [ix,iy,iz,v] o [ix,iy,iz,v,age].
-        // En todos los casos ix,iy estan en los mismos indices.
-        for (const h of heat) absorb(h[0] * cell, h[1] * cell);
+        if (this._worldBoundsDirty || !this._worldBoundsCache) {
+            // Calcula extremos del mundo a partir de heatmap + ruta.
+            const pts = this.route ? this.route.points : [];
+            const heat = this.route ? this.route.heat : [];
+            const cell = this.route ? (this.route.heatCellSize || 0.15) : 0.15;
 
-        if (!isFinite(minX)) { minX = -4; maxX = 4; minY = -4; maxY = 4; }
+            minX = Infinity; maxX = -Infinity; minY = Infinity; maxY = -Infinity;
+            const absorb = (x, y) => {
+                if (x < minX) minX = x; if (x > maxX) maxX = x;
+                if (y < minY) minY = y; if (y > maxY) maxY = y;
+            };
+            for (const p of pts) absorb(p.x, p.y);
+            for (const h of heat) absorb(h[0] * cell, h[1] * cell);
 
-        // Margen minimo visible.
-        if (maxX - minX < 4) { const c = (minX + maxX) / 2; minX = c - 2; maxX = c + 2; }
-        if (maxY - minY < 4) { const c = (minY + maxY) / 2; minY = c - 2; maxY = c + 2; }
-        const padX = (maxX - minX) * 0.15;
-        const padY = (maxY - minY) * 0.15;
-        minX -= padX; maxX += padX; minY -= padY; maxY += padY;
+            if (!isFinite(minX)) { minX = -4; maxX = 4; minY = -4; maxY = 4; }
+            if (maxX - minX < 4) { const c = (minX + maxX) / 2; minX = c - 2; maxX = c + 2; }
+            if (maxY - minY < 4) { const c = (minY + maxY) / 2; minY = c - 2; maxY = c + 2; }
+
+            const padX = (maxX - minX) * 0.15;
+            const padY = (maxY - minY) * 0.15;
+            minX -= padX; maxX += padX; minY -= padY; maxY += padY;
+
+            this._worldBoundsCache = { minX, maxX, minY, maxY };
+            this._worldBoundsDirty = false;
+        } else {
+            ({ minX, maxX, minY, maxY } = this._worldBoundsCache);
+        }
 
         const cx = (minX + maxX) / 2;
         const cy = (minY + maxY) / 2;
@@ -884,7 +1109,8 @@ const AutoRoute = {
         const worldH = fitMaxY - fitMinY;
         const sx = (W * 0.9) / worldW;
         const sy = (H * 0.82) / (worldH * TILT_KY);
-        const scale = Math.min(sx, sy);
+        const fitScale = Math.min(sx, sy);
+        const scale = fitScale * (this.view.zoom || 1);
 
         this.view.scale = scale;
         this.view.centerX = cx;
@@ -926,6 +1152,7 @@ const AutoRoute = {
 
     resetView() {
         this.view.yaw = 0;
+        this.view.zoom = 1;
         this._heatCache = null;
         this._heatCacheKey = '';
         this.markDirty();
@@ -950,8 +1177,112 @@ const AutoRoute = {
         this.drawTrail(ctx);
         this.drawRouteLine(ctx);
         this.drawWaypoints(ctx);
+        this.drawLabels(ctx);
         this.drawRobot(ctx);
         if (this.sim.active) this.drawSimRobot(ctx);
+    },
+
+    drawLabels(ctx) {
+        const labels = (this.route && this.route.labels) || [];
+        if (!labels.length) return;
+        ctx.save();
+        ctx.font = 'bold 11px "Segoe UI", sans-serif';
+        ctx.textBaseline = 'middle';
+        for (const l of labels) {
+            const text = String(l.text || '').trim();
+            if (!text) continue;
+            const [sx, sy] = this.worldToScreen(l.x, l.y);
+            const w = Math.ceil(ctx.measureText(text).width) + 14;
+            const h = 20;
+            const x = sx + 10;
+            const y = sy - h - 8;
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
+            ctx.fillRect(x, y, w, h);
+            ctx.strokeStyle = 'rgba(255, 184, 0, 0.65)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x, y, w, h);
+
+            ctx.fillStyle = '#ffca28';
+            ctx.textAlign = 'left';
+            ctx.fillText(text, x + 7, y + h / 2 + 0.5);
+
+            ctx.strokeStyle = 'rgba(255, 184, 0, 0.85)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(x + 6, y + h);
+            ctx.stroke();
+
+            ctx.fillStyle = 'rgba(255, 184, 0, 0.95)';
+            ctx.beginPath();
+            ctx.arc(sx, sy, 3.2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+    },
+
+    async importScanFromFile(e) {
+        const file = e && e.target && e.target.files ? e.target.files[0] : null;
+        if (!file) return;
+        try {
+            const text = await file.text();
+            const data = JSON.parse(text);
+            this.applyImportedScan(data, file.name);
+        } catch (err) {
+            alert('No se pudo cargar el JSON: ' + err.message);
+        } finally {
+            if (this.el.fileImport) this.el.fileImport.value = '';
+        }
+    },
+
+    applyImportedScan(data, fileName = 'archivo') {
+        if (!data || typeof data !== 'object') {
+            alert('JSON invalido.');
+            return;
+        }
+
+        const points = Array.isArray(data.points) ? data.points
+            .filter(p => p && Number.isFinite(+p.x) && Number.isFinite(+p.y))
+            .map(p => ({ x: +p.x, y: +p.y, ts: p.ts || Date.now(), source: p.source || 'import' }))
+            : [];
+
+        const labels = Array.isArray(data.labels) ? data.labels
+            .filter(l => l && Number.isFinite(+l.x) && Number.isFinite(+l.y) && String(l.text || '').trim())
+            .map(l => ({ x: +l.x, y: +l.y, text: String(l.text).trim().slice(0, 48), ts: l.ts || Date.now() }))
+            : [];
+
+        const heat = Array.isArray(data.heat) ? data.heat.filter(h => Array.isArray(h) && h.length >= 3) : [];
+        const heatCellSize = Number.isFinite(+data.heatCellSize) ? +data.heatCellSize : 0.08;
+        const heatCellSizeZ = Number.isFinite(+data.heatCellSizeZ) ? +data.heatCellSizeZ : 0.12;
+
+        this.route = {
+            points,
+            labels,
+            totalMeters: Number.isFinite(+data.totalMeters) ? +data.totalMeters : this.computeRouteLength(points),
+            savedAt: data.savedAt || Date.now(),
+            heat,
+            heatCellSize,
+            heatCellSizeZ,
+        };
+
+        localStorage.setItem('daiver:lastRoute', JSON.stringify({
+            savedAt: this.route.savedAt,
+            points: this.route.points,
+            labels: this.route.labels,
+            totalMeters: this.route.totalMeters,
+            heat: this.route.heat,
+            heatCellSize: this.route.heatCellSize,
+            heatCellSizeZ: this.route.heatCellSizeZ,
+        }));
+
+        this.edit.history = [];
+        this.edit.dirty = false;
+        this.invalidateWorldBounds();
+        this._heatCache = null;
+        this._heatCacheKey = '';
+        this.render();
+        alert(`JSON cargado (${fileName}). Mapa restaurado con ${points.length} waypoint(s), ${labels.length} etiqueta(s) y ${heat.length} celda(s) de heatmap.`);
     },
 
     /* Heatmap cacheado: sólo se re-renderiza cuando cambian los datos del
@@ -962,29 +1293,48 @@ const AutoRoute = {
         if (!heat || heat.length === 0) return;
 
         const v = this.view;
+        const nowTs = performance.now();
+        const yawForCache = (v.yaw || 0);
         const cellPx = (this.route.heatCellSize || 0.08).toFixed(3);
         const key = [
             heat.length,
             v.scale.toFixed(2),
             v.minWorldX.toFixed(2), v.maxWorldX.toFixed(2),
             v.minWorldY.toFixed(2), v.maxWorldY.toFixed(2),
-            v.yaw.toFixed(3),
+            yawForCache.toFixed(3),
             cellPx,
             Math.round(W), Math.round(H),
         ].join('|');
+
+        const orbitThrottle = this.orbit.active
+            && this._heatCache
+            && (nowTs - this.perf.lastOrbitHeatBuildTs) < this.perf.orbitHeatMinIntervalMs;
 
         if (this._heatCacheKey !== key
             || !this._heatCache
             || this._heatCache.width !== Math.round(W * this.dpr)
             || this._heatCache.height !== Math.round(H * this.dpr)) {
+            if (orbitThrottle) {
+                ctx.save();
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.drawImage(this._heatCache, 0, 0);
+                ctx.restore();
+                ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+                return;
+            }
+
             const off = document.createElement('canvas');
             off.width  = Math.round(W * this.dpr);
             off.height = Math.round(H * this.dpr);
             const offCtx = off.getContext('2d');
             offCtx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+            const prevYaw = v.yaw;
+            if (prevYaw !== yawForCache) v.yaw = yawForCache;
             this.drawHeatColumns(offCtx);
+            if (v.yaw !== prevYaw) v.yaw = prevYaw;
             this._heatCache = off;
             this._heatCacheKey = key;
+            this.perf.lastOrbitHeatBuildTs = nowTs;
         }
 
         ctx.save();
@@ -1355,8 +1705,8 @@ const AutoRoute = {
             // Coordenadas debajo del waypoint (solo con densidad razonable
             // para no saturar el mapa). En rutas mas densas mostramos solo
             // origen, final y el waypoint activo.
-            const showCoords = pts.length <= 30
-                || isOrigin || isEnd || isActive;
+            const showCoords = !this.orbit.active
+                && (pts.length <= 30 || isOrigin || isEnd || isActive);
             if (showCoords) {
                 const txt = `(${p.x.toFixed(2)}, ${p.y.toFixed(2)})`;
                 ctx.font = 'bold 9px "Consolas", monospace';
