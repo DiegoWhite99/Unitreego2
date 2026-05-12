@@ -57,6 +57,9 @@
                     <button id="ar-import-scan" class="cr-btn ghost" title="Cargar un JSON de escaneo para reconstruir el mapa">
                         &#x1F4C2; Cargar JSON
                     </button>
+                    <button id="ar-integrate-map" class="cr-btn ghost" title="Abrir la landing para integrar un mapa con IA">
+                        &#x1F5FA; Integrar mapa
+                    </button>
                     <input id="ar-import-file" type="file" accept="application/json,.json" hidden>
                     <button id="ar-reset-view" class="cr-btn ghost" title="Vuelve la camara al angulo por defecto">
                         &#x21BB; Vista
@@ -65,6 +68,7 @@
 
                 <!-- Instrucciones contextuales, esquina superior derecha -->
                 <div class="ar-map-hint">
+                    <button id="ar-hint-close" class="ar-hint-close" type="button" aria-label="Cerrar instrucciones">&times;</button>
                     <div><strong>Modo edicion:</strong> <span id="ar-edit-mode-label">OFF</span></div>
                     <div class="ar-map-hint-body">
                         <p>Activa <em>Editar</em> y haz click para poner el <strong>origen</strong> (verde) y los siguientes waypoints.</p>

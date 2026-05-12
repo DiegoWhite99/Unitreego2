@@ -110,6 +110,18 @@ autoroute_state = {
     "smooth_linear_speed": 0.4,
     "smooth_reach_radius_m": 0.5,
     "smooth_heading_align_rad": 1.4,
+    "pause_on_person": True,
+    "person_pause_active": False,
+    "person_min_conf": 0.45,
+    "person_pause_hits": 3,
+    "person_resume_clear": 5,
+    "strict_path_mode": True,
+    "lookahead_m": 0.32,
+    "corridor_half_width_m": 0.35,
+    "cte_hard_threshold_m": 0.70,
+    "ai_path_assist": True,
+    "ai_assist_interval_s": 1.25,
+    "ai_cte_trigger_m": 0.22,
 }
 
 

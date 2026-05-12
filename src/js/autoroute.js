@@ -94,6 +94,19 @@ const AutoRoute = {
         lastOrbitHeatBuildTs: 0,
     },
 
+    mapPerf: {
+        maxRenderColumns: 5200,
+        minVoxelHits: 2,
+        maxSnapDistanceM: 1.6,
+    },
+
+    _heatModelDirty: true,
+    _heatModel: {
+        columns: [],
+        samples: [],
+        bounds: null,
+    },
+
     // Render loop: RAF + dirty flag. Solo redibuja cuando hace falta.
     _needsRedraw: true,
     _rafHandle: null,
@@ -178,11 +191,14 @@ const AutoRoute = {
             btnLabelMode: document.getElementById('ar-label-mode'),
             btnSaveScan:  document.getElementById('ar-save-scan'),
             btnImportScan: document.getElementById('ar-import-scan'),
+            btnIntegrateMap: document.getElementById('ar-integrate-map'),
             fileImport:    document.getElementById('ar-import-file'),
             btnResetView: document.getElementById('ar-reset-view'),
             chkTranslate: document.getElementById('ar-translate-to-pose'),
             chkSmooth:    document.getElementById('ar-smooth-mode'),
             editModeLbl:  document.getElementById('ar-edit-mode-label'),
+            mapHint:      document.querySelector('.ar-map-hint'),
+            hintClose:    document.getElementById('ar-hint-close'),
             coordTip:     document.getElementById('ar-coord-tip'),
             robotBadge:   document.getElementById('ar-robot-badge'),
             robotX:       document.getElementById('ar-robot-x'),
@@ -201,6 +217,7 @@ const AutoRoute = {
             const raw = localStorage.getItem('daiver:lastRoute');
             if (!raw) {
                 this.route = { points: [], labels: [], totalMeters: 0, heat: [], heatCellSize: 0.15, heatCellSizeZ: 0.12 };
+                this.invalidateHeatModel();
                 return;
             }
             const data = JSON.parse(raw);
@@ -226,11 +243,191 @@ const AutoRoute = {
                     }
                 } catch (_) { /* ignore */ }
             }
+            this.route.heat = this.cleanHeat(this.route.heat);
+            this.invalidateHeatModel();
+            this.constrainAllWaypointsToMap(false);
             this.invalidateWorldBounds();
         } catch (err) {
             console.warn('No se pudo cargar ruta', err);
             this.route = { points: [], labels: [], totalMeters: 0, heat: [], heatCellSize: 0.08, heatCellSizeZ: 0.12 };
+            this.invalidateHeatModel();
             this.invalidateWorldBounds();
+        }
+    },
+
+    invalidateHeatModel() {
+        this._heatModelDirty = true;
+        this._heatModel = { columns: [], samples: [], bounds: null };
+        this._heatCache = null;
+        this._heatCacheKey = '';
+        this._worldBoundsDirty = true;
+    },
+
+    cleanHeat(heat) {
+        if (!Array.isArray(heat) || heat.length === 0) return [];
+        const byVoxel = new Map();
+        for (const h of heat) {
+            if (!Array.isArray(h) || h.length < 3) continue;
+            const ix = Number(h[0]);
+            const iy = Number(h[1]);
+            const iz = Number(h.length >= 4 ? h[2] : 0);
+            if (!Number.isFinite(ix) || !Number.isFinite(iy) || !Number.isFinite(iz)) continue;
+            const vRaw = Number(h.length >= 4 ? h[h.length >= 5 ? 3 : 2] : h[2]);
+            const ageRaw = Number(h.length >= 5 ? h[4] : 1);
+            const v = Math.max(0, Math.min(255, Number.isFinite(vRaw) ? vRaw : 0));
+            if (v <= 0) continue;
+            const age = Math.max(0, Math.min(1, Number.isFinite(ageRaw) ? ageRaw : 1));
+            const key = `${Math.round(ix)},${Math.round(iy)},${Math.round(iz)}`;
+            const prev = byVoxel.get(key);
+            if (!prev) {
+                byVoxel.set(key, { ix: Math.round(ix), iy: Math.round(iy), iz: Math.round(iz), v, age });
+            } else {
+                prev.v = Math.min(255, prev.v + v * 0.65);
+                prev.age = Math.max(prev.age, age);
+            }
+        }
+
+        const cleaned = [];
+        for (const item of byVoxel.values()) {
+            if (item.v < this.mapPerf.minVoxelHits) continue;
+            cleaned.push([item.ix, item.iy, item.iz, +item.v.toFixed(2), +item.age.toFixed(3)]);
+        }
+
+        if (cleaned.length > 18000) {
+            cleaned.sort((a, b) => (b[3] * (0.35 + 0.65 * b[4])) - (a[3] * (0.35 + 0.65 * a[4])));
+            return cleaned.slice(0, 18000);
+        }
+        return cleaned;
+    },
+
+    _percentile(values, p) {
+        if (!values.length) return 0;
+        const idx = Math.max(0, Math.min(values.length - 1, Math.floor((values.length - 1) * p)));
+        return values[idx];
+    },
+
+    buildHeatModel() {
+        const heat = this.route ? this.route.heat : [];
+        const cell = this.route ? (this.route.heatCellSize || 0.08) : 0.08;
+        if (!Array.isArray(heat) || heat.length === 0) {
+            this._heatModel = { columns: [], samples: [], bounds: null };
+            this._heatModelDirty = false;
+            return;
+        }
+
+        const byCol = new Map();
+        for (const h of heat) {
+            if (!Array.isArray(h) || h.length < 4) continue;
+            const ix = Number(h[0]);
+            const iy = Number(h[1]);
+            const iz = Number(h[2] || 0);
+            const v = Number(h[3] || 0);
+            const age = Number(h[4] || 1);
+            if (!Number.isFinite(ix) || !Number.isFinite(iy) || !Number.isFinite(iz) || !Number.isFinite(v)) continue;
+
+            const k = `${ix},${iy}`;
+            const score = Math.max(0.01, v) * (0.4 + 0.6 * Math.max(0, Math.min(1, age)));
+            const cur = byCol.get(k);
+            if (!cur) {
+                byCol.set(k, { ix, iy, iz, v, age, score, sum: v, n: 1 });
+                continue;
+            }
+            cur.sum += v;
+            cur.n += 1;
+            if (score > cur.score) {
+                cur.iz = iz;
+                cur.v = v;
+                cur.age = age;
+                cur.score = score;
+            }
+        }
+
+        let columns = [];
+        for (const c of byCol.values()) {
+            const colV = c.sum / Math.max(1, c.n * 0.8);
+            if (colV < this.mapPerf.minVoxelHits) continue;
+            columns.push({ ix: c.ix, iy: c.iy, iz: c.iz, v: colV, age: c.age });
+        }
+
+        if (columns.length > this.mapPerf.maxRenderColumns) {
+            columns.sort((a, b) => (b.v * (0.45 + 0.55 * b.age)) - (a.v * (0.45 + 0.55 * a.age)));
+            columns = columns.slice(0, this.mapPerf.maxRenderColumns);
+        }
+
+        const xs = [];
+        const ys = [];
+        const samples = [];
+        for (const c of columns) {
+            const wx = c.ix * cell;
+            const wy = c.iy * cell;
+            xs.push(wx);
+            ys.push(wy);
+            samples.push({ x: wx, y: wy });
+        }
+        xs.sort((a, b) => a - b);
+        ys.sort((a, b) => a - b);
+        const bounds = xs.length
+            ? {
+                minX: this._percentile(xs, 0.02),
+                maxX: this._percentile(xs, 0.98),
+                minY: this._percentile(ys, 0.02),
+                maxY: this._percentile(ys, 0.98),
+            }
+            : null;
+
+        this._heatModel = { columns, samples, bounds };
+        this._heatModelDirty = false;
+    },
+
+    ensureHeatModel() {
+        if (this._heatModelDirty) this.buildHeatModel();
+    },
+
+    _nearestHeatSample(x, y) {
+        this.ensureHeatModel();
+        const samples = this._heatModel.samples || [];
+        if (!samples.length) return null;
+        let best = null;
+        let bestD = Infinity;
+        for (const s of samples) {
+            const d2 = (s.x - x) ** 2 + (s.y - y) ** 2;
+            if (d2 < bestD) {
+                bestD = d2;
+                best = s;
+            }
+        }
+        return best ? { x: best.x, y: best.y, d: Math.sqrt(bestD) } : null;
+    },
+
+    fitWaypointToMap(x, y, strict = false) {
+        this.ensureHeatModel();
+        const b = this._heatModel.bounds;
+        if (!b) return { x, y, snapped: false };
+        const pad = 0.14;
+        const inside = x >= (b.minX - pad) && x <= (b.maxX + pad)
+            && y >= (b.minY - pad) && y <= (b.maxY + pad);
+        if (inside && !strict) return { x, y, snapped: false };
+
+        const nx = Math.max(b.minX, Math.min(b.maxX, x));
+        const ny = Math.max(b.minY, Math.min(b.maxY, y));
+        const near = this._nearestHeatSample(nx, ny);
+        if (!near) return { x: nx, y: ny, snapped: true };
+        if (!strict && near.d > this.mapPerf.maxSnapDistanceM) {
+            return { x: nx, y: ny, snapped: true };
+        }
+        return { x: near.x, y: near.y, snapped: true };
+    },
+
+    constrainAllWaypointsToMap(strict = true) {
+        if (!this.route || !Array.isArray(this.route.points) || this.route.points.length === 0) return;
+        let changed = false;
+        this.route.points = this.route.points.map((p) => {
+            const fit = this.fitWaypointToMap(Number(p.x) || 0, Number(p.y) || 0, strict);
+            if (Math.hypot((Number(p.x) || 0) - fit.x, (Number(p.y) || 0) - fit.y) > 0.001) changed = true;
+            return { ...p, x: +fit.x.toFixed(3), y: +fit.y.toFixed(3) };
+        });
+        if (changed) {
+            this.route.totalMeters = this.computeRouteLength(this.route.points);
         }
     },
 
@@ -425,6 +622,12 @@ const AutoRoute = {
         this.el.btnScan360?.addEventListener('click', () => this.toggleScan360());
         this.el.btnSim?.addEventListener('click', () => this.toggleSim());
         this.el.btnYolo.addEventListener('click', () => this.toggleYolo());
+        this.el.hintClose?.addEventListener('click', () => {
+            this.el.mapHint?.classList.add('is-hidden');
+        });
+        this.el.btnIntegrateMap?.addEventListener('click', () => {
+            window.location.href = '/save_img';
+        });
 
         window.addEventListener('beforeunload', () => {
             if (this.scan360.active) this.stopScan360(false);
@@ -486,6 +689,20 @@ const AutoRoute = {
 
         const cycles = Math.max(1, parseInt(this.el.cyclesInput.value, 10) || 1);
         const smooth = !!(this.el.chkSmooth && this.el.chkSmooth.checked);
+        this.constrainAllWaypointsToMap(true);
+
+        const ys = await this.api('/api/yolo/status', 'GET');
+        if (!ys || !ys.running) {
+            await this.api('/api/yolo/start', 'POST', {
+                source: this.state.robotConnected ? 'robot' : 'webcam',
+                camera_index: 0,
+                conf: 0.4,
+                model: 'yolov8n.pt',
+                imgsz: 416,
+                with_objects: false,
+            });
+        }
+
         // Trail limpio para esta corrida (no mezclar con runs anteriores).
         this.poseTrail = [];
         this.markDirty();
@@ -494,6 +711,9 @@ const AutoRoute = {
             cycles,
             translate_to_pose: translate,
             smooth_mode: smooth,
+            pause_on_person: true,
+            strict_path_mode: true,
+            ai_path_assist: true,
         });
         if (res && res.status === 'ok') {
             this.state.cycleTotal = cycles;
@@ -791,6 +1011,7 @@ const AutoRoute = {
 
     savePoints() {
         if (!this.route) return;
+        this.constrainAllWaypointsToMap(true);
         const payload = {
             savedAt: Date.now(),
             points: this.route.points,
@@ -808,13 +1029,15 @@ const AutoRoute = {
     },
 
     addWaypointAt(worldX, worldY, opts = {}) {
+        const fit = this.fitWaypointToMap(worldX, worldY, true);
         this.pushHistory();
         this.route.points.push({
-            x: +worldX.toFixed(3),
-            y: +worldY.toFixed(3),
+            x: +fit.x.toFixed(3),
+            y: +fit.y.toFixed(3),
             ts: Date.now(),
             source: opts.source || 'click',
         });
+        this.route.totalMeters = this.computeRouteLength(this.route.points);
         this.invalidateWorldBounds();
         this.render();
     },
@@ -862,9 +1085,12 @@ const AutoRoute = {
         this.render();
     },
 
-    moveWaypoint(idx, worldX, worldY) {
+    moveWaypoint(idx, worldX, worldY, opts = {}) {
         if (idx < 0 || idx >= this.route.points.length) return;
-        this.route.points[idx] = { x: worldX, y: worldY };
+        const fit = opts.strict
+            ? this.fitWaypointToMap(worldX, worldY, true)
+            : this.fitWaypointToMap(worldX, worldY, false);
+        this.route.points[idx] = { ...this.route.points[idx], x: +fit.x.toFixed(3), y: +fit.y.toFixed(3) };
         this.edit.dirty = true;
         this.refreshEditorButtons();
         this.invalidateWorldBounds();
@@ -1010,7 +1236,7 @@ const AutoRoute = {
         if (this.edit.draggingIdx < 0) return;
         const { x, y } = this.clientToCanvas(e);
         const [wx, wy] = this.screenToWorld(x, y);
-        this.moveWaypoint(this.edit.draggingIdx, wx, wy);
+        this.moveWaypoint(this.edit.draggingIdx, wx, wy, { strict: false });
     },
 
     onPointerUp(e) {
@@ -1027,7 +1253,11 @@ const AutoRoute = {
             return;
         }
         if (this.edit.draggingIdx < 0) return;
+        const dragIdx = this.edit.draggingIdx;
         try { this.canvas.releasePointerCapture(e.pointerId); } catch {}
+        const p = this.route.points[dragIdx];
+        if (p) this.moveWaypoint(dragIdx, p.x, p.y, { strict: true });
+        this.route.totalMeters = this.computeRouteLength(this.route.points);
         this.edit.draggingIdx = -1;
         this.edit.dragStart = null;
         this.canvas.classList.remove('ar-dragging');
@@ -1054,10 +1284,10 @@ const AutoRoute = {
         let maxY;
 
         if (this._worldBoundsDirty || !this._worldBoundsCache) {
-            // Calcula extremos del mundo a partir de heatmap + ruta.
+            // Calcula extremos del mundo a partir de heatmap filtrado + ruta.
             const pts = this.route ? this.route.points : [];
-            const heat = this.route ? this.route.heat : [];
-            const cell = this.route ? (this.route.heatCellSize || 0.15) : 0.15;
+            this.ensureHeatModel();
+            const hb = this._heatModel.bounds;
 
             minX = Infinity; maxX = -Infinity; minY = Infinity; maxY = -Infinity;
             const absorb = (x, y) => {
@@ -1065,7 +1295,10 @@ const AutoRoute = {
                 if (y < minY) minY = y; if (y > maxY) maxY = y;
             };
             for (const p of pts) absorb(p.x, p.y);
-            for (const h of heat) absorb(h[0] * cell, h[1] * cell);
+            if (hb) {
+                absorb(hb.minX, hb.minY);
+                absorb(hb.maxX, hb.maxY);
+            }
 
             if (!isFinite(minX)) { minX = -4; maxX = 4; minY = -4; maxY = 4; }
             if (maxX - minX < 4) { const c = (minX + maxX) / 2; minX = c - 2; maxX = c + 2; }
@@ -1261,10 +1494,13 @@ const AutoRoute = {
             labels,
             totalMeters: Number.isFinite(+data.totalMeters) ? +data.totalMeters : this.computeRouteLength(points),
             savedAt: data.savedAt || Date.now(),
-            heat,
+            heat: this.cleanHeat(heat),
             heatCellSize,
             heatCellSizeZ,
         };
+
+        this.invalidateHeatModel();
+        this.constrainAllWaypointsToMap(false);
 
         localStorage.setItem('daiver:lastRoute', JSON.stringify({
             savedAt: this.route.savedAt,
@@ -1289,15 +1525,16 @@ const AutoRoute = {
        heat o las dimensiones de la view. Reutiliza un canvas offscreen y
        lo blittea en cada frame, evitando dibujar miles de voxels cada tick. */
     drawHeatColumnsCached(ctx, W, H) {
-        const heat = this.route ? this.route.heat : [];
-        if (!heat || heat.length === 0) return;
+        this.ensureHeatModel();
+        const cols = this._heatModel.columns || [];
+        if (!cols.length) return;
 
         const v = this.view;
         const nowTs = performance.now();
         const yawForCache = (v.yaw || 0);
         const cellPx = (this.route.heatCellSize || 0.08).toFixed(3);
         const key = [
-            heat.length,
+            cols.length,
             v.scale.toFixed(2),
             v.minWorldX.toFixed(2), v.maxWorldX.toFixed(2),
             v.minWorldY.toFixed(2), v.maxWorldY.toFixed(2),
@@ -1494,8 +1731,9 @@ const AutoRoute = {
     },
 
     drawHeatColumns(ctx) {
-        const heat = this.route ? this.route.heat : [];
-        if (!heat || heat.length === 0) return;
+        this.ensureHeatModel();
+        const cols = this._heatModel.columns || [];
+        if (!cols.length) return;
         const cell = this.route.heatCellSize || 0.08;
         const cellZ = this.route.heatCellSizeZ || 0.12;
 
@@ -1508,11 +1746,7 @@ const AutoRoute = {
         //   [ix, iy, v]               (legacy 2D)
         //   [ix, iy, iz, v]           (3D sin canal de tiempo)
         //   [ix, iy, iz, v, age]      (4D: age en [0..1], 1 = recien capturado)
-        const normalized = heat.map(h => {
-            if (h.length >= 5) return { ix: h[0], iy: h[1], iz: h[2], v: h[3], age: h[4] };
-            if (h.length === 4) return { ix: h[0], iy: h[1], iz: h[2], v: h[3], age: 1 };
-            return { ix: h[0], iy: h[1], iz: 0, v: h[2], age: 1 };
-        });
+        const normalized = cols;
 
         // Normaliza intensidad por voxel (el campo ya esta unificado en .v).
         let maxHits = 1;

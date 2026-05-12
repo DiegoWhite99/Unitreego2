@@ -129,6 +129,25 @@
     z-index: 4;
 }
 
+.ar-map-hint.is-hidden { display: none; }
+
+.ar-hint-close {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.08);
+    color: #cfd2d6;
+    font-size: 0.95rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.ar-hint-close:hover { background: rgba(255, 255, 255, 0.16); }
+
 .ar-map-hint strong { color: #e8eaed; }
 .ar-map-hint em {
     font-style: normal;

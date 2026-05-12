@@ -54,8 +54,12 @@ except Exception:
     pass
 
 if not GEMINI_MODEL:
-    GEMINI_MODEL = "gemini-2.5-flash"
-
+    # Auto-seleccion robusta: prioriza OpenAI si hay key OpenAI y no hay
+    # key Gemini; de lo contrario usa Gemini por defecto.
+    if OPENAI_API_KEY and not GEMINI_API_KEY:
+        GEMINI_MODEL = "gpt-5.3-medium"
+    else:
+        GEMINI_MODEL = "gemini-2.5-flash"
 
 def is_openai_model(name: str | None) -> bool:
     """True si el ID corresponde a un modelo OpenAI (gpt-*, o1-*, o3-*, o4-*)."""
@@ -76,6 +80,29 @@ def needs_json_tool_protocol(name: str | None) -> bool:
     if n.startswith("gemma"):
         return True
     return False
+
+
+def _looks_like_gemini_key(k: str | None) -> bool:
+    return bool((k or "").strip().startswith("AIza"))
+
+
+# Corrección automática de proveedor si el modelo elegido no tiene key.
+if is_openai_model(GEMINI_MODEL) and (not OPENAI_API_KEY) and GEMINI_API_KEY:
+    GEMINI_MODEL = "gemini-2.5-flash"
+elif (not is_openai_model(GEMINI_MODEL)) and (not GEMINI_API_KEY) and OPENAI_API_KEY:
+    GEMINI_MODEL = "gpt-4.1-mini"
+elif (not is_openai_model(GEMINI_MODEL)) and OPENAI_API_KEY and (not _looks_like_gemini_key(GEMINI_API_KEY)):
+    # Key Gemini presente pero con formato no valido -> usamos OpenAI.
+    GEMINI_MODEL = "gpt-4.1-mini"
+elif (not is_openai_model(GEMINI_MODEL)) and OPENAI_API_KEY and (not GENAI_AVAILABLE):
+    # Si no está el SDK de Gemini pero sí OpenAI, evitamos dejar el agente caído.
+    GEMINI_MODEL = "gpt-4.1-mini"
+
+# Preferencia operativa: DESHABILITADA para usar Gemini 1.5 Flash
+# (No forzar OpenAI si tenemos Gemini disponible)
+_prefer_openai = os.environ.get("PREFER_OPENAI", "0").strip().lower() in {"1", "true", "yes", "on"}
+if _prefer_openai and OPENAI_API_KEY and not is_openai_model(GEMINI_MODEL):
+    GEMINI_MODEL = "gpt-4.1-mini"
 
 
 # ────────────────────────────────────────────────────────────────────
@@ -105,7 +132,7 @@ else:
 
 
 AGENT_GENERATION_CONFIG = {
-    "temperature":       0.85,
-    "top_p":             0.95,
-    "max_output_tokens": 800,
+    "temperature":       0.7,      # Menos creativo → más eficiente con tokens
+    "top_p":             0.9,      # Buena calidad
+    "max_output_tokens": 500,      # Reducido para ahorrar tokens (1M/día límite)
 }

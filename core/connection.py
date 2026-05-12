@@ -13,6 +13,7 @@ import asyncio
 
 from yolo_detector import detector as yolo_detector
 
+from config.config import ROBOT_AES_128_KEY
 from .logging_utils import emit_log, emit_state_update
 from .runtime import (
     clear_connection,
@@ -74,7 +75,17 @@ async def robot_connect(ip: str) -> None:
 
     emit_log("info", f"Conectando a {ip}...")
 
-    conn = UnitreeWebRTCConnection(WebRTCConnectionMethod.LocalSTA, ip=ip)
+    # Construir kwargs para la conexión
+    conn_kwargs = {
+        "ip": ip,
+    }
+    
+    # Agregar clave AES-128 si está disponible
+    if ROBOT_AES_128_KEY:
+        conn_kwargs["aes_128_key"] = ROBOT_AES_128_KEY
+        emit_log("info", "Usando clave AES-128 para autenticación")
+    
+    conn = UnitreeWebRTCConnection(WebRTCConnectionMethod.LocalSTA, **conn_kwargs)
     await conn.connect()
     pub_sub = conn.datachannel.pub_sub
     set_connection(conn, pub_sub)

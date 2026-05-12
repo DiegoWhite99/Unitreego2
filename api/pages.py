@@ -61,6 +61,13 @@ def autoroute_page():
     return send_from_directory("src", "autoroute.html")
 
 
+@bp.route("/save_img")
+@bp.route("/save-img")
+@bp.route("/save_img.html")
+def save_img_page():
+    return send_from_directory("src", "save_img.html")
+
+
 @bp.route("/css/<path:filename>")
 def serve_css(filename):
     return send_from_directory("src/css", filename)

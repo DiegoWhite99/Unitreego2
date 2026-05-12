@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daiver Save Img</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/controlRemoto.css">
+    <link rel="stylesheet" href="css/save_img.css">
+</head>
+<body class="si-body">
+    <header class="si-topbar">
+        <div class="si-brand">
+            <a class="cr-back" href="/autoroute">&larr; Auto-Ruta</a>
+            <h1>Daiver Save Img</h1>
+            <span class="badge">Integracion IA</span>
+        </div>
+        <div class="si-status-group">
+            <span id="si-status-server" class="cr-pill disconnected">
+                <span class="dot"></span><span class="txt">Servidor offline</span>
+            </span>
+            <span id="si-status-robot" class="cr-pill disconnected">
+                <span class="dot"></span><span class="txt">Robot desconectado</span>
+            </span>
+        </div>
+    </header>
+
+    <main class="si-stage">
+        <section class="si-map-panel">
+            <div class="si-map-toolbar" role="toolbar" aria-label="Herramientas de integracion">
+                <label class="cr-btn ghost si-file-btn" for="si-file-input">Subir imagen de mapa</label>
+                <input id="si-file-input" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+                <button id="si-analyze" class="cr-btn">Analizar con IA</button>
+                <button id="si-apply-ai" class="cr-btn ghost" disabled>Usar ruta IA</button>
+                <button id="si-clear" class="cr-btn ghost">Limpiar waypoints</button>
+            </div>
+
+            <div class="si-map-wrap">
+                <canvas id="si-map-canvas"></canvas>
+                <div id="si-map-tip" class="si-map-tip">Carga un mapa y agrega waypoints con click.</div>
+            </div>
+
+            <div class="si-map-hint">
+                <p><strong>Flujo recomendado:</strong> subir imagen, analizar con IA, ajustar waypoints y guardar en Auto-Ruta.</p>
+                <p><strong>Formatos:</strong> PNG, JPG/JPEG o WEBP. El analisis IA genera relive por zonas sobre el mapa.</p>
+                <p><strong>Edicion:</strong> click para crear, arrastrar para mover, Shift+click para borrar un waypoint.</p>
+            </div>
+        </section>
+
+        <aside class="si-side">
+            <section class="cr-panel">
+                <h4>Configuracion de ruta</h4>
+                <div class="si-grid">
+                    <label>
+                        Escala (m/pixel)
+                        <input id="si-scale" type="number" step="0.001" min="0.001" value="0.050">
+                    </label>
+                    <label>
+                        Ciclos
+                        <input id="si-cycles" type="number" min="1" max="99" value="1">
+                    </label>
+                </div>
+                <label class="si-check">
+                    <input id="si-translate" type="checkbox" checked>
+                    <span>Anclar a la pose actual del robot al ejecutar</span>
+                </label>
+                <label class="si-check">
+                    <input id="si-smooth" type="checkbox">
+                    <span>Modo fluido entre waypoints</span>
+                </label>
+            </section>
+
+            <section class="cr-panel">
+                <h4>Zonas IA</h4>
+                <div class="si-grid">
+                    <label>
+                        Tipo de zona
+                        <select id="si-zone-type">
+                            <option value="all">Todas</option>
+                            <option value="low">Bajo riesgo</option>
+                            <option value="medium">Riesgo medio</option>
+                            <option value="high">Alto riesgo</option>
+                        </select>
+                    </label>
+                    <label>
+                        Visualizacion
+                        <select id="si-zone-view">
+                            <option value="zones">Zonas</option>
+                            <option value="sectors">Sectores</option>
+                        </select>
+                    </label>
+                </div>
+                <label class="si-check">
+                    <input id="si-require-cloud" type="checkbox">
+                    <span>Forzar IA en nube (si falla, mostrar error)</span>
+                </label>
+            </section>
+
+            <section class="cr-panel">
+                <h4>Resumen</h4>
+                <div class="si-meta">
+                    <span id="si-points-meta">0 waypoints</span>
+                    <span id="si-length-meta">0.00 m</span>
+                </div>
+                <div id="si-waypoints" class="si-waypoints">
+                    <div class="si-empty">Aun no hay waypoints.</div>
+                </div>
+            </section>
+
+            <section class="cr-panel">
+                <h4>Resultado IA</h4>
+                <div id="si-report" class="si-report">Esperando analisis de mapa...</div>
+            </section>
+
+            <section class="cr-panel">
+                <h4>Leyenda de espacios</h4>
+                <div id="si-space-legend" class="si-space-legend"></div>
+            </section>
+
+            <section class="cr-panel">
+                <h4>Acciones</h4>
+                <div class="si-actions">
+                    <button id="si-save-autoroute" class="cr-btn">Guardar en Auto-Ruta</button>
+                    <button id="si-export-route" class="cr-btn ghost">Exportar ruta JSON</button>
+                    <button id="si-start-mission" class="cr-btn ghost">Guardar e iniciar mision</button>
+                </div>
+            </section>
+        </aside>
+    </main>
+
+    <script src="js/save_img.js"></script>
+</body>
+</html>

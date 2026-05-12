@@ -52,6 +52,10 @@ def api_autoroute_start():
     autoroute_state["running"]           = True
     autoroute_state["translate_to_pose"] = bool(data.get("translate_to_pose"))
     autoroute_state["smooth_mode"]       = bool(data.get("smooth_mode"))
+    autoroute_state["pause_on_person"]   = bool(data.get("pause_on_person", True))
+    autoroute_state["person_pause_active"] = False
+    autoroute_state["strict_path_mode"]  = bool(data.get("strict_path_mode", True))
+    autoroute_state["ai_path_assist"]    = bool(data.get("ai_path_assist", True))
     autoroute_state["_task"]             = run_async_no_wait(autoroute_follow_loop())
 
     emit_log("success",
@@ -66,6 +70,7 @@ def api_autoroute_start():
 @bp.route("/api/autoroute/stop", methods=["POST"])
 def api_autoroute_stop():
     autoroute_state["_cancel"] = True
+    autoroute_state["person_pause_active"] = False
     try:
         run_async(robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": 0.0}))
     except Exception:
@@ -83,4 +88,7 @@ def api_autoroute_status():
         "cycle_total":     autoroute_state["cycles_total"],
         "waypoint":        autoroute_state["wp_now"],
         "waypoint_total": len(autoroute_state["waypoints"]),
+        "person_pause_active": bool(autoroute_state.get("person_pause_active")),
+        "strict_path_mode": bool(autoroute_state.get("strict_path_mode", True)),
+        "ai_path_assist": bool(autoroute_state.get("ai_path_assist", True)),
     })
