@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Informe Conexión Unitree Go2 Air — 2026-05-19</title>
+<style>
+  :root {
+    --bg: #0b1018;
+    --surf: #131b27;
+    --surf2: #1a2433;
+    --border: #25334a;
+    --text: #d8e3f0;
+    --dim: #7d92a8;
+    --accent: #4f8ef7;
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --code-bg: #0a0f17;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+    padding: 30px 20px;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+
+  h1 {
+    color: var(--accent);
+    font-size: 2.1rem;
+    padding-bottom: 14px;
+    border-bottom: 2px solid var(--accent);
+    margin-bottom: 8px;
+  }
+  h1 + .subtitle { color: var(--dim); font-size: .95rem; margin-bottom: 30px; }
+  h2 {
+    color: var(--accent);
+    font-size: 1.5rem;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { color: #c0d4e8; font-size: 1.15rem; margin-top: 24px; margin-bottom: 10px; }
+  h4 { color: #aac2da; font-size: 1.0rem; margin-top: 16px; margin-bottom: 8px; }
+  p { margin: 8px 0 12px 0; }
+  ul, ol { margin: 8px 0 14px 24px; }
+  li { margin: 4px 0; }
+  strong { color: #fff; }
+  em { color: var(--amber); font-style: normal; font-weight: 600; }
+
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px dotted var(--accent); }
+  a:hover { color: #7faff9; }
+
+  code {
+    background: var(--code-bg);
+    color: #b8e0d4;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Cascadia Code', Consolas, monospace;
+    font-size: .9em;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 14px 18px;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 12px 0;
+  }
+  pre code { background: none; padding: 0; color: #c8d8ec; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0 22px 0;
+    background: var(--surf);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  th, td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th { background: var(--surf2); color: var(--accent); font-weight: 600; font-size: .92rem; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: rgba(79,142,247,.04); }
+
+  blockquote {
+    border-left: 4px solid var(--amber);
+    background: rgba(245,158,11,.08);
+    padding: 12px 18px;
+    margin: 14px 0;
+    color: #e8d4a8;
+    border-radius: 0 6px 6px 0;
+  }
+
+  .summary-box {
+    background: var(--surf);
+    border: 1px solid var(--green);
+    border-left: 4px solid var(--green);
+    padding: 16px 20px;
+    margin: 20px 0;
+    border-radius: 6px;
+  }
+  .summary-box::before {
+    content: "✅ ";
+    font-size: 1.1em;
+  }
+
+  .danger { color: var(--red); }
+  .success { color: var(--green); }
+  .warn { color: var(--amber); }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 30px 0;
+  }
+
+  .toc {
+    background: var(--surf);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 24px;
+    margin: 20px 0 30px 0;
+  }
+  .toc h3 { margin-top: 0; color: var(--accent); }
+  .toc ul { margin-left: 18px; }
+  .toc li { margin: 3px 0; font-size: .95rem; }
+
+  .checklist td:first-child { font-weight: 600; color: #f0d090; }
+  .checklist td:nth-child(2) { color: var(--dim); }
+  .checklist td:last-child { color: var(--green); }
+
+  @media print {
+    body { background: #fff; color: #111; }
+    pre, code { background: #f5f5f5 !important; color: #111 !important; }
+    table { background: #fff; }
+    th { background: #eee; color: #111; }
+    h1, h2, h3 { color: #1e40af; }
+    a { color: #1e40af; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Informe Conexión Unitree Go2 Air</h1>
+<div class="subtitle">Fecha: 2026-05-19 · Estado: <span class="success">CONEXIÓN ESTABLECIDA</span> · Próxima sesión: viernes</div>
+
+<blockquote>
+Documento de cierre de jornada. Se logró handshake WebRTC LAN completo con el robot. Para retomar el viernes: salta al final, sección <strong>"Cómo levantar todo desde cero"</strong>.
+</blockquote>
+
+<div class="toc">
+  <h3>Contenido</h3>
+  <ul>
+    <li><a href="#objetivo">1. Objetivo</a></li>
+    <li><a href="#config-final">2. Configuración final (lo que dejamos funcionando)</a></li>
+    <li><a href="#paso-a-paso">3. Paso a paso de lo que se hizo</a></li>
+    <li><a href="#hallazgos">4. Hallazgos clave (para no repetir aprendizajes)</a></li>
+    <li><a href="#desde-cero">5. Cómo levantar todo desde cero (para el viernes)</a></li>
+    <li><a href="#continuacion">6. Para el viernes — ideas de continuación</a></li>
+    <li><a href="#resumen">7. Resumen ejecutivo</a></li>
+  </ul>
+</div>
+
+<h2 id="objetivo">1. Objetivo</h2>
+<p>Conseguir que la app web del proyecto se conecte por WebRTC al Go2 Air <code>B42D1000PAHBJ3K5</code> y reciba video + control. El bloqueo principal era no tener la <strong>clave AES-128</strong> que el firmware nuevo del robot (≥ Go2 1.1.15) exige para descifrar el handshake LAN (<code>data2=3</code>).</p>
+
+<h2 id="config-final">2. Configuración final</h2>
+
+<table>
+  <thead>
+    <tr><th>Variable</th><th>Valor</th><th>Dónde vive</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Cuenta Unitree</td><td><code>divergencyai@gmail.com</code></td><td>nube Unitree</td></tr>
+    <tr><td>Password Unitree</td><td><code>Diver.123</code></td><td>nube Unitree</td></tr>
+    <tr><td>SN robot</td><td><code>B42D1000PAHBJ3K5</code></td><td>físico</td></tr>
+    <tr><td>MAC WiFi robot</td><td><code>fe:23:cd:99:74:49</code></td><td>cloud Unitree</td></tr>
+    <tr><td>MAC BLE robot</td><td><code>FC:23:CD:99:74:4A</code></td><td>BLE peripheral</td></tr>
+    <tr><td>Nombre BLE</td><td><code>Go2_46481</code></td><td>BLE advertisement</td></tr>
+    <tr><td><strong>AES-128 key</strong></td><td><code>cf083d2536fb3c9b02966c1c584daecb</code></td><td><code>config/config.py:4</code> y cloud</td></tr>
+    <tr><td><strong>IP robot en LAN</strong></td><td><code>192.168.123.161</code></td><td><code>config/config.py:3</code> — Ethernet directo</td></tr>
+    <tr><td>Subnet Ethernet</td><td><code>192.168.123.0/24</code></td><td>el robot actúa como DHCP server por Ethernet</td></tr>
+    <tr><td>Modo firmware</td><td><code>data2: 3</code> (v3, AES-128 per-device)</td><td>descubierto en <code>con_notify</code></td></tr>
+    <tr><td>Modelo / alias</td><td>Go2 Air / "Diver"</td><td>cloud</td></tr>
+  </tbody>
+</table>
+
+<h3>Archivos modificados / creados</h3>
+<ul>
+  <li><code>config/config.py</code> — <code>ROBOT_IP</code> y <code>ROBOT_AES_128_KEY</code> con los valores reales</li>
+  <li><code>core/runtime.py</code> — fix <code>WindowsSelectorEventLoopPolicy</code> (esencial para ICE en Windows)</li>
+  <li><code>get_key.py</code> — script que pide la AES key a la cloud Unitree (login + <code>device/bind/list</code>)</li>
+  <li><code>configurar_wifi_robot.py</code> — config WiFi por BLE (no aplicó por firmware nuevo, <strong>queda como referencia</strong>)</li>
+  <li><code>ble_scan_robot.py</code> — escanea BLE buscando Go2/Unitree</li>
+  <li><code>test_con_notify.py</code> — prueba mínima del handshake LAN</li>
+  <li><code>CONTEXTO_AES_KEY.md</code> — bitácora previa (cuando aún no funcionaba)</li>
+</ul>
+
+<h3>Dependencias nuevas instaladas</h3>
+<pre><code>pip install curl_cffi cloudscraper python-socketio[client] websocket-client</code></pre>
+<p><code>curl_cffi</code> para pasar Cloudflare TLS fingerprint del cloud Unitree; el resto ya eran auxiliares.</p>
+
+<h2 id="paso-a-paso">3. Paso a paso de lo que se hizo</h2>
+
+<h3>Paso 1 — Validar credenciales y obtener la AES key del cloud</h3>
+<ul>
+  <li>Primera contraseña probada (<code>=WAs}r5iz5g5h/0</code>) → login OK pero <code>device/bind/list</code> vacío.</li>
+  <li>Con la contraseña correcta <strong><code>Diver.123</code></strong> → <code>device/bind/list</code> devolvió el robot con su <code>key: cf083d2536fb3c9b02966c1c584daecb</code>.</li>
+  <li>Comando: <code>python get_key.py</code> (ya lleva las credenciales hardcoded internamente).</li>
+  <li><em>Detalle técnico:</em> el cloud Unitree está detrás de Cloudflare con JA3 fingerprinting. Hay que usar <code>curl_cffi</code> con <code>impersonate="chrome120"</code>, headers de Android (<code>AppVersion: 1.11.4</code>, <code>DeviceId: Samsung/...SM-S931B</code>, <code>AppSign = md5("XyvkwK45hp5PHfA8"+ts+nonce)</code>), endpoint correcto <strong><code>device/bind/list</code></strong> (no <code>robot/list</code>, ese da catch-all 13003).</li>
+</ul>
+
+<h3>Paso 2 — Detectar el robot por BLE</h3>
+<ul>
+  <li><code>python ble_scan_robot.py</code> encontró: <strong><code>Go2_46481</code></strong> en <code>FC:23:CD:99:74:4A</code>, RSSI ~-69 dBm.</li>
+  <li>Útil para confirmar que el robot está cerca y vivo, no para configurarlo.</li>
+</ul>
+
+<h3>Paso 3 — Intento fallido: configurar WiFi por BLE</h3>
+<ul>
+  <li>Script <code>configurar_wifi_robot.py</code> con protocolo UniPwn (clave AES <code>df98b715...</code>).</li>
+  <li><strong class="danger">No funcionó:</strong> 0 respuestas del robot, no aplicó la config. Firmware nuevo del Go2 parchó el protocolo de UniPwn (cambió la clave/formato).</li>
+  <li>Se descartó esta ruta.</li>
+</ul>
+
+<h3>Paso 4 — Conexión por Ethernet (la que sí funcionó) <span class="success">✅</span></h3>
+<ul>
+  <li>Cable RJ-45 del robot al <strong>mismo router</strong> que la laptop.</li>
+  <li>El robot abrió subnet propia <code>192.168.123.0/24</code> haciendo de DHCP server por Ethernet.</li>
+  <li>La laptop tomó IP <code>192.168.123.100</code> por su Ethernet.</li>
+  <li>Ping sweep en <code>192.168.123.0/24</code> encontró al robot en <strong><code>192.168.123.161</code></strong> (esa misma IP es la que históricamente usaba <code>test_con_notify.py</code>).</li>
+</ul>
+
+<h3>Paso 5 — Verificar la AES key contra el robot real</h3>
+<ul>
+  <li>POST <code>http://192.168.123.161:9991/con_notify</code> → HTTP 200, <code>data2: 3</code> (modo v3).</li>
+  <li><code>data1</code> descifrado con la AES key devolvió la clave pública RSA del robot → <strong class="success">AES key validada end-to-end</strong>.</li>
+</ul>
+
+<h3>Paso 6 — Arrancar el backend Flask y conectar</h3>
+<ul>
+  <li><code>python app.py</code> → server en <code>http://localhost:5000</code> con <code>ROBOT_IP=192.168.123.161</code>.</li>
+  <li>Primer intento desde el browser: <code>POST /api/connect</code> → 500. Handshake LAN OK pero <strong>ICE no convergía</strong>.</li>
+  <li>Diagnóstico con <code>aioice</code> en DEBUG: Windows tiraba <code>WinError 10022</code> al mandar UDP IPv6 (bug conocido de <code>aiortc/aioice + ProactorEventLoop</code>).</li>
+</ul>
+
+<h3>Paso 7 — Fix: WindowsSelectorEventLoopPolicy <span class="success">✅</span></h3>
+<p>En <code>core/runtime.py</code> (función <code>ensure_event_loop</code>), antes de <code>new_event_loop()</code>, se setea:</p>
+<pre><code>if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())</code></pre>
+<p>Con eso ICE converge (todos los IPv6 candidate pairs → <code>SUCCEEDED</code>). <strong>Conexión WebRTC LAN completa.</strong></p>
+
+<h2 id="hallazgos">4. Hallazgos clave</h2>
+
+<ol>
+  <li><strong>El cloud Unitree (<code>global-robot-api.unitree.com</code>) está protegido con Cloudflare JA3.</strong> <code>requests</code> plano se bloquea con HTTP 567. Hay que usar <code>curl_cffi</code> con <code>impersonate="chrome120"</code> (eso ya lo hace el SDK oficial <code>unitree_webrtc_connect.unitree_cloud</code>).</li>
+  <li><strong>Code <code>13003 "request invalid"</code> del API es el catch-all del servidor</strong> para paths que no existen. No es "params malos". Los endpoints reales son: <code>login/email</code>, <code>device/bind/list</code>, <code>user/info</code>, <code>webrtc/account</code>, <code>webrtc/connect</code>, <code>system/pubKey</code>, <code>token/refresh</code>.</li>
+  <li><strong><code>AppVersion: 2.1.0</code> dispara una regla Cloudflare distinta</strong> que bloquea con HTML page. Usar <code>1.11.4</code> (lo que usa el apk del SDK).</li>
+  <li><strong><code>time.strftime("%Z")</code> en Windows ES devuelve <code>"Hora estándar de Colombia"</code></strong> (con <code>á</code>) y <code>curl_cffi</code> lo rechaza por no-ASCII en headers. Hardcodear <code>"GMT-05:00"</code>.</li>
+  <li><strong>El protocolo UniPwn fue parchado</strong> en firmware reciente del Go2. La clave AES <code>df98b715d5c6ed2b25817b6f2554124a</code> ya no funciona para config BLE. Si en algún momento se quiere configurar WiFi por PC, hay que reverse-engineerear la nueva, o usar la app oficial.</li>
+  <li><strong><code>Robot Connection Mode: 📡 4G</code></strong> en los logs del SDK es informativo del modo de upstream del robot al cloud — no significa que la conexión local esté usando 4G. La señalización LAN funciona igual.</li>
+  <li><strong><code>aiortc</code> + <code>ProactorEventLoop</code> + IPv6 en Windows = bug <code>WinError 10022</code></strong> que mata ICE. Fix obligatorio: <code>WindowsSelectorEventLoopPolicy</code>. Esto aplica a cualquier app del proyecto que use aiortc.</li>
+  <li><strong>El Go2 Air sí tiene puerto Ethernet expuesto</strong> (bajo tapa). Al conectarlo a un router, abre su propia subnet 192.168.123.x y hace DHCP — no toma IP del router. La laptop debe estar en el mismo switch para entrar a esa subnet.</li>
+  <li><strong>La AES key per-device es aleatoria, no se deriva del SN o MAC.</strong> Probamos 15 fórmulas (MD5/SHA256/HMAC con combinaciones de SN+MAC) y ninguna funciona. Solo se obtiene desde el cloud (o leyendo el firmware con SSH).</li>
+</ol>
+
+<h2 id="desde-cero">5. Cómo levantar todo desde cero (para el viernes)</h2>
+
+<h3>Pre-requisitos físicos</h3>
+<ol>
+  <li>Robot Go2 Air encendido (LEDs activos).</li>
+  <li>Cable Ethernet conectando el robot al router del Starlink.</li>
+  <li>Laptop conectada al mismo router (cualquier interfaz, WiFi o Ethernet).</li>
+  <li>LED verde en el puerto del router donde está el robot.</li>
+</ol>
+
+<h3>Verificar IP del robot</h3>
+<pre><code># Tu adaptador Ethernet debería tomar IP 192.168.123.x del DHCP del robot
+ipconfig
+# (buscar IPv4 que empiece con 192.168.123.)</code></pre>
+
+<p>Si <strong>no</strong> tomas IP en 192.168.123.x, el robot no está enchufado al mismo segmento; revisa cable.</p>
+
+<p>Para confirmar la IP del robot (debería ser <code>192.168.123.161</code>):</p>
+<pre><code>python -c "import requests; print(requests.post('http://192.168.123.161:9991/con_notify', timeout=3).status_code)"
+# Debe imprimir 200</code></pre>
+
+<h3>Arrancar el backend</h3>
+<p>Desde la raíz del repo, con el venv activado:</p>
+<pre><code>cd "d:\Documentos\Unitree_lab2\unitreeWebRTC"
+$env:PYTHONIOENCODING="utf-8"
+$env:PYTHONUTF8="1"
+python -X utf8 -u app.py</code></pre>
+
+<p>Deberías ver:</p>
+<pre><code>==================================================
+  Daiver Control CUN — Flask Backend
+  Robot IP: 192.168.123.161
+  Server:   http://localhost:5000
+==================================================</code></pre>
+
+<h3>Conectar desde la UI</h3>
+<ol>
+  <li>Abrir navegador en <code>http://localhost:5000/</code></li>
+  <li>En la UI, dar clic en <strong>"Conectar Robot"</strong>.</li>
+  <li>En el log del server debería verse:</li>
+</ol>
+<pre><code>Data Channel Verification: ✅ OK
+ICE Connection State: 🟢 connected
+Peer Connection State: 🟢 connected</code></pre>
+
+<h3>Si algo falla — checklist rápido</h3>
+<table class="checklist">
+  <thead>
+    <tr><th>Síntoma</th><th>Causa probable</th><th>Fix</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>HTTP 500 en /api/connect con mensaje vacío</td><td>event loop policy</td><td>Verificar que <code>core/runtime.py</code> tiene el <code>WindowsSelectorEventLoopPolicy</code></td></tr>
+    <tr><td><code>con_notify</code> timeout</td><td>robot apagado o cable</td><td>encender / reenchufar</td></tr>
+    <tr><td><code>AES KEY RECHAZADA</code></td><td>key cambió (improbable)</td><td>re-correr <code>python get_key.py</code></td></tr>
+    <tr><td>Robot no aparece en <code>192.168.123.161</code></td><td>DHCP del robot dio otra IP</td><td><code>arp -a | findstr 23-cd</code> o ping sweep <code>192.168.123.0/24</code></td></tr>
+    <tr><td><code>device/bind/list</code> vacío al correr <code>get_key.py</code></td><td>cuenta cambió, robot desvinculado</td><td>re-vincular en app oficial Go2</td></tr>
+    <tr><td>"Otro WebRTC client holding slot"</td><td>la app móvil oficial estaba abierta</td><td>cerrarla, esperar 20s</td></tr>
+  </tbody>
+</table>
+
+<h3>Si hay que regenerar la AES key</h3>
+<pre><code>python get_key.py
+# Imprime: AES key: cf083d2536fb3c9b02966c1c584daecb
+# Pega esa cadena en config/config.py línea 4</code></pre>
+
+<h2 id="continuacion">6. Para el viernes — ideas de continuación</h2>
+<ul>
+  <li><strong>Probar el control efectivo del robot</strong>: comandos <code>BalanceStand</code>, <code>Hello</code>, <code>SitDown</code> desde la UI y ver respuesta física.</li>
+  <li><strong>Probar el canal de video</strong>: que YOLO reciba frames del Go2 (fuente "robot" en <code>user_end.html</code>).</li>
+  <li><strong>Probar el canal de audio bidireccional</strong> si la app lo necesita.</li>
+  <li><strong>Restaurar el modo WiFi del robot</strong>: si en el futuro quieres usarlo sin cable, hay que configurar STA via app oficial (BLE ya no sirve por el parche).</li>
+  <li><strong>Limpiar credenciales hardcoded</strong> de <code>get_key.py</code>: mover a env vars (<code>UNITREE_EMAIL</code>, <code>UNITREE_PASSWORD</code>).</li>
+  <li><strong>Considerar mover el fix del event loop a un punto más alto</strong> (<code>app.py</code>) para que aplique aunque se use Flask sin pasar por <code>ensure_event_loop</code>.</li>
+</ul>
+
+<h2 id="resumen">7. Resumen ejecutivo</h2>
+<div class="summary-box">
+Login cloud OK → AES key obtenida (<code>cf083d…aecb</code>) → robot en LAN por Ethernet en <code>192.168.123.161</code> → handshake <code>con_notify</code> valida la key → fix de <code>WindowsSelectorEventLoopPolicy</code> para que ICE convergiera en Windows → conexión WebRTC LAN establecida → server Flask listo.
+</div>
+
+<p>Todo el bloqueador histórico (no tener la AES key + no poder conectarse) <strong class="success">está resuelto</strong>. El viernes solo hay que arrancar <code>app.py</code> y darle Conectar.</p>
+
+<hr>
+<p style="text-align: center; color: var(--dim); font-size: .9rem; margin-top: 40px;">
+Diego Castelblanco · CUN · Generado por sesión de trabajo del 2026-05-19
+</p>
+
+</div>
+</body>
+</html>
