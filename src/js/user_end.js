@@ -343,11 +343,26 @@ const UserEnd = {
     setupYoloControls() {
         document.getElementById('btn-yolo-start')?.addEventListener('click', () => this.startYolo());
         document.getElementById('btn-yolo-stop')?.addEventListener('click', () => this.stopYolo());
+        const sourceEl = document.getElementById('yolo-source');
+        if (sourceEl) {
+            sourceEl.addEventListener('change', () => this.updateYoloSourceVisibility());
+            this.updateYoloSourceVisibility();
+        }
+    },
+
+    updateYoloSourceVisibility() {
+        const source = document.getElementById('yolo-source')?.value || 'robot';
+        const urlInput = document.getElementById('yolo-source-url');
+        const urlLabel = document.getElementById('yolo-source-url-label');
+        const show = source === 'url';
+        if (urlInput) urlInput.style.display = show ? '' : 'none';
+        if (urlLabel) urlLabel.style.display = show ? '' : 'none';
     },
 
     async startYolo() {
         const sourceEl = document.getElementById('yolo-source');
         const cameraEl = document.getElementById('yolo-camera');
+        const sourceUrlEl = document.getElementById('yolo-source-url');
         const confEl = document.getElementById('yolo-conf');
         const modelEl = document.getElementById('yolo-model');
         const imgszEl = document.getElementById('yolo-imgsz');
@@ -357,6 +372,7 @@ const UserEnd = {
         const payload = {
             source: sourceEl ? sourceEl.value : 'robot',
             camera_index: cameraEl ? parseInt(cameraEl.value, 10) || 0 : 0,
+            source_url: sourceUrlEl ? sourceUrlEl.value.trim() : '',
             conf: confEl ? parseFloat(confEl.value) || 0.35 : 0.35,
             model: modelEl ? modelEl.value : 'yolov8n.pt',
             imgsz: imgszEl ? parseInt(imgszEl.value, 10) || 320 : 320,
@@ -368,8 +384,15 @@ const UserEnd = {
             this.addLog('error', 'Conecta primero el robot para usar su camara');
             return;
         }
+        if (payload.source === 'url' && !payload.source_url) {
+            this.addLog('error', 'Ingresa la URL del stream (ej: http://192.168.1.101:7000/)');
+            return;
+        }
 
-        const srcLabel = payload.source === 'robot' ? 'camara Go2' : `webcam ${payload.camera_index}`;
+        let srcLabel;
+        if (payload.source === 'robot')       srcLabel = 'camara Go2';
+        else if (payload.source === 'webcam') srcLabel = `webcam ${payload.camera_index}`;
+        else                                  srcLabel = `URL ${payload.source_url}`;
         this.addLog('info', `Iniciando YOLO (${srcLabel}, modelo ${payload.model})...`);
         const response = await this.apiCall('/api/yolo/start', 'POST', payload);
 

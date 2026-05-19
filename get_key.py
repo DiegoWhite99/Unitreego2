@@ -5,7 +5,7 @@ from curl_cffi import requests as cffi_requests
 import json
 
 EMAIL    = "divergencyai@gmail.com"
-PASSWORD = "=WAs}r5iz5g5h/0"
+PASSWORD = "Diver.123"
 SN       = "B42D1000PAHBJ3K5"
 
 APP_SIGN_SECRET = "XyvkwK45hp5PHfA8"

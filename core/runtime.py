@@ -57,6 +57,11 @@ def ensure_event_loop() -> None:
     """Crea (o reusa) el event loop si todavia no esta corriendo."""
     global _event_loop, _loop_thread
     if _event_loop is None or not _event_loop.is_running():
+        import sys
+        if sys.platform == "win32":
+            # aiortc/aioice + ProactorEventLoop tiene un bug con UDP IPv6 en Windows
+            # (WinError 10022) que hace fallar ICE. Selector loop lo evita.
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
         _event_loop = asyncio.new_event_loop()
         _loop_thread = threading.Thread(
             target=_start_event_loop, args=(_event_loop,), daemon=True

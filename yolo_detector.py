@@ -16,6 +16,7 @@ from queue import Queue, Empty, Full
 from typing import List, Dict, Optional
 
 import cv2
+import numpy as np
 
 from core.perception.faces import face_recognition_service
 
@@ -74,6 +75,7 @@ class YoloDetector:
 
     SOURCE_ROBOT = "robot"
     SOURCE_WEBCAM = "webcam"
+    SOURCE_URL = "url"
 
     def __init__(self):
         self._model = None
@@ -88,6 +90,7 @@ class YoloDetector:
         self._secondary_frame_count = 0
         self._source = self.SOURCE_ROBOT
         self._camera_index = 0
+        self._source_url = ""
         self._conf_threshold = 0.35
         self._imgsz = 320
         self._target_fps = 6.0
@@ -176,6 +179,7 @@ class YoloDetector:
     # ------------------------------------------------------------
 
     def start(self, source: str = "robot", camera_index: int = 0,
+              source_url: str = "",
               model_name: str = "yolov8n.pt", conf: float = 0.35,
               imgsz: int = 320, with_objects: bool = False,
               target_fps: float = 6.0) -> Dict:
@@ -190,8 +194,9 @@ class YoloDetector:
             )
             return {"ok": False, "message": self._last_error}
 
-        self._source = source if source in (self.SOURCE_ROBOT, self.SOURCE_WEBCAM) else self.SOURCE_ROBOT
+        self._source = source if source in (self.SOURCE_ROBOT, self.SOURCE_WEBCAM, self.SOURCE_URL) else self.SOURCE_ROBOT
         self._camera_index = int(camera_index)
+        self._source_url = (source_url or "").strip()
         self._model_name = model_name or "yolov8n.pt"
         self._conf_threshold = float(conf)
         self._imgsz = self._normalize_imgsz(imgsz)
@@ -249,6 +254,14 @@ class YoloDetector:
                 self._inference_thread = None
                 return {"ok": False, "message": msg}
             return {"ok": True, "message": f"YOLO iniciado (webcam {self._camera_index}, modelo {self._model_name}, imgsz {self._imgsz}, {self._target_fps:g} FPS objetivo)"}
+
+        if self._source == self.SOURCE_URL:
+            ok, msg = self._start_url_capture(self._source_url)
+            if not ok:
+                self._running = False
+                self._inference_thread = None
+                return {"ok": False, "message": msg}
+            return {"ok": True, "message": f"YOLO iniciado (URL {self._source_url}, modelo {self._model_name}, imgsz {self._imgsz}, {self._target_fps:g} FPS objetivo)"}
 
         return {"ok": True, "message": f"YOLO iniciado (robot, modelo {self._model_name}, imgsz {self._imgsz}, {self._target_fps:g} FPS objetivo)"}
 
@@ -366,6 +379,57 @@ class YoloDetector:
         self._webcam_thread.start()
         return True, "OK"
 
+    def _start_url_capture(self, url: str):
+        """Cliente Socket.IO para cámara Arduino Q.
+
+        El servidor emite eventos 'image' con {img: "data:image/jpeg;base64,..."}
+        tras un 'hello' inicial. Decodificamos cada frame y lo empujamos a la
+        cola de inferencia.
+        """
+        if not url:
+            return False, "URL del stream vacia"
+        try:
+            import socketio
+        except ImportError:
+            return False, "Falta python-socketio. Ejecuta: pip install python-socketio[client]"
+        import base64
+
+        sio = socketio.Client(reconnection=True, reconnection_attempts=0)
+
+        @sio.event
+        def connect():
+            try:
+                sio.emit("hello")
+            except Exception:
+                pass
+
+        @sio.on("image")
+        def _on_image(opts):
+            if not self._webcam_running:
+                return
+            try:
+                img_field = opts.get("img") if isinstance(opts, dict) else None
+                if not img_field:
+                    return
+                if img_field.startswith("data:"):
+                    img_field = img_field.split(",", 1)[1]
+                raw = base64.b64decode(img_field)
+                arr = np.frombuffer(raw, dtype=np.uint8)
+                frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+                if frame is not None:
+                    self.push_frame(frame)
+            except Exception as e:
+                self._last_error = f"socketio image decode: {e}"
+
+        try:
+            sio.connect(url, transports=["websocket", "polling"], wait_timeout=5)
+        except Exception as e:
+            return False, f"No se pudo conectar Socket.IO a {url}: {e}"
+
+        self._webcam_cap = sio  # reusamos el slot para limpieza en stop
+        self._webcam_running = True
+        return True, "OK"
+
     def _stop_webcam_capture(self):
         if not self._webcam_running:
             return
@@ -374,7 +438,13 @@ class YoloDetector:
             self._webcam_thread.join(timeout=2.0)
             self._webcam_thread = None
         if self._webcam_cap:
-            self._webcam_cap.release()
+            try:
+                if hasattr(self._webcam_cap, "release"):
+                    self._webcam_cap.release()
+                elif hasattr(self._webcam_cap, "disconnect"):
+                    self._webcam_cap.disconnect()
+            except Exception:
+                pass
             self._webcam_cap = None
 
     def _webcam_loop(self):
@@ -1045,6 +1115,7 @@ class YoloDetector:
             "running": self._running,
             "source": self._source,
             "camera_index": self._camera_index,
+            "source_url": self._source_url,
             "model": self._model_name,
             "conf": self._conf_threshold,
             "imgsz": self._imgsz,

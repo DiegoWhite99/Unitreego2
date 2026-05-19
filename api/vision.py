@@ -34,6 +34,7 @@ def api_yolo_start():
     data = request.get_json() or {}
     source = data.get("source", "robot")
     camera_index = int(data.get("camera_index", 0))
+    source_url = (data.get("source_url") or "").strip()
     model_name = data.get("model", "yolov8n.pt")
     conf = float(data.get("conf", 0.35))
     imgsz = int(data.get("imgsz", 320))
@@ -44,10 +45,15 @@ def api_yolo_start():
         msg = "Conecta primero el robot para usar su camara."
         emit_log("error", msg)
         return jsonify({"status": "error", "message": msg}), 400
+    if source == "url" and not source_url:
+        msg = "Falta source_url para la fuente URL/MJPEG."
+        emit_log("error", msg)
+        return jsonify({"status": "error", "message": msg}), 400
 
     result = yolo_detector.start(
         source=source,
         camera_index=camera_index,
+        source_url=source_url,
         model_name=model_name,
         conf=conf,
         imgsz=imgsz,

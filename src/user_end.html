@@ -1241,10 +1241,15 @@
                             <select id="yolo-source" class="yolo-input">
                                 <option value="robot" selected>Cámara Go2 (WebRTC)</option>
                                 <option value="webcam">Webcam local (fallback)</option>
+                                <option value="url">Cámara Arduino Q (Socket.IO)</option>
                             </select>
 
                             <label for="yolo-camera">Webcam idx:</label>
                             <input type="number" id="yolo-camera" class="yolo-input" value="0" min="0" max="9">
+
+                            <label for="yolo-source-url" id="yolo-source-url-label" style="display:none;">URL stream:</label>
+                            <input type="text" id="yolo-source-url" class="yolo-input"
+                                   value="http://192.168.1.101:4912/" placeholder="http://192.168.1.101:4912/" style="display:none;">
 
                             <label for="yolo-conf">Confianza mín:</label>
                             <input type="number" id="yolo-conf" class="yolo-input" value="0.35" min="0.05" max="0.95" step="0.05">
