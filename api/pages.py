@@ -68,6 +68,13 @@ def save_img_page():
     return send_from_directory("src", "save_img.html")
 
 
+@bp.route("/console")
+@bp.route("/console-ia")
+@bp.route("/console_IA.html")
+def console_ia():
+    return send_from_directory("console", "console_IA.html")
+
+
 @bp.route("/css/<path:filename>")
 def serve_css(filename):
     return send_from_directory("src/css", filename)

@@ -26,10 +26,16 @@ from .config import (
     GEMINI_MODEL,
     GENAI_AVAILABLE,
     OPENAI_AVAILABLE,
+    OPENAI_API_KEY,
     is_openai_model,
     needs_json_tool_protocol,
     openai_client,
 )
+
+try:
+    from config.config import FALLBACK_MODELS as _FALLBACK_MODELS
+except Exception:
+    _FALLBACK_MODELS = [GEMINI_MODEL]
 from .prompts import DIVER_GEMMA_TOOL_PROMPT, DIVER_LANGUAGE_GUARD, DIVER_SYSTEM
 from .sanitize import (
     extract_model_text,
@@ -138,10 +144,10 @@ def chat(user_msg: str, history: list[dict]) -> dict[str, Any]:
     if not user_msg:
         return {"reply": "🐾", "actions": []}
 
-    use_json_protocol = (not use_openai) and needs_json_tool_protocol(GEMINI_MODEL)
+    if user_msg.strip().upper() == "DIVER":
+        return {"reply": "¡Guau! Diver en línea. 🐾 Dime.", "actions": []}
 
     print(f"\n[AGENTE] ─── Nuevo mensaje ───")
-    print(f"[AGENTE] modelo:  {GEMINI_MODEL}")
     print(f"[AGENTE] usuario: {user_msg!r}")
     print(f"[AGENTE] robot conectado: {robot_state.get('connected', False)}")
     try:
@@ -183,7 +189,6 @@ def chat(user_msg: str, history: list[dict]) -> dict[str, Any]:
         except Exception as ex:
             print(f"[AGENTE] auto mirar_alrededor falló: {ex}")
 
-    # Construye el "user message" como str o list-of-parts segun haya imagen.
     def _build_user_message(text: str):
         msg = text
         if auto_vision_summary:
@@ -198,28 +203,34 @@ def chat(user_msg: str, history: list[dict]) -> dict[str, Any]:
             return msg
         return [msg, camera_image_part]
 
-    try:
-        # ───── Rama OPENAI ─────
-        if use_openai:
-            return _chat_openai(
-                user_msg, history,
-                auto_executed_pre, auto_vision_summary, auto_vision_pretrigger,
-                camera_image_jpg,
-            )
-
-        # ───── Rama JSON PROTOCOL (Gemma 1/2/3) ─────
-        if use_json_protocol:
-            return _chat_gemma_json(
+    # ── Fallback en cascada: intenta cada modelo en orden ──
+    last_error: Exception | None = None
+    for attempt_model in _FALLBACK_MODELS:
+        _use_openai  = is_openai_model(attempt_model)
+        _use_json    = (not _use_openai) and needs_json_tool_protocol(attempt_model)
+        print(f"[AGENTE] intentando modelo: {attempt_model}")
+        try:
+            if _use_openai:
+                return _chat_openai(
+                    user_msg, history,
+                    auto_executed_pre, auto_vision_summary, auto_vision_pretrigger,
+                    camera_image_jpg, model_name=attempt_model,
+                )
+            if _use_json:
+                return _chat_gemma_json(
+                    user_msg, history, auto_executed_pre, _build_user_message,
+                    model_name=attempt_model,
+                )
+            return _chat_gemini_native(
                 user_msg, history, auto_executed_pre, _build_user_message,
+                model_name=attempt_model,
             )
+        except Exception as e:
+            last_error = e
+            print(f"[AGENTE] {attempt_model} falló ({type(e).__name__}): {e}")
 
-        # ───── Rama TOOLS NATIVOS (Gemini + Gemma 4+) ─────
-        return _chat_gemini_native(
-            user_msg, history, auto_executed_pre, _build_user_message,
-        )
-    except Exception as e:
-        return {"reply": f"⚠ Diver tuvo un error: {str(e)[:200]}",
-                "actions": []}
+    return {"reply": f"⚠ Sin modelos disponibles. Último error: {str(last_error)[:150]}",
+            "actions": []}
 
 
 # ────────────────────────────────────────────────────────────────────
@@ -232,7 +243,19 @@ def _chat_openai(
     auto_vision_summary: str | None,
     auto_vision_pretrigger: bool,
     camera_image_jpg: bytes | None,
+    model_name: str | None = None,
 ) -> dict[str, Any]:
+    model_name = model_name or GEMINI_MODEL
+    # Usa openai_client pre-inicializado o crea uno al vuelo si el modelo
+    # primario no era OpenAI y openai_client quedó en None.
+    _client = openai_client
+    if _client is None:
+        if not OPENAI_AVAILABLE:
+            raise RuntimeError("Paquete openai no instalado.")
+        if not OPENAI_API_KEY:
+            raise RuntimeError("OPENAI_API_KEY no configurada.")
+        from openai import OpenAI as _OAI
+        _client = _OAI(api_key=OPENAI_API_KEY)
     openai_tools = [
         {
             "type": "function",
@@ -280,8 +303,8 @@ def _chat_openai(
 
     for iteration in range(4):
         try:
-            resp = openai_client.chat.completions.create(  # type: ignore[union-attr]
-                model=GEMINI_MODEL,
+            resp = _client.chat.completions.create(
+                model=model_name,
                 messages=messages,
                 tools=openai_tools,
                 tool_choice="auto",
@@ -359,11 +382,13 @@ def _chat_gemma_json(
     history: list[dict],
     auto_executed_pre: list[dict],
     build_user_message,
+    model_name: str | None = None,
 ) -> dict[str, Any]:
+    model_name = model_name or GEMINI_MODEL
     genai = _genai()
-    system_text = DIVER_SYSTEM + DIVER_GEMMA_TOOL_PROMPT
+    system_text = DIVER_SYSTEM  # + DIVER_GEMMA_TOOL_PROMPT  # acciones deshabilitadas
     model = genai.GenerativeModel(
-        model_name=GEMINI_MODEL,
+        model_name=model_name,
         generation_config=AGENT_GENERATION_CONFIG,
     )
 
@@ -414,16 +439,31 @@ def _chat_gemini_native(
     history: list[dict],
     auto_executed_pre: list[dict],
     build_user_message,
+    model_name: str | None = None,
 ) -> dict[str, Any]:
+    model_name = model_name or GEMINI_MODEL
     genai = _genai()
-    model = genai.GenerativeModel(
-        model_name=GEMINI_MODEL,
-        system_instruction=DIVER_SYSTEM,
-        generation_config=AGENT_GENERATION_CONFIG,
-        tools=[{"function_declarations": AGENT_TOOL_DECLARATIONS}],
-    )
+    is_gemma = model_name.lower().startswith("gemma")
+
+    # Gemma models don't support system_instruction parameter — inject via history
+    if is_gemma:
+        model = genai.GenerativeModel(
+            model_name=model_name,
+            generation_config=AGENT_GENERATION_CONFIG,
+            # tools=[{"function_declarations": AGENT_TOOL_DECLARATIONS}],  # acciones deshabilitadas
+        )
+    else:
+        model = genai.GenerativeModel(
+            model_name=model_name,
+            system_instruction=DIVER_SYSTEM,
+            generation_config=AGENT_GENERATION_CONFIG,
+            # tools=[{"function_declarations": AGENT_TOOL_DECLARATIONS}],  # acciones deshabilitadas
+        )
 
     gemini_history = []
+    if is_gemma:
+        gemini_history.append({"role": "user", "parts": [{"text": DIVER_SYSTEM}]})
+        gemini_history.append({"role": "model", "parts": [{"text": "Entendido. Soy Diver. 🐾"}]})
     for h in history[:-1]:
         role = "user" if h.get("role") == "user" else "model"
         gemini_history.append({"role": role,

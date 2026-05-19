@@ -147,7 +147,14 @@
             </div>
 
             <form id="ag-form" class="ag-input-bar" autocomplete="off">
-                <input id="ag-input" type="text" placeholder='Habla con Diver…' maxlength="1200" autocomplete="off">
+                <input id="ag-input" type="text" placeholder='Habla con Diver… o di "Diver"' maxlength="1200" autocomplete="off">
+                <button id="ag-wakeword-btn" type="button" class="ag-btn ghost ag-mic-btn" aria-pressed="false" title='Activar escucha continua — di "Diver" para hablar' aria-label="Activar wake word">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M12 2 v3M12 19 v3M2 12 h3M19 12 h3"/>
+                        <path d="M5.6 5.6 l2.1 2.1M16.3 16.3 l2.1 2.1M5.6 18.4 l2.1-2.1M16.3 7.7 l2.1-2.1"/>
+                    </svg>
+                </button>
                 <button id="ag-mic" type="button" class="ag-btn ghost ag-mic-btn" aria-pressed="false" title="Hablar con Diver (dictado por voz)" aria-label="Activar micrófono">
                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="9" y="3" width="6" height="12" rx="3"/>

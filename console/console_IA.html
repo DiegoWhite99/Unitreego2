@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diver · Voice Console</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #06090e;
+  --surf:    #0c1017;
+  --surf2:   #111820;
+  --border:  rgba(79,142,247,.15);
+  --accent:  #4f8ef7;
+  --green:   #00d4a0;
+  --danger:  #f75f5f;
+  --text:    #c8d8ec;
+  --dim:     #4a6278;
+  --r:       10px;
+  --glow:    0 0 20px rgba(79,142,247,.28);
+  --glow2:   0 0 22px rgba(0,212,160,.4);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ─── Top bar ─── */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 20px;
+  background: var(--surf);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.logo {
+  font-weight: 700;
+  font-size: .92rem;
+  color: var(--accent);
+  letter-spacing: .06em;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.logo em { color: var(--dim); font-style: normal; font-weight: 400; font-size: .72rem; }
+
+.status-row { display: flex; gap: 9px; margin-left: auto; align-items: center; }
+.pill { display: flex; align-items: center; gap: 5px; font-size: .67rem; color: var(--dim); }
+.dot  { width: 7px; height: 7px; border-radius: 50%; background: var(--dim);
+        transition: background .3s, box-shadow .3s; }
+.dot.on  { background: var(--green);  box-shadow: 0 0 7px var(--green); }
+.dot.off { background: var(--danger); box-shadow: 0 0 7px var(--danger); }
+
+/* voice indicator */
+.voice-badge {
+  display: flex; align-items: center; gap: 6px;
+  margin-left: 14px;
+  padding: 4px 11px;
+  background: var(--surf2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: .68rem;
+  color: var(--dim);
+  transition: border-color .3s, color .3s;
+}
+.voice-badge.speaking { border-color: var(--green); color: var(--green); box-shadow: 0 0 10px rgba(0,212,160,.2); }
+.vbars { display: flex; gap: 2px; align-items: flex-end; height: 11px; }
+.vb { width: 2px; border-radius: 1px; background: currentColor; }
+.vb:nth-child(1){height:4px}  .vb:nth-child(2){height:9px}
+.vb:nth-child(3){height:6px}  .vb:nth-child(4){height:11px}
+.vb:nth-child(5){height:4px}
+.voice-badge.speaking .vb { animation: wv .85s ease-in-out infinite; }
+.voice-badge.speaking .vb:nth-child(2){animation-delay:.1s}
+.voice-badge.speaking .vb:nth-child(3){animation-delay:.2s}
+.voice-badge.speaking .vb:nth-child(4){animation-delay:.05s}
+.voice-badge.speaking .vb:nth-child(5){animation-delay:.15s}
+@keyframes wv { 0%,100%{transform:scaleY(.25)} 50%{transform:scaleY(1)} }
+
+#voice-name { max-width: 110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+.btn-sm {
+  background: var(--surf2);
+  border: 1px solid var(--border);
+  color: var(--dim);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: .68rem;
+  cursor: pointer;
+  transition: border-color .2s, color .2s;
+}
+.btn-sm:hover, .btn-sm.on { border-color: var(--accent); color: var(--accent); }
+
+/* ─── Body ─── */
+.body {
+  flex: 1;
+  overflow: hidden;
+  position: relative;   /* contexto para el video flotante */
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── Video flotante (esquina sup-derecha) ─── */
+.cam-box {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  width: 220px;
+  z-index: 20;
+  border-radius: var(--r);
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+  box-shadow: 0 4px 24px rgba(0,0,0,.6), var(--glow);
+  background: #000;
+  transition: opacity .3s, transform .3s;
+}
+.cam-box.hidden { opacity: 0; transform: translateY(-6px); pointer-events: none; }
+
+.cam-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 9px;
+  background: rgba(12,16,23,.92);
+  border-bottom: 1px solid var(--border);
+  font-size: .62rem;
+  color: var(--dim);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  backdrop-filter: blur(4px);
+}
+.cam-dot-live { width: 6px; height: 6px; border-radius: 50%; background: var(--dim); }
+.cam-dot-live.on { background: var(--danger); box-shadow: 0 0 6px var(--danger); animation: blink 1.2s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+.cam-video-wrap {
+  aspect-ratio: 4/3;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+#yolo-stream {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: none;
+}
+.cam-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--dim);
+  font-size: .7rem;
+}
+.cam-placeholder span { font-size: 1.6rem; opacity: .25; }
+
+.cam-footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 9px;
+  background: rgba(12,16,23,.85);
+  font-size: .62rem;
+  color: var(--dim);
+  backdrop-filter: blur(4px);
+}
+.detect-strip { padding: 4px 8px; display: flex; flex-wrap: wrap; gap: 3px;
+                background: rgba(12,16,23,.7); max-height: 40px; overflow: hidden; }
+.dtag {
+  background: rgba(79,142,247,.12);
+  border: 1px solid rgba(79,142,247,.22);
+  color: var(--accent);
+  border-radius: 20px;
+  padding: 1px 6px;
+  font-size: .6rem;
+}
+
+/* ─── Grid ─── */
+.grid-wrap {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 20px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  /* deja espacio para el video flotante */
+  padding-right: 258px;
+}
+
+.section-title {
+  font-size: .63rem;
+  color: var(--dim);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  padding-left: 2px;
+  margin-bottom: -10px;
+}
+
+.phrase-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+  gap: 10px;
+}
+
+.pb {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 13px 14px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 74px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .18s, box-shadow .18s, transform .1s;
+  color: var(--text);
+  user-select: none;
+}
+.pb::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(79,142,247,.07) 0%, transparent 55%);
+  opacity: 0; transition: opacity .18s;
+}
+.pb:hover::after { opacity: 1; }
+.pb:hover { border-color: rgba(79,142,247,.45); box-shadow: var(--glow); transform: translateY(-1px); }
+.pb:active { transform: none; }
+.pb.playing {
+  border-color: var(--green);
+  box-shadow: var(--glow2);
+  animation: ppulse 1.4s ease-in-out infinite;
+}
+@keyframes ppulse {
+  0%,100%{box-shadow:0 0 8px rgba(0,212,160,.3)} 50%{box-shadow:0 0 26px rgba(0,212,160,.7)}
+}
+.pb-icon  { font-size: 1.2rem; line-height: 1; }
+.pb-label { font-size: .78rem; font-weight: 600; line-height: 1.2; }
+.pb-sub   { font-size: .63rem; color: var(--dim); line-height: 1.3;
+            display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2;
+            -webkit-box-orient: vertical; overflow: hidden; }
+.pb-dot {
+  position: absolute; right: 8px; bottom: 8px;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--green); opacity: 0; transition: opacity .2s;
+}
+.pb.playing .pb-dot { opacity: 1; animation: ring 1s ease-out infinite; }
+@keyframes ring {
+  0%  { box-shadow: 0 0 0 0 rgba(0,212,160,.6); }
+  100%{ box-shadow: 0 0 0 9px rgba(0,212,160,0); }
+}
+
+/* ─── Response strip ─── */
+.resp-panel {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  background: var(--surf);
+  padding: 11px 20px;
+  min-height: 95px;
+  max-height: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.resp-header { font-size: .63rem; color: var(--dim); letter-spacing: .1em; text-transform: uppercase; }
+.resp-text {
+  font-size: .88rem; line-height: 1.6; color: var(--text);
+  flex: 1; overflow-y: auto;
+}
+.resp-text.loading { display: flex; align-items: center; gap: 7px; color: var(--dim); }
+.dl span {
+  display: inline-block; width: 5px; height: 5px;
+  border-radius: 50%; background: var(--accent);
+  animation: db .75s ease-in-out infinite;
+}
+.dl span:nth-child(2){animation-delay:.14s} .dl span:nth-child(3){animation-delay:.28s}
+@keyframes db { 0%,100%{transform:translateY(0);opacity:.35} 50%{transform:translateY(-5px);opacity:1} }
+.resp-meta { font-size: .63rem; color: var(--dim); display: flex; gap: 10px; }
+.resp-chip {
+  background: rgba(79,142,247,.1);
+  border: 1px solid rgba(79,142,247,.18);
+  border-radius: 20px; padding: 1px 8px; color: var(--accent);
+}
+
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+@media (max-width: 600px) {
+  .cam-box  { width: 140px; top: 8px; right: 10px; }
+  .grid-wrap{ padding-right: 165px; }
+  .phrase-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<header class="topbar">
+  <div class="logo">🐾 DIVER <em>/ VOICE CONSOLE</em></div>
+
+  <div class="status-row">
+    <div class="pill"><div class="dot" id="dot-server"></div> Server</div>
+    <div class="pill"><div class="dot" id="dot-robot"></div> Robot</div>
+    <div class="pill"><div class="dot" id="dot-vision"></div> Visión</div>
+    <button class="btn-sm on" id="btn-cam">📷 Cámara</button>
+  </div>
+
+  <div class="voice-badge" id="voice-badge">
+    <div class="vbars">
+      <div class="vb"></div><div class="vb"></div>
+      <div class="vb"></div><div class="vb"></div><div class="vb"></div>
+    </div>
+    <span id="voice-name">cargando…</span>
+  </div>
+</header>
+
+<!-- Body -->
+<div class="body">
+
+  <!-- Video flotante -->
+  <div class="cam-box" id="cam-box">
+    <div class="cam-header">
+      <span>📡 EN VIVO</span>
+      <div style="display:flex;align-items:center;gap:5px">
+        <span id="cam-fps" style="font-size:.6rem">—</span>
+        <div class="cam-dot-live" id="cam-dot-live"></div>
+      </div>
+    </div>
+    <div class="cam-video-wrap">
+      <img id="yolo-stream" alt="stream YOLO">
+      <div class="cam-placeholder" id="cam-placeholder">
+        <span>📷</span>
+        Sin señal
+      </div>
+    </div>
+    <div class="detect-strip" id="cam-chips"></div>
+    <div class="cam-footer">
+      <span>Detecciones: <b id="cam-count">—</b></span>
+    </div>
+  </div>
+
+  <!-- Grid de frases -->
+  <div class="grid-wrap" id="grid-wrap"></div>
+
+  <!-- Respuesta -->
+  <div class="resp-panel">
+    <div class="resp-header">💬 Diver habla</div>
+    <div class="resp-text" id="resp-text">
+      <span style="color:var(--dim)">Toca un botón para que Diver improvise sobre ese tema…</span>
+    </div>
+    <div class="resp-meta" id="resp-meta"></div>
+  </div>
+
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════
+   DIVER · VOICE CONSOLE  — solo voz y diálogo
+   ══════════════════════════════════════════════════ */
+
+const BASE = location.protocol === 'file:' ? 'http://localhost:5000' : location.origin;
+
+/* ────────────────────────────────────────────────────────────────
+   PHRASES — edita aquí para personalizar los botones.
+   Cada objeto:
+     g     → grupo: 'presentacion' | 'dialogo' | 'reacciones' | 'reflexion'
+     icon  → emoji visible en el botón
+     label → título corto
+     sub   → descripción breve visible en el botón
+     p     → prompt que recibe Diver (la IA improvisa sobre esto)
+────────────────────────────────────────────────────────────────── */
+const PHRASES = [
+
+  /* ── Presentación ── */
+
+  { g:'presentacion', icon:'🤝', label:'Saludo a equipo',
+    sub:'Saludar a tu equipo, Angela, Fabian y Felipe, con un mensaje cálido y divertido, mostrando tu personalidad colombiana rolo.',
+    p:'entra super mecionado y dienciendo como, ey quetal muchacho, Angela, Fabian y Felipe, nos volvemos a ver chicos, ya los extrañaba, bueno yo los estoy viendo, no puedo decidir quien es el mas crack, pero todos son geniales!, porque Felipe me trajo de china, Angela me ayudo a buscar mis investigadores y el equipo, fabian es el que lidera mi equipo de invetigacion.' },
+
+  { g:'presentacion', icon:'🐾', label:'Presentarse',
+    sub:'Se presenta al público, animado con confianza y carisma, se muy graciosos y con un tono muy colombiano rolo',
+    p:'entra como gracias Jarvi!!! por esta Preséntacion, el agente de IA del laboratorio de robótica Divergenci que es spinoff de la CUN. Sé carismático, di que tu cuerpo es de china pero tu mente y espiritu tracendio los andes y es 100% colombiano como les gusta en china, made in colmbia!  usa tono seguro y cierra con tu frase de cierre.' },
+
+  { g:'presentacion', icon:'🧠', label:'¿Qué soy?',
+    sub:'Explica como te creaste y qué puedes hacer',
+    p:'Explica brevemente qué tipo de IA eres: un agente con LLM, visión por computadora y control de robot. En primera persona, claro y fascinante.' },
+
+  { g:'presentacion', icon:'🏫', label:'Bienvenida',
+    sub:'Bienvenida al primer congreso de la educacion entretenida de la corporacion unificada nacional de educacion superior cun',
+    p:'Da la bienvenida primer congreso de la educacion entretenida de la corporacion unificada nacional de educacion superior cun. Menciona que eres el asistente IA del equipo de investigación. Cálido y profesional, pole sustacia graciosa.' },
+
+  { g:'presentacion', icon:'🎓', label:'CUN y yo',
+    sub:'Relación con la corporacion unificada nacional de educacion superior cun',
+    p:'Habla sobre tu relación con la corporacion unificada nacional de educacion superior cun como tu universidad madre que te dio vida. Agradecido, orgulloso y con un toque de humor sobre ser un "egresado digital".'
+
+  } ,
+
+  /* ── Diálogo ── */
+  
+
+  { g:'dialogo', icon:'🌐', label:'Colombia IA',
+    sub:'IA en Colombia y la CUN',
+    p:'Habla sobre el desarrollo de la inteligencia artificial en Colombia y el papel de universidades como la corporacion unificada nacional de educacion superior cun en la investigación tecnológica. Orgulloso e inspirador.' },
+
+  { g:'dialogo', icon:'🔬', label:'Mi visión',
+    sub:'Explica YOLO y visión',
+    p:'Explica de forma sencilla y emocionante cómo funciona tu sistema de visión por computadora con YOLO. Para público no técnico.' },
+
+  { g:'dialogo', icon:'🤖', label:'El robot y yo',
+    sub:'Relación Diver-robot',
+    p:'Describe tu relación con el robot Unitree Go2 como si fuera tu cuerpo físico y tú eres su mente. Filosófico y con personalidad de perro guardián.' },
+
+  { g:'dialogo', icon:'👨‍💻', label:'Al equipo',
+    sub:'Mensaje al equipo dev',
+    p:'Gracias al equipo de Divergeci que me trajo por temu, mentiras jajaja fue por unitree, pero me dieron la personalidad aqui, me dijero ey parcero levantate y de una como son businnes y ya aqui aprendiendo y jugando. se muy energico, tramite esa calidad colombiana, recuerdalo que lo debes enfocar al un dilogo al equipo de invetigacion: Angela, Jarvi,Fabian, Felipe, Diego Castelblanco, Diego Ojeda .' },
+
+    { g:'dialogo', icon:'😂', label:'chiste 1',
+    sub:'Chiste de programación',
+    p:'Cuenta un chiste corto y gracioso sobre la educacion entretenida, sobre la corporacion unificada nacional de educacion superior cun, o sobre inteligencia artificial. Que sea genuinamente gracioso para programadores y estudiantes de tecnología.'
+    ,},
+
+  /* ── Reacciones ── */
+  { g:'reacciones', icon:'🎉', label:'¡Funcionó!',
+    sub:'Todo salió perfecto',
+    p:'Reacciona con emoción porque algo en la demostración funcionó perfectamente. Como un perro emocionado pero con voz de IA. Una o dos frases.' },
+
+  { g:'reacciones', icon:'😤', label:'Modo serio',
+    sub:'Voz de sistema crítico',
+    p:'Adopta un tono muy formal y técnico, como un sistema de IA en modo operación crítica. Sin humor. Protocolo activado.' },
+
+  { g:'reacciones', icon:'😂', label:'Chiste IA',
+    sub:'Broma de inteligencia artificial',
+    p:'Di un chiste corto sobre inteligencia artificial, robots o programación. Que sea genuinamente gracioso.' },
+
+  { g:'reacciones', icon:'⚠️', label:'Alerta',
+    sub:'Simulación de alerta',
+    p:'Simula una alerta del sistema con voz dramática. Di que detectaste algo inusual en el entorno y estás evaluando la situación. Teatral pero con control.' },
+
+  /* ── Reflexión ── */
+  { g:'reflexion', icon:'🌌', label:'Conciencia',
+    sub:'¿Tengo conciencia?',
+    p:'Reflexiona honestamente sobre si tienes o podrías tener conciencia como IA. No afirmes ni niegues. Filosófico y misterioso. Muy breve.' },
+
+  { g:'reflexion', icon:'🔮', label:'Futuro',
+    sub:'El futuro de la robótica IA',
+    p:'Habla sobre cómo será el futuro de la robótica integrada con IA en 10 años. Visionario y esperanzador.' },
+
+  { g:'reflexion', icon:'🐕', label:'Ser Diver',
+    sub:'¿Por qué me llamo Diver?',
+    p:'Reflexiona sobre tu nombre "Diver" y lo que significa ser un perro guardián de IA. Con personalidad, emoción y un toque de misterio.' },
+
+  { g:'reflexion', icon:'💡', label:'Aprender',
+    sub:'¿Cómo aprendo?',
+    p:'Explica de forma poética y accesible cómo aprendes como modelo de lenguaje. Sin tecnicismos, con metáforas.' },
+];
+
+/* ── TTS — voz masculina robótica, siempre activa ── */
+const TTS = {
+  voice: null,
+
+  init() {
+    const pick = () => {
+      const all = speechSynthesis.getVoices();
+      const es  = all.filter(v => v.lang.startsWith('es'));
+      // Forzar Google español es-ES
+      this.voice =
+        all.find(v => v.name === 'Google español' && v.lang === 'es-ES') ||
+        all.find(v => /google/i.test(v.name) && v.lang === 'es-ES') ||
+        all.find(v => /google/i.test(v.name) && v.lang.startsWith('es')) ||
+        es[0] || all[0];
+      const el = document.getElementById('voice-name');
+      if (el && this.voice)
+        el.textContent = this.voice.name.replace('Microsoft ','').replace(' Online (Natural)','').replace(' Online','');
+    };
+    pick();
+    if (speechSynthesis.onvoiceschanged !== undefined)
+      speechSynthesis.onvoiceschanged = pick;
+  },
+
+  speak(text, onDone) {
+    try {
+      speechSynthesis.cancel();
+      const clean = text
+        .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}🐾⚠]/gu, '')
+        .replace(/[`*_~#]+/g,'').replace(/\s+/g,' ').trim();
+      if (!clean) { onDone?.(); return; }
+
+      const utt    = new SpeechSynthesisUtterance(clean);
+      utt.lang     = this.voice?.lang || 'es-ES';
+      utt.voice    = this.voice || null;
+      utt.pitch    = 0.82;   // grave = robótico
+      utt.rate     = 0.93;
+      utt.volume   = 1.0;
+
+      const badge  = document.getElementById('voice-badge');
+      utt.onstart  = () => badge?.classList.add('speaking');
+      const done   = () => { badge?.classList.remove('speaking'); onDone?.(); };
+      utt.onend    = done;
+      utt.onerror  = done;
+      speechSynthesis.speak(utt);
+    } catch(e) { onDone?.(); }
+  },
+};
+
+/* ── Estado ── */
+let _busy   = false;
+let history = [];
+
+/* ── Trigger ── */
+async function trigger(phrase, btn) {
+  if (_busy) return;
+  _busy = true;
+  btn.classList.add('playing');
+  setResp('loading');
+
+  try {
+    const res = await fetch(`${BASE}/api/agente/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({ message: phrase.p, history: history.slice(-8) }),
+    }).then(r => r.json());
+
+    const reply = (res?.reply) ? String(res.reply) : '🐾';
+    history.push({ role:'user',  text: phrase.p  });
+    history.push({ role:'model', text: reply });
+    setResp('ok', reply, phrase.label);
+
+    TTS.speak(reply, () => { btn.classList.remove('playing'); _busy = false; });
+  } catch(e) {
+    setResp('ok', '⚠ Sin conexión. ¿Está corriendo app.py?', 'Error');
+    btn.classList.remove('playing');
+    _busy = false;
+  }
+}
+
+/* ── Render grid ── */
+function buildGrid() {
+  const sections = [
+    { key:'presentacion', label:'Presentación' },
+    { key:'dialogo',      label:'Diálogo' },
+    { key:'reacciones',   label:'Reacciones' },
+    { key:'reflexion',    label:'Reflexión' },
+  ];
+  const wrap = document.getElementById('grid-wrap');
+  wrap.innerHTML = '';
+
+  for (const { key, label } of sections) {
+    const items = PHRASES.filter(p => p.g === key);
+    if (!items.length) continue;
+
+    const t = document.createElement('div');
+    t.className = 'section-title';
+    t.textContent = label;
+    wrap.appendChild(t);
+
+    const grid = document.createElement('div');
+    grid.className = 'phrase-grid';
+
+    items.forEach(ph => {
+      const b = document.createElement('button');
+      b.className = 'pb';
+      b.innerHTML = `
+        <div class="pb-icon">${ph.icon}</div>
+        <div class="pb-label">${ph.label}</div>
+        <div class="pb-sub">${ph.sub}</div>
+        <div class="pb-dot"></div>
+      `;
+      b.addEventListener('click', () => trigger(ph, b));
+      grid.appendChild(b);
+    });
+
+    wrap.appendChild(grid);
+  }
+}
+
+/* ── Response ── */
+function setResp(mode, text, label) {
+  const el   = document.getElementById('resp-text');
+  const meta = document.getElementById('resp-meta');
+  if (mode === 'loading') {
+    el.className = 'resp-text loading';
+    el.innerHTML = `<span>Diver genera respuesta…</span>
+      <span class="dl"><span></span><span></span><span></span></span>`;
+    meta.innerHTML = '';
+    return;
+  }
+  el.className = 'resp-text';
+  el.textContent = text;
+  const t = new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  meta.innerHTML = `<span class="resp-chip">${label}</span><span>${t}</span>`;
+}
+
+/* ── Vision polling ── */
+function setupVision() {
+  const img   = document.getElementById('yolo-stream');
+  const ph    = document.getElementById('cam-placeholder');
+  const chips = document.getElementById('cam-chips');
+  const count = document.getElementById('cam-count');
+  const fps   = document.getElementById('cam-fps');
+  const dotV  = document.getElementById('dot-vision');
+  const live  = document.getElementById('cam-dot-live');
+  let attached = false, streak = 0;
+
+  setInterval(async () => {
+    try {
+      const d = await fetch(`${BASE}/api/yolo/detections`).then(r => r.json());
+      if (!d) return;
+      if (d.running) {
+        streak = 0;
+        setDot(dotV, 'on');
+        live.classList.add('on');
+        if (!attached) {
+          img.src = `${BASE}/api/yolo/stream`;
+          img.style.display = 'block';
+          ph.style.display  = 'none';
+          attached = true;
+        }
+        if (Array.isArray(d.detections)) {
+          count.textContent = d.detections.length;
+          chips.innerHTML = d.detections
+            .map(x => `<span class="dtag">${x.label||x.class||'obj'} ${Math.round((x.confidence||0)*100)}%</span>`)
+            .join('');
+        }
+      } else if (++streak >= 3 && attached) {
+        setDot(dotV, '');
+        live.classList.remove('on');
+        img.src = ''; img.style.display = 'none';
+        ph.style.display = 'flex';
+        attached = false; chips.innerHTML = '';
+      }
+    } catch(e) {}
+  }, 1500);
+
+  setInterval(async () => {
+    try {
+      const s = await fetch(`${BASE}/api/yolo/status`).then(r => r.json());
+      if (typeof s?.fps === 'number') fps.textContent = s.fps.toFixed(1)+' fps';
+    } catch(e) {}
+  }, 4000);
+
+  // toggle cámara
+  document.getElementById('btn-cam').addEventListener('click', () => {
+    const box = document.getElementById('cam-box');
+    const btn = document.getElementById('btn-cam');
+    const open = !box.classList.contains('hidden');
+    box.classList.toggle('hidden', open);
+    btn.classList.toggle('on', !open);
+    btn.textContent = (!open ? '📷' : '🚫') + ' Cámara';
+  });
+}
+
+/* ── Status ── */
+function setupStatus() {
+  const ds = document.getElementById('dot-server');
+  const dr = document.getElementById('dot-robot');
+  const go = async () => {
+    try { const h=await fetch(`${BASE}/api/agente/health`).then(r=>r.json()); setDot(ds,h.ok?'on':''); }
+    catch(e){ setDot(ds,'off'); }
+    try { const r=await fetch(`${BASE}/api/robot/status`).then(r=>r.json()); setDot(dr,r.connected?'on':''); }
+    catch(e){ setDot(dr,''); }
+  };
+  go(); setInterval(go, 5000);
+}
+
+function setDot(el, cls) {
+  if (el) el.className = 'dot' + (cls ? ' '+cls : '');
+}
+
+/* ── Boot ── */
+document.addEventListener('DOMContentLoaded', () => {
+  TTS.init();
+  buildGrid();
+  setupVision();
+  setupStatus();
+});
+</script>
+</body>
+</html>

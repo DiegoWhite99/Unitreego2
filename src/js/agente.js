@@ -24,8 +24,9 @@ const AGENT = {
             voice: null,       // SpeechSynthesisVoice elegida (masculina ES)
             micHint: null
         },
-        gestureReact: false, // reacción autónoma a gestos (mano alzada → saludo)
-        faceGreeting: true   // saludo autónomo cuando reconoce un rostro local
+        gestureReact: false,
+        faceGreeting: true,
+        sessionActive: false  // true mientras hay conversación activa con Diver
     },
     el: {},
     detectPollTimer: null,
@@ -37,6 +38,7 @@ const AGENT = {
         this.setupChat();
         this.setupWakeButton();
         this.setupVoice();
+        this.setupWakeWord();
         this.setupGestureReactor();
         this.setupFaceGreetingReactor();
         this.checkAiHealth();
@@ -68,6 +70,7 @@ const AGENT = {
             suggestions: document.getElementById('ag-suggestions'),
             banner: document.getElementById('ag-banner'),
             mic: document.getElementById('ag-mic'),
+            wakeWordBtn: document.getElementById('ag-wakeword-btn'),
             ttsToggle: document.getElementById('ag-tts-toggle'),
             voiceSelect: document.getElementById('ag-voice-select'),
             gestureToggle: document.getElementById('ag-gesture-toggle'),
@@ -384,10 +387,11 @@ const AGENT = {
             const text = lastFinal.trim();
             lastFinal = '';
             if (text) {
-                // Concatenar con lo que ya tuviera el input (o reemplazar)
                 this.el.input.value = text;
                 this.sendMessage();
             }
+            // Reanuda el oyente de wake word cuando termina la sesión de chat
+            this._restartWakeWord?.();
         };
 
         this.state.voice.recognition = recog;
@@ -699,10 +703,15 @@ const AGENT = {
             utt.onstart = () => {
                 this.state.voice.ttsSpeaking = true;
                 this.el.ttsToggle?.classList.add('speaking');
+                this._sessionRecog?.pause(); // pausa escucha mientras Diver habla
             };
             const stop = () => {
                 this.state.voice.ttsSpeaking = false;
                 this.el.ttsToggle?.classList.remove('speaking');
+                const action = this._postSpeakAction;
+                this._postSpeakAction = null;
+                action?.();
+                this._sessionRecog?.resume(); // reanuda escucha cuando termina
             };
             utt.onend = stop;
             utt.onerror = stop;
@@ -710,6 +719,107 @@ const AGENT = {
         } catch (e) {
             console.warn('TTS error:', e);
         }
+    },
+
+    /* ============ Voz unificada ============
+       Un solo reconocedor continuo.
+       Azul encendido → mic encendido.
+       Modo wake: espera "Diver".
+       Modo sesión: escucha todo, pausa solo mientras Diver habla,
+       termina con "adiós Diver". */
+    setupWakeWord() {
+        const SR  = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const btn = this.el.wakeWordBtn;
+        const mic = this.el.mic;
+        if (!SR) { btn?.remove(); return; }
+
+        let on      = false;   // sistema encendido
+        let session = false;   // false=wake word mode, true=sesión activa
+        let tts     = false;   // true mientras Diver está hablando
+        let recog   = null;
+        let _pending = false;  // true mientras hay fetch o TTS en curso
+
+        const ui = () => {
+            btn?.setAttribute('aria-pressed', String(on));
+            if (btn) btn.style.color = on ? 'var(--accent,#4f8ef7)' : '';
+            mic?.setAttribute('aria-pressed', String(on && !tts));
+        };
+
+        const kill = () => { try { recog?.abort(); } catch (_) {} recog = null; };
+
+        const go = () => {
+            kill();
+            if (!on || tts || _pending) return;
+
+            const r = new SR();
+            r.lang            = 'es-ES';
+            r.continuous      = true;
+            r.interimResults  = true;
+            r.maxAlternatives = 1;
+
+            r.onresult = (ev) => {
+                if (tts) return;
+                for (let i = ev.resultIndex; i < ev.results.length; i++) {
+                    const t     = ev.results[i][0].transcript.trim();
+                    const final = ev.results[i].isFinal;
+
+                    if (!session) {
+                        // ── Wake word mode ──
+                        if (/\bdiver\b/i.test(t)) {
+                            session = true;
+                            this.state.sessionActive    = true;
+                            this.state.voice.ttsEnabled = true;
+                            kill(); _pending = true; // detener escucha hasta que llegue respuesta + TTS
+                            this.el.input.value = 'DIVER';
+                            this.sendMessage();
+                        }
+                    } else if (final && t && !_pending) {
+                        // ── Sesión activa ──
+                        if (/(\badi[oó]s\b|\bchao\b|\bbye\b)[\s\S]*\bdiver\b|\bdiver\b[\s\S]*(\badi[oó]s\b|\bchao\b|\bbye\b)/i.test(t)) {
+                            // Despedida → apagar todo
+                            on = false; session = false; _pending = false;
+                            this.state.sessionActive    = false;
+                            this.state.voice.ttsEnabled = false;
+                            this.el.input.value = t;
+                            this.sendMessage();
+                            kill(); ui(); return;
+                        }
+                        kill(); _pending = true; // detener escucha hasta que llegue respuesta + TTS
+                        this.el.input.value = t;
+                        this.sendMessage();
+                    }
+                }
+            };
+
+            r.onerror = (ev) => {
+                if (ev.error === 'no-speech') return; // silencio normal, sigue
+                recog = null;
+                if (on && !tts && !_pending) setTimeout(go, 600);
+            };
+            r.onend = () => {
+                recog = null;
+                if (on && !tts && !_pending) setTimeout(go, 200); // reinicio automático
+            };
+
+            try { r.start(); recog = r; ui(); }
+            catch (e) { recog = null; if (on) setTimeout(go, 1000); }
+        };
+
+        // speakReply.onstart/stop llaman a estos
+        this._sessionRecog = {
+            pause:  () => { tts = true;  kill(); ui(); },
+            resume: () => { tts = false; _pending = false; if (on) setTimeout(go, 400); ui(); },
+            stop:   () => {}
+        };
+
+        btn?.addEventListener('click', () => {
+            on = !on;
+            if (!on) { session = false; tts = false; _pending = false; this.state.sessionActive = false; kill(); }
+            else go();
+            ui();
+        });
+
+        this._restartWakeWord = () => {};
     },
 
     /* ============ Polling detecciones YOLO ============
@@ -984,17 +1094,20 @@ const AGENT = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: text,
-                    history: this.state.history.slice(-24) // más contexto para diálogo real
+                    history: this.state.history.slice(-24)
                 })
             }).then(r => r.json());
 
             typingNode.remove();
-
             const reply = (r && r.reply) ? String(r.reply) : '🐾';
             const actions = (r && Array.isArray(r.actions)) ? r.actions : [];
             this.appendMessage('bot', reply, actions);
             this.state.history.push({ role: 'model', text: reply });
             this.speakReply(reply);
+            // Si TTS está desactivado speakReply retorna sin llamar resume → desbloquear manualmente
+            if (!this.state.voice.ttsEnabled && this.state.sessionActive) {
+                setTimeout(() => this._sessionRecog?.resume?.(), 300);
+            }
         } catch (e) {
             typingNode.remove();
             const errMsg = '⚠ No pude contactar al servidor. Revisa que `app.py` esté corriendo.';

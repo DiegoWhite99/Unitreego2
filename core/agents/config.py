@@ -75,8 +75,6 @@ def needs_json_tool_protocol(name: str | None) -> bool:
     usar el protocolo JSON inline. Aplica a Gemma 1/2/3.
     Gemma 4+ y todos los Gemini soportan tools nativos -> ruta normal."""
     n = (name or "").lower()
-    if n.startswith("gemma-4") or n.startswith("gemma4"):
-        return False
     if n.startswith("gemma"):
         return True
     return False
@@ -132,7 +130,7 @@ else:
 
 
 AGENT_GENERATION_CONFIG = {
-    "temperature":       0.7,      # Menos creativo → más eficiente con tokens
-    "top_p":             0.9,      # Buena calidad
-    "max_output_tokens": 500,      # Reducido para ahorrar tokens (1M/día límite)
+    "temperature":       0.7,
+    "top_p":             0.9,
+    "max_output_tokens": 200,  # respuestas cortas = menor latencia en conversación
 }
