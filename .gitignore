@@ -28,6 +28,7 @@ src/error_503.html
 
 # logs y mas
 /config/config.py
+.claude/
 /src/lading
 __pycache__/
 *.pyc

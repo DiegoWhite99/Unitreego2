@@ -1,7 +1,14 @@
 flask>=3.0
 flask-socketio>=5.3
+werkzeug>=3.0
 ultralytics>=8.0
 opencv-python>=4.8
 numpy>=1.24
 qrcode[pil]>=7.4
 unitree-webrtc-connect
+requests>=2.31
+openai>=1.0
+bleak>=0.21
+pycryptodome>=3.19
+cryptography>=42.0
+curl_cffi>=0.6
