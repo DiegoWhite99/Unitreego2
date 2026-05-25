@@ -19,6 +19,12 @@ def index():
     return send_from_directory("src", "index.html")
 
 
+@bp.route("/login")
+@bp.route("/login.html")
+def login_page():
+    return send_from_directory("src", "login.html")
+
+
 @bp.route("/landing")
 def landing():
     return send_from_directory("src", "landing.html")
@@ -68,11 +74,25 @@ def save_img_page():
     return send_from_directory("src", "save_img.html")
 
 
-@bp.route("/console")
+_CONSOLE_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)), "console"
+)
+
+
 @bp.route("/console-ia")
 @bp.route("/console_IA.html")
 def console_ia():
-    return send_from_directory("console", "console_IA.html")
+    return send_from_directory(_CONSOLE_DIR, "console_IA.html")
+
+
+@bp.route("/console-ia/<path:filename>")
+def console_assets(filename: str):
+    return send_from_directory(_CONSOLE_DIR, filename)
+
+
+@bp.route("/img/<path:filename>")
+def serve_img(filename):
+    return send_from_directory("src/img", filename)
 
 
 @bp.route("/css/<path:filename>")

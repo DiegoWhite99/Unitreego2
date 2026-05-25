@@ -162,6 +162,7 @@
                     <button id="ar-scan-360" class="cr-btn ghost" title="Gira en sitio para mapear alrededor con lidar">&#x21BB; Escaneo 360&deg;</button>
                     <button id="ar-sim" class="cr-btn ghost" title="Simula la ruta sin mover el robot, para verificar antes de ejecutar">&#x1F9EA; Probar ruta (sin robot)</button>
                     <button id="ar-yolo-toggle" class="cr-btn ghost">Camara ON/OFF</button>
+                    <button id="ar-mic" class="cr-btn ghost" title="Dar instrucción por voz al agente IA">&#x1F3A4; Instrucción</button>
                 </div>
                 <label class="ar-translate-opt">
                     <input type="checkbox" id="ar-translate-to-pose" checked>
@@ -175,6 +176,21 @@
             </section>
         </aside>
     </main>
+
+    <!-- Voice toast -->
+    <div id="ar-voice-toast" style="
+        display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+        background:#0c1520; border:1px solid rgba(79,142,247,.35); border-radius:10px;
+        padding:12px 18px; max-width:480px; width:90%; z-index:9999;
+        box-shadow:0 4px 24px rgba(0,0,0,.6); color:#c8d8ec; font-size:.82rem; line-height:1.5;">
+        <div id="ar-voice-text" style="margin-bottom:6px;"></div>
+        <div style="display:flex;gap:8px;align-items:center;">
+            <span id="ar-voice-status" style="font-size:.7rem;color:#4a6278;flex:1;"></span>
+            <button onclick="document.getElementById('ar-voice-toast').style.display='none'"
+                style="background:none;border:1px solid rgba(79,142,247,.25);color:#4a6278;
+                border-radius:5px;padding:2px 9px;font-size:.68rem;cursor:pointer;">✕</button>
+        </div>
+    </div>
 
     <script src="js/socket.io.min.js"></script>
     <script src="js/autoroute.js"></script>

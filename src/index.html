@@ -1870,39 +1870,8 @@
 </head>
 <body>
 
-    <!-- ============ LOGIN ============ -->
-    <div id="login-overlay" class="login-overlay">
-        <form id="login-form" class="login-box" autocomplete="off">
-            <div class="login-logo">
-                <div class="login-symbol"></div>
-                <div class="login-title">Daiver</div>
-                <div class="login-subtitle" data-i18n="login.subtitle">Control CUN</div>
-            </div>
-
-            <div id="login-error" class="login-error" data-i18n="login.error">
-                Usuario o contraseña incorrectos
-            </div>
-
-            <div class="login-field">
-                <label for="login-user" data-i18n="login.user">Usuario</label>
-                <input type="text" id="login-user" name="user" required autocomplete="off" placeholder="admin">
-            </div>
-
-            <div class="login-field">
-                <label for="login-pass" data-i18n="login.pass">Contraseña</label>
-                <input type="password" id="login-pass" name="pass" required placeholder="••••••••">
-            </div>
-
-            <button type="submit" class="login-btn" data-i18n="login.submit">Ingresar</button>
-
-            <div class="login-hint" data-i18n-html="login.hint">
-                Usuario por defecto: <strong>admin</strong> / <strong>admin123</strong>
-            </div>
-        </form>
-    </div>
-
-    <!-- ============ APP (oculta hasta iniciar sesión) ============ -->
-    <div id="app-root" class="app-shell hidden">
+    <!-- ============ APP ============ -->
+    <div id="app-root" class="app-shell">
 
         <!-- Top bar: marca + telemetría + botón menú -->
         <header class="dv-topbar">
@@ -1970,6 +1939,9 @@
                 <a href="/agente" class="nav-link" data-tip="Diver IA: chat con el agente y visión en tiempo real." data-tip-pos="left">
                     <span class="icon">✦</span> <span data-i18n="menu.ai">IA</span>
                 </a>
+                <a href="/console-ia" class="nav-link" data-tip="Console IA: consola de voz del Diver." data-tip-pos="left">
+                    <span class="icon">🎙</span> <span data-i18n="menu.console">Console IA</span>
+                </a>
                 <a href="/help" class="nav-link" data-tip="¿Tienes un problema? Aquí puedes enviarnos un mensaje." data-tip-pos="left">
                     <span class="icon">?</span> <span data-i18n="menu.help">Ayuda</span>
                 </a>
@@ -1995,125 +1967,146 @@
             <!-- ===== DASHBOARD ===== -->
             <section id="dashboard" class="section">
                 <h2 class="dv-section-title" data-i18n="dashboard.title">Configuraciones</h2>
-                <p class="dv-help" data-i18n-html="dashboard.welcome">
-                    Bienvenido. Desde aquí puedes conectar el robot, ver su estado y acceder
-                    al control remoto. Si no sabes por dónde empezar, usa el botón
-                    <strong>Conectar</strong> y luego abre el menú con
-                    <strong>☰ Menú</strong> arriba a la derecha.
-                </p>
 
-                <div class="cards-grid">
+                <style>
+                    /* ── Compact pipeline ── */
+                    .cp-row { display:flex; align-items:center; gap:0.75rem; padding:0.6rem 1rem; border-bottom:1px solid var(--dv-border); min-height:52px; transition:background 0.15s; }
+                    .cp-row:last-child { border-bottom:none; }
+                    .cp-row.step-active .cp-num { border-color:var(--dv-green); color:var(--dv-green); background:rgba(34,197,94,0.1); }
+                    .cp-num { width:22px; height:22px; border-radius:50%; border:1.5px solid var(--dv-border); display:flex; align-items:center; justify-content:center; font-size:0.6rem; font-weight:700; color:var(--dv-text-dim); flex-shrink:0; font-family:Consolas,monospace; transition:all 0.3s; }
+                    .cp-label { font-size:0.68rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--dv-text-dim); flex-shrink:0; width:82px; }
+                    .cp-content { flex:1; display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap; min-width:0; }
+                    .cp-action { flex-shrink:0; }
+                    .cp-btn { font-size:0.68rem; letter-spacing:1px; text-transform:uppercase; background:transparent; border:1px solid var(--dv-border); color:var(--dv-text-dim); padding:0.25rem 0.6rem; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+                    .cp-btn:hover { border-color:var(--dv-aqua); color:var(--dv-aqua); }
+                    /* Robot inline card */
+                    .robot-inline { display:flex; align-items:center; gap:0.6rem; min-width:0; }
+                    .robot-inline img { width:38px; height:38px; object-fit:contain; filter:drop-shadow(0 0 5px rgba(45,212,191,0.25)); flex-shrink:0; }
+                    .robot-inline-info { min-width:0; }
+                    .robot-name  { font-size:0.82rem; font-weight:700; color:var(--dv-text); letter-spacing:0.5px; }
+                    .robot-sn    { font-family:Consolas,monospace; font-size:0.7rem; color:var(--dv-aqua); letter-spacing:1px; }
+                    .robot-chip  { font-size:0.58rem; letter-spacing:1px; text-transform:uppercase; padding:0.12rem 0.4rem; border:1px solid; display:inline-block; }
+                    .robot-chip.ok  { color:var(--dv-green); border-color:rgba(34,197,94,0.35); background:rgba(34,197,94,0.08); }
+                    .robot-chip.dim { color:var(--dv-text-dim); border-color:var(--dv-border); }
+                    /* Compact status bar */
+                    .live-bar { display:flex; gap:0; flex-wrap:wrap; width:100%; }
+                    .live-cell { flex:1; min-width:80px; text-align:center; padding:0.45rem 0.3rem; border-right:1px solid var(--dv-border); }
+                    .live-cell:last-child { border-right:none; }
+                    .live-cell .lc-label { font-size:0.58rem; text-transform:uppercase; letter-spacing:1px; color:var(--dv-text-dim); }
+                    .live-cell .lc-val   { font-size:0.8rem; font-weight:600; color:var(--dv-text); margin-top:1px; }
+                    /* BLE result rows */
+                    .ble-hit { display:flex; align-items:center; gap:0.5rem; padding:0.35rem 0; font-size:0.78rem; border-bottom:1px solid var(--dv-border); }
+                    .ble-hit:last-child { border-bottom:none; }
+                </style>
 
-                    <!-- Conexión -->
-                    <div class="dv-card">
-                        <div class="dv-card-header">
-                            <h3 data-i18n="conn.title">Conexión del Robot</h3>
+                <div class="dv-card" style="overflow:visible;">
+                    <div class="dv-card-header" style="padding:0.65rem 1rem;">
+                        <h3 style="font-size:0.78rem;">Flujo de conexión</h3>
+                        <span id="conn-flow-status" style="font-size:0.68rem;letter-spacing:1px;color:var(--dv-text-dim);text-transform:uppercase;">4 pasos</span>
+                    </div>
+
+                    <!-- 01 BLE -->
+                    <div class="cp-row step-active" id="step-1">
+                        <div class="cp-num">01</div>
+                        <div class="cp-label">Bluetooth</div>
+                        <div class="cp-content" id="ble-devices-list">
+                            <span style="color:var(--dv-text-dim);font-size:0.78rem;">Sin dispositivos detectados</span>
                         </div>
-                        <div class="dv-card-body">
-                            <p class="dv-help" data-i18n-html="conn.help">
-                                Escribe la dirección IP del robot (por ejemplo
-                                <strong>10.3.16.11</strong>) y presiona <strong>Conectar</strong>.
-                            </p>
+                        <div class="cp-action">
+                            <button class="cp-btn" id="btn-ble-scan">⟳ Escanear</button>
+                        </div>
+                    </div>
+                    <div id="ble-scan-status" style="display:none;padding:0.3rem 1rem 0.3rem 3.5rem;font-size:0.7rem;color:var(--dv-text-dim);border-bottom:1px solid var(--dv-border);"></div>
 
-                            <div class="connect-form">
-                                <label for="ip-input" style="color: var(--dv-text-dim); font-size: 0.7rem; letter-spacing: 1.5px; text-transform: uppercase;" data-i18n="conn.iplabel">IP del Robot</label>
-                                <input type="text" id="ip-input" class="dv-input" placeholder="10.3.16.11" data-tip="Dirección IP del robot en la red local. Pregunta al administrador si no la conoces." data-tip-pos="bottom">
+                    <!-- 02 Cuenta -->
+                    <div class="cp-row" id="step-2" id="card-profile">
+                        <div class="cp-num">02</div>
+                        <div class="cp-label">Cuenta</div>
+                        <div class="cp-content">
+                            <div id="profile-avatar-big" style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--dv-aqua),var(--dv-blue));display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700;color:#04070a;flex-shrink:0;">D</div>
+                            <div style="min-width:0;">
+                                <div style="display:flex;align-items:center;gap:0.35rem;">
+                                    <span id="profile-full-name" style="font-size:0.82rem;font-weight:700;color:var(--dv-text);text-transform:uppercase;letter-spacing:0.5px;">—</span>
+                                    <span style="color:var(--dv-text-dim);font-size:0.7rem;">•</span>
+                                    <span id="profile-institution" style="color:var(--dv-text-dim);font-size:0.72rem;">—</span>
+                                </div>
+                                <div style="display:flex;align-items:center;gap:0.4rem;margin-top:1px;">
+                                    <span id="profile-email" style="color:var(--dv-text-dim);font-size:0.7rem;">—</span>
+                                    <span id="profile-role-chip" style="font-size:0.58rem;letter-spacing:1px;text-transform:uppercase;color:var(--dv-green);border:1px solid rgba(34,197,94,0.35);padding:0.1rem 0.35rem;background:rgba(34,197,94,0.08);">—</span>
+                                </div>
+                                <div id="unitree-account-status" style="font-size:0.68rem;color:var(--dv-aqua);margin-top:1px;"></div>
                             </div>
-
-                            <div class="dv-row" style="margin-top: 0.75rem;">
-                                <button id="btn-connect" class="dv-btn primary" data-tip="Inicia la conexión con el robot usando la IP indicada." data-tip-pos="bottom" data-i18n="conn.connect">Conectar</button>
-                                <button id="btn-disconnect" class="dv-btn danger" disabled data-tip="Cierra la conexión con el robot de forma segura." data-tip-pos="bottom" data-i18n="conn.disconnect">Desconectar</button>
-                            </div>
-
-                            <button id="btn-emergency" class="dv-btn warning full" data-tip="Detiene todos los movimientos del robot de inmediato. Úsalo si algo sale mal." data-tip-pos="bottom" data-i18n="conn.emergency">
-                                ⚠ Parada de Emergencia
-                            </button>
+                        </div>
+                        <div class="cp-action">
+                            <a href="/login" id="btn-logout-profile" style="font-size:0.68rem;color:var(--dv-text-dim);text-decoration:none;text-transform:uppercase;border:1px solid var(--dv-border);padding:0.25rem 0.55rem;letter-spacing:0.5px;">⏏ Salir</a>
                         </div>
                     </div>
 
-                    <!-- Estado del robot -->
-                    <div class="dv-card">
-                        <div class="dv-card-header">
-                            <h3 data-i18n="status.title">Estado del Robot</h3>
-                        </div>
-                        <div class="dv-card-body">
-                            <p class="dv-help" data-i18n="status.help">
-                                Información en vivo de la red y el estado del robot.
-                            </p>
-
-                            <div class="status-grid">
-                                <div class="status-tile" data-tip="Latencia medida (ms) al servidor: Excelente <100, Buena <300, Regular <700, Débil <2000. Rojo = sin conexión al servidor." data-tip-pos="bottom">
-                                    <span class="tile-icon" aria-hidden="true">
-                                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                            <rect x="2.5" y="16" width="3" height="5" rx="0.5"/>
-                                            <rect x="8" y="12" width="3" height="9" rx="0.5"/>
-                                            <rect x="13.5" y="8" width="3" height="13" rx="0.5"/>
-                                            <rect x="19" y="3" width="3" height="18" rx="0.5"/>
-                                        </svg>
-                                    </span>
-                                    <div class="label" data-i18n="label.signal">Señal</div>
-                                    <div class="value" id="network-status-big" data-i18n="signal.measuring">Midiendo...</div>
-                                    <div style="margin-top: 0.6rem;">
-                                        <span class="signal-bars level-0" id="signal-bars-big">
-                                            <span></span><span></span><span></span><span></span>
-                                        </span>
-                                    </div>
+                    <!-- 03 Robot -->
+                    <div class="cp-row" id="step-3" id="card-robots">
+                        <div class="cp-num">03</div>
+                        <div class="cp-label">Robot</div>
+                        <div class="cp-content" id="robots-list">
+                            <div class="robot-inline" style="opacity:0.4;">
+                                <img src="/img/1_pie.png" alt="Go2" onerror="this.style.display='none'">
+                                <div class="robot-inline-info">
+                                    <div class="robot-name">Go2 Air</div>
+                                    <div class="robot-sn">SN: —</div>
                                 </div>
-
-                                <div class="status-tile" data-tip="Estado del canal de video/audio en tiempo real (WebRTC)." data-tip-pos="bottom">
-                                    <span class="tile-icon" aria-hidden="true">
-                                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                            <rect x="2" y="6" width="14" height="12" rx="1.5"/>
-                                            <path d="M16 10 L22 6.5 V17.5 L16 14 Z"/>
-                                        </svg>
-                                    </span>
-                                    <div class="label" data-i18n="label.webrtc">WebRTC</div>
-                                    <div class="value offline" id="webrtc-state" data-i18n="status.noconn">Sin conexión</div>
-                                </div>
-
-                                <div class="status-tile" data-tip="Modo actual del robot (de pie, sentado, en movimiento, etc.)." data-tip-pos="bottom">
-                                    <span class="tile-icon" aria-hidden="true">
-                                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                            <rect x="5" y="5" width="14" height="14" rx="1.5"/>
-                                            <rect x="9" y="9" width="6" height="6" rx="0.5"/>
-                                            <path d="M9 2 v3 M15 2 v3 M9 19 v3 M15 19 v3 M2 9 h3 M2 15 h3 M19 9 h3 M19 15 h3"/>
-                                        </svg>
-                                    </span>
-                                    <div class="label" data-i18n="label.mode">Modo</div>
-                                    <div class="value" id="robot-mode">--</div>
-                                </div>
-
-                                <div class="status-tile" data-tip="Dirección IP a la que está conectado actualmente el sistema." data-tip-pos="top-right">
-                                    <span class="tile-icon" aria-hidden="true">
-                                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                            <circle cx="12" cy="12" r="9.5"/>
-                                            <path d="M2.5 12 H21.5"/>
-                                            <path d="M12 2.5 C 15.5 6.5 15.5 17.5 12 21.5"/>
-                                            <path d="M12 2.5 C 8.5 6.5 8.5 17.5 12 21.5"/>
-                                        </svg>
-                                    </span>
-                                    <div class="label" data-i18n="label.ip">IP Activa</div>
-                                    <div class="value" style="font-size: 1rem;" id="robot-ip">--</div>
-                                </div>
-
-                                <div class="status-tile" data-tip="Conexión con el servidor interno (Flask) que maneja las señales." data-tip-pos="top-right">
-                                    <span class="tile-icon" aria-hidden="true">
-                                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                            <rect x="3" y="3.5" width="18" height="6" rx="1"/>
-                                            <rect x="3" y="14.5" width="18" height="6" rx="1"/>
-                                            <circle cx="7" cy="6.5" r="0.9" fill="currentColor" stroke="none"/>
-                                            <circle cx="7" cy="17.5" r="0.9" fill="currentColor" stroke="none"/>
-                                            <path d="M11 6.5 h7 M11 17.5 h7"/>
-                                        </svg>
-                                    </span>
-                                    <div class="label" data-i18n="label.server">Servidor</div>
-                                    <div class="value" style="font-size: 1rem;" id="flask-status">--</div>
-                                </div>
+                                <span class="robot-chip dim">Sin vincular</span>
                             </div>
+                        </div>
+                        <div class="cp-action">
+                            <button class="cp-btn" id="btn-refresh-robots">↺</button>
                         </div>
                     </div>
 
-                </div>
+                    <!-- 04 Conexión IP -->
+                    <div class="cp-row" id="step-4">
+                        <div class="cp-num">04</div>
+                        <div class="cp-label">IP / Conectar</div>
+                        <div class="cp-content">
+                            <input type="text" id="ip-input" class="dv-input" placeholder="10.3.16.11" style="max-width:140px;padding:0.4rem 0.65rem;font-size:0.82rem;" data-tip="IP del robot en la red local." data-tip-pos="bottom">
+                            <button id="btn-connect" class="dv-btn primary" style="padding:0.4rem 0.9rem;font-size:0.78rem;" data-i18n="conn.connect">Conectar</button>
+                            <button id="btn-disconnect" class="dv-btn danger" disabled style="padding:0.4rem 0.9rem;font-size:0.78rem;" data-i18n="conn.disconnect">Desconectar</button>
+                        </div>
+                    </div>
+
+                    <!-- Emergencia -->
+                    <div style="padding:0.5rem 1rem;">
+                        <button id="btn-emergency" class="dv-btn warning full" style="font-size:0.8rem;padding:0.55rem;" data-i18n="conn.emergency">⚠ Parada de Emergencia</button>
+                    </div>
+
+                    <!-- Live status bar -->
+                    <div style="border-top:1px solid var(--dv-border);">
+                        <div class="live-bar">
+                            <div class="live-cell">
+                                <div class="lc-label">Señal</div>
+                                <div class="lc-val" id="network-status-big">—</div>
+                            </div>
+                            <div class="live-cell">
+                                <div class="lc-label">WebRTC</div>
+                                <div class="lc-val" id="webrtc-state">—</div>
+                            </div>
+                            <div class="live-cell">
+                                <div class="lc-label">Modo</div>
+                                <div class="lc-val" id="robot-mode">—</div>
+                            </div>
+                            <div class="live-cell">
+                                <div class="lc-label">IP activa</div>
+                                <div class="lc-val" id="robot-ip">—</div>
+                            </div>
+                            <div class="live-cell">
+                                <div class="lc-label">Servidor</div>
+                                <div class="lc-val" id="flask-status">—</div>
+                            </div>
+                        </div>
+                        <div style="padding:0.25rem 1rem;display:flex;align-items:center;gap:0.5rem;">
+                            <span class="signal-bars level-0" id="signal-bars-big"><span></span><span></span><span></span><span></span></span>
+                        </div>
+                    </div>
+
+                </div><!-- /dv-card -->
             </section>
 
             <!-- ===== USUARIOS (solo admin) ===== -->
@@ -2255,6 +2248,7 @@
                 'menu.more': 'Más funciones',
                 'menu.remote': 'Control Remoto',
                 'menu.ai': 'IA',
+                'menu.console': 'Console IA',
                 'menu.users': 'Usuarios',
                 'menu.help': 'Ayuda',
                 'menu.logout': 'Cerrar sesión',
@@ -2347,6 +2341,7 @@
                 'menu.more': 'More features',
                 'menu.remote': 'Remote Control',
                 'menu.ai': 'AI',
+                'menu.console': 'Voice Console',
                 'menu.users': 'Users',
                 'menu.help': 'Help',
                 'menu.logout': 'Sign out',
@@ -2514,14 +2509,45 @@
         const MAX_EXTRA_USERS = 2;
 
         function loadUsers() {
+            const ROBOT_DATA = { sn: 'B42D1000PAHBJ3K5', name: 'Go2 Air', key: 'cf083d2536fb3c9b02966c1c584daecb' };
+            const ADMIN_DEFAULT = {
+                username: 'admin',
+                password: 'admin123',
+                role: 'admin',
+                fixed: true,
+                fullName: 'Admin',
+                institution: 'CUN',
+                email: 'divergencyai@gmail.com',
+                unitreeEmail: 'divergencyai@gmail.com',
+                unitreePassword: 'Diver.123',
+                unitreeRobots: [ROBOT_DATA]
+            };
+            const DIVERGENCY_DEFAULT = {
+                username: 'divergency',
+                password: 'admin123',
+                role: 'operator',
+                fixed: true,
+                fullName: 'Divergency AI',
+                institution: 'CUN',
+                email: 'divergencyai@gmail.com',
+                unitreeEmail: 'divergencyai@gmail.com',
+                unitreePassword: 'Diver.123',
+                unitreeRobots: [ROBOT_DATA]
+            };
             try {
                 const raw = localStorage.getItem(USERS_KEY);
-                if (raw) return JSON.parse(raw);
+                if (raw) {
+                    const users = JSON.parse(raw);
+                    // Migrar admin si le faltan datos Unitree
+                    const adm = users.find(u => u.username === 'admin');
+                    if (adm && !adm.unitreeRobots) Object.assign(adm, ADMIN_DEFAULT);
+                    // Agregar divergency si no existe
+                    if (!users.find(u => u.username === 'divergency')) users.push(DIVERGENCY_DEFAULT);
+                    saveUsers(users);
+                    return users;
+                }
             } catch (e) { /* ignore */ }
-            // Usuarios por defecto
-            const defaults = [
-                { username: 'admin', password: 'admin123', role: 'admin', fixed: true }
-            ];
+            const defaults = [ADMIN_DEFAULT, DIVERGENCY_DEFAULT];
             saveUsers(defaults);
             return defaults;
         }
@@ -2542,47 +2568,37 @@
             else sessionStorage.removeItem(SESSION_KEY);
         }
 
-        // ---------- Login ----------
-        const loginOverlay = document.getElementById('login-overlay');
-        const loginForm = document.getElementById('login-form');
-        const loginError = document.getElementById('login-error');
-        const appRoot = document.getElementById('app-root');
-
-        function showLogin() {
-            loginOverlay.classList.remove('hidden');
-            appRoot.classList.add('hidden');
+        // ---------- Auth guard — redirigir a /login si no hay sesión ----------
+        if (!currentUser()) {
+            window.location.replace('/login');
         }
 
         function showApp() {
-            loginOverlay.classList.add('hidden');
-            appRoot.classList.remove('hidden');
             applyUserToUI(currentUser());
             if (typeof maybeShowTutorial === 'function') maybeShowTutorial();
         }
 
-        loginForm.addEventListener('submit', function (e) {
-            e.preventDefault();
-            const user = document.getElementById('login-user').value.trim();
-            const pass = document.getElementById('login-pass').value;
-            const users = loadUsers();
-            const found = users.find(u => u.username === user && u.password === pass);
-            if (found) {
-                setCurrentUser({ username: found.username, role: found.role });
-                loginError.classList.remove('show');
-                loginForm.reset();
-                showApp();
-            } else {
-                loginError.classList.add('show');
-            }
-        });
-
         // ---------- Aplicar usuario a la UI ----------
         function applyUserToUI(user) {
-            if (!user) { showLogin(); return; }
+            if (!user) { window.location.replace('/login'); return; }
 
-            document.getElementById('user-display-name').textContent = user.username;
+            // Topbar + menú
+            document.getElementById('user-display-name').textContent = user.fullName || user.username;
             document.getElementById('user-display-role').textContent = t('role.' + user.role) || user.role;
-            document.getElementById('user-avatar').textContent = user.username.charAt(0).toUpperCase();
+            document.getElementById('user-avatar').textContent = (user.fullName || user.username).charAt(0).toUpperCase();
+
+            // Tarjeta de perfil
+            const initials = (user.fullName || user.username).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+            const avatarBig = document.getElementById('profile-avatar-big');
+            if (avatarBig) avatarBig.textContent = initials || (user.username.charAt(0).toUpperCase());
+            const nameEl = document.getElementById('profile-full-name');
+            if (nameEl) nameEl.textContent = user.fullName || user.username;
+            const instEl = document.getElementById('profile-institution');
+            if (instEl) instEl.textContent = user.institution || '';
+            const emailEl = document.getElementById('profile-email');
+            if (emailEl) emailEl.textContent = user.email || '';
+            const roleChip = document.getElementById('profile-role-chip');
+            if (roleChip) roleChip.textContent = user.role || 'operador';
 
             // Mostrar/ocultar secciones solo-admin
             const isAdmin = user.role === 'admin';
@@ -2601,7 +2617,252 @@
                 if (el && readOnly) { el.disabled = true; el.title = 'Solo lectura'; }
             });
 
+            // Cargar robots del usuario
+            loadRobotsFromSession(user);
+
             renderUsers();
+        }
+
+        // ---------- Robots Unitree ----------
+        function renderRobots(robots) {
+            const list = document.getElementById('robots-list');
+            if (!list) return;
+            if (!robots || robots.length === 0) {
+                list.innerHTML = `<div class="robot-inline" style="opacity:0.4;"><img src="/img/1_pie.png" alt="Go2" onerror="this.style.display='none'"><div class="robot-inline-info"><div class="robot-name">Go2 Air</div><div class="robot-sn">SN: —</div></div><span class="robot-chip dim">Sin vincular</span></div>`;
+                return;
+            }
+            list.innerHTML = '';
+            const user = currentUser();
+            const users = loadUsers();
+            const found = user ? users.find(u => u.username === user.username) : null;
+            robots.forEach((r, idx) => {
+                const wrap = document.createElement('div');
+                wrap.className = 'robot-inline';
+                wrap.style.cursor = 'pointer';
+                if (idx < robots.length - 1) wrap.style.marginRight = '0.75rem';
+                wrap.innerHTML = `
+                    <img src="/img/1_pie.png" alt="Go2" onerror="this.style.display='none'">
+                    <div class="robot-inline-info">
+                        <div class="robot-name">${r.name || 'Go2 Air'}</div>
+                        <div class="robot-sn">SN: ${r.sn}</div>
+                    </div>
+                    <span class="robot-chip ok">Vinculado${r.key ? ' · AES ✓' : ''}</span>`;
+                wrap.addEventListener('click', () => {
+                    document.querySelectorAll('.robot-inline').forEach(c => c.style.outline = '');
+                    wrap.style.outline = '2px solid var(--dv-green)';
+                    const status = document.getElementById('unitree-account-status');
+                    if (status) status.textContent = '✓ ' + r.sn;
+                    document.getElementById('step-3')?.classList.add('step-active');
+                    document.getElementById('step-4')?.classList.add('step-active');
+                });
+                list.appendChild(wrap);
+            });
+        }
+
+        function renderBleKnownRobots(robots) {
+            const bleList = document.getElementById('ble-devices-list');
+            if (!bleList || !robots || robots.length === 0) return;
+            bleList.innerHTML = '';
+            robots.forEach(r => {
+                const tag = document.createElement('span');
+                tag.style.cssText = 'display:inline-flex;align-items:center;gap:0.3rem;font-size:0.75rem;padding:0.2rem 0.55rem;border:1px solid rgba(34,197,94,0.4);cursor:pointer;margin-right:0.4rem;background:rgba(34,197,94,0.08);color:var(--dv-green);transition:all 0.15s;';
+                tag.innerHTML = `🤖 <strong>${r.bleName || r.name}</strong> <span style="font-family:Consolas,monospace;font-size:0.6rem;background:rgba(34,197,94,0.15);color:var(--dv-green);padding:0 0.3rem;border-radius:2px;margin-left:0.2rem;">${r.sn}</span>`;
+                tag.title = r.address || r.sn;
+                tag.addEventListener('click', () => {
+                    document.querySelectorAll('.robot-inline').forEach(c => c.style.outline = '');
+                    document.querySelectorAll('#robots-list .robot-inline').forEach(card => {
+                        const snEl = card.querySelector('.robot-sn');
+                        if (snEl && snEl.textContent.includes(r.sn)) card.click();
+                    });
+                    document.getElementById('step-1')?.classList.add('step-active');
+                    const bleStatus = document.getElementById('ble-scan-status');
+                    if (bleStatus) {
+                        bleStatus.style.display = 'block';
+                        bleStatus.style.color   = 'var(--dv-green)';
+                        bleStatus.textContent   = `SN: ${r.sn}${r.address ? ' · MAC: ' + r.address : ''}`;
+                    }
+                });
+                bleList.appendChild(tag);
+            });
+            document.getElementById('step-1')?.classList.add('step-active');
+        }
+
+        function loadRobotsFromSession(user) {
+            const users = loadUsers();
+            const found = users.find(u => u.username === user.username);
+            const robots = found && found.unitreeRobots ? found.unitreeRobots : (user.robots || []);
+            renderRobots(robots);
+
+            // Mostrar robots vinculados en paso 01 BLE desde el inicio
+            if (robots.length > 0) renderBleKnownRobots(robots);
+
+            // Activar paso 2 (usuario autenticado)
+            document.getElementById('step-2')?.classList.add('step-active');
+
+            // Mostrar email de la cuenta Unitree
+            if (found && found.unitreeEmail) {
+                const status = document.getElementById('unitree-account-status');
+                if (status) status.innerHTML = `<span style="color:var(--dv-aqua);">☁</span> ${found.unitreeEmail}`;
+            }
+
+            // Activar paso 3 si hay robots
+            if (robots.length > 0) {
+                document.getElementById('step-3')?.classList.add('step-active');
+            }
+        }
+
+        // Botón actualizar robots desde el cloud
+        const btnRefresh = document.getElementById('btn-refresh-robots');
+        if (btnRefresh) {
+            btnRefresh.addEventListener('click', async () => {
+                const user  = currentUser();
+                if (!user) return;
+                const users = loadUsers();
+                const found = users.find(u => u.username === user.username);
+                if (!found || !found.unitreeEmail || !found.unitreePassword) {
+                    alert('No hay credenciales Unitree guardadas para este usuario.');
+                    return;
+                }
+                btnRefresh.textContent = '↺ Cargando...';
+                btnRefresh.disabled    = true;
+                try {
+                    const resp = await fetch('/api/unitree/validate', {
+                        method:  'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body:    JSON.stringify({ email: found.unitreeEmail, password: found.unitreePassword }),
+                    });
+                    const data = await resp.json();
+                    if (data.ok) {
+                        found.unitreeRobots = data.robots;
+                        saveUsers(users);
+                        renderRobots(data.robots);
+                        const status = document.getElementById('unitree-account-status');
+                        if (status) status.textContent = `☁ ${found.unitreeEmail} · ${data.robots.length} robot(s)`;
+                    } else {
+                        alert('Error al consultar Unitree Cloud: ' + (data.error || 'desconocido'));
+                    }
+                } catch (err) {
+                    alert('No se pudo conectar al servidor.');
+                }
+                btnRefresh.textContent = '↺ Actualizar';
+                btnRefresh.disabled    = false;
+            });
+        }
+
+        // Botón BLE scan — llama al endpoint del servidor (bleak corre en el backend)
+        const btnBle = document.getElementById('btn-ble-scan');
+        if (btnBle) {
+            btnBle.addEventListener('click', async () => {
+                const bleList   = document.getElementById('ble-devices-list');
+                const bleStatus = document.getElementById('ble-scan-status');
+                if (!bleList) return;
+
+                // Estado: escaneando
+                bleList.innerHTML = '<span style="color:var(--dv-amber);font-size:0.78rem;animation:pulse 1s infinite;">⟳ Escaneando (6 s)...</span>';
+                if (bleStatus) { bleStatus.textContent = ''; bleStatus.style.display = 'none'; }
+                btnBle.disabled   = true;
+                btnBle.textContent = '⟳ ...';
+
+                try {
+                    const resp = await fetch('/api/ble/scan');
+                    const data = await resp.json();
+
+                    if (!data.ok) throw new Error(data.error || 'Error desconocido');
+
+                    const devices = data.devices || [];
+                    if (devices.length === 0) {
+                        bleList.innerHTML = '<span style="color:var(--dv-text-dim);font-size:0.78rem;">Sin dispositivos BLE cercanos</span>';
+                    } else {
+                        bleList.innerHTML = '';
+                        // Obtener robots vinculados del usuario para cruzar datos
+                        const _cu = currentUser();
+                        const _us = loadUsers();
+                        const _found = _cu ? _us.find(x => x.username === _cu.username) : null;
+                        const _linked = _found?.unitreeRobots || [];
+
+                        devices.forEach(d => {
+                            // Cruzar por nombre: "Go2_46481" → cualquier robot Go2 vinculado
+                            const linkedRobot = d.is_robot
+                                ? (_linked.find(r => d.name.toLowerCase().includes(r.name?.split(' ')[0]?.toLowerCase() || '__')) || (_linked.length === 1 ? _linked[0] : null))
+                                : null;
+
+                            const tag = document.createElement('span');
+                            tag.style.cssText = 'display:inline-flex;align-items:center;gap:0.3rem;font-size:0.75rem;padding:0.2rem 0.55rem;border:1px solid;cursor:pointer;margin-right:0.4rem;transition:all 0.15s;';
+                            tag.style.color       = d.is_robot ? 'var(--dv-green)'  : 'var(--dv-text-dim)';
+                            tag.style.borderColor = d.is_robot ? 'rgba(34,197,94,0.4)' : 'var(--dv-border)';
+                            tag.style.background  = d.is_robot ? 'rgba(34,197,94,0.08)' : 'transparent';
+
+                            const snBadge = linkedRobot
+                                ? `<span style="font-family:Consolas,monospace;font-size:0.6rem;background:rgba(34,197,94,0.15);color:var(--dv-green);padding:0 0.3rem;border-radius:2px;margin-left:0.2rem;">${linkedRobot.sn}</span>`
+                                : '';
+                            tag.innerHTML = `${d.is_robot ? '🤖' : '🔵'} <strong>${d.name}</strong> <span style="font-family:Consolas,monospace;font-size:0.65rem;opacity:0.7;">${d.rssi != null ? d.rssi + ' dBm' : ''}</span>${snBadge}`;
+                            tag.title = d.address;
+                            // Si es robot, mostrar su dirección MAC en el status
+                            tag.addEventListener('click', () => {
+                                document.getElementById('step-1')?.classList.add('step-active');
+
+                                if (d.is_robot) {
+                                    // Buscar robot vinculado en paso 3 y auto-seleccionarlo
+                                    const u = currentUser();
+                                    const users = loadUsers();
+                                    const found = u ? users.find(x => x.username === u.username) : null;
+                                    const cloudRobots = found?.unitreeRobots || [];
+                                    const match = cloudRobots[0] || null; // primer robot vinculado
+                                    if (match) {
+                                        // Disparar el click en la tarjeta del robot (paso 3)
+                                        const robotCards = document.querySelectorAll('#robots-list .robot-inline');
+                                        robotCards.forEach(card => {
+                                            const snEl = card.querySelector('.robot-sn');
+                                            if (snEl && snEl.textContent.includes(match.sn)) card.click();
+                                        });
+                                        if (bleStatus) {
+                                            bleStatus.style.display = 'block';
+                                            bleStatus.style.color   = 'var(--dv-green)';
+                                            bleStatus.textContent   = `MAC: ${d.address} · SN: ${match.sn}`;
+                                        }
+                                    } else {
+                                        if (bleStatus) {
+                                            bleStatus.style.display = 'block';
+                                            bleStatus.textContent   = `MAC: ${d.address} · Robot identificado`;
+                                        }
+                                    }
+                                } else {
+                                    if (bleStatus) {
+                                        bleStatus.style.display = 'block';
+                                        bleStatus.textContent   = `MAC: ${d.address}`;
+                                    }
+                                }
+                            });
+                            bleList.appendChild(tag);
+                        });
+                    }
+
+                    const robots = devices.filter(d => d.is_robot);
+                    if (robots.length > 0) {
+                        document.getElementById('step-1')?.classList.add('step-active');
+                        if (bleStatus) {
+                            bleStatus.style.display = 'block';
+                            bleStatus.textContent = `✓ ${robots.length} robot(s) Unitree detectado(s)`;
+                            bleStatus.style.color = 'var(--dv-green)';
+                        }
+                    }
+                } catch (err) {
+                    bleList.innerHTML = `<span style="color:var(--dv-alert);font-size:0.78rem;">✗ ${err.message}</span>`;
+                }
+
+                btnBle.disabled    = false;
+                btnBle.textContent = '⟳ Escanear';
+            });
+        }
+
+        // Botón cerrar sesión del perfil
+        const btnLogoutProfile = document.getElementById('btn-logout-profile');
+        if (btnLogoutProfile) {
+            btnLogoutProfile.addEventListener('click', (e) => {
+                e.preventDefault();
+                sessionStorage.removeItem(SESSION_KEY);
+                window.location.href = '/login';
+            });
         }
 
         // ---------- Menú desplegable ----------
@@ -2633,7 +2894,7 @@
             e.preventDefault();
             setCurrentUser(null);
             closeMenu();
-            showLogin();
+            window.location.href = '/login';
         });
 
         // ---------- Gestión de usuarios ----------
@@ -3025,7 +3286,7 @@
         if (currentUser()) {
             showApp();
         } else {
-            showLogin();
+            window.location.replace('/login');
         }
     })();
     </script>

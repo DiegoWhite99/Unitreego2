@@ -89,6 +89,13 @@ const AutoRoute = {
         timeoutId: null,
     },
 
+    // Acumulador de heat en tiempo real (lidar_points en vivo)
+    _liveHeat: new Map(),
+    _liveHeatTs: new Map(),
+    _liveHeatStartTs: 0,
+    _liveHeatFlushEvery: 15,   // flush al route.heat cada N eventos
+    _liveHeatCounter: 0,
+
     perf: {
         orbitHeatMinIntervalMs: 80,
         lastOrbitHeatBuildTs: 0,
@@ -182,6 +189,10 @@ const AutoRoute = {
             btnScan360:   document.getElementById('ar-scan-360'),
             btnSim:       document.getElementById('ar-sim'),
             btnYolo:      document.getElementById('ar-yolo-toggle'),
+            btnMic:       document.getElementById('ar-mic'),
+            voiceToast:   document.getElementById('ar-voice-toast'),
+            voiceText:    document.getElementById('ar-voice-text'),
+            voiceStatus:  document.getElementById('ar-voice-status'),
             btnEdit:      document.getElementById('ar-edit-toggle'),
             btnBlank:     document.getElementById('ar-edit-blank'),
             btnUndo:      document.getElementById('ar-edit-undo'),
@@ -536,6 +547,10 @@ const AutoRoute = {
                     this.poseTrail.shift();
                 }
             }
+
+            // ── Heat en tiempo real ──────────────────────────────────
+            if (d.xyz || d.xy) this._accumulateLiveHeat(d);
+
             // Solo redibujar si la pose cambió de forma visible o se añadió
             // un punto nuevo al trail. Robot quieto = sin redraw = CPU libre.
             if (newPoint
@@ -622,6 +637,7 @@ const AutoRoute = {
         this.el.btnScan360?.addEventListener('click', () => this.toggleScan360());
         this.el.btnSim?.addEventListener('click', () => this.toggleSim());
         this.el.btnYolo.addEventListener('click', () => this.toggleYolo());
+        this.initMic();
         this.el.hintClose?.addEventListener('click', () => {
             this.el.mapHint?.classList.add('is-hidden');
         });
@@ -726,6 +742,186 @@ const AutoRoute = {
     async stopRoute() {
         await this.api('/api/autoroute/stop', 'POST');
         this.setRun(false);
+    },
+
+    // ── Live heat accumulation ──────────────────────────────────────
+    _accumulateLiveHeat(d) {
+        const cell  = (this.route && this.route.heatCellSize)  || 0.08;
+        const cellZ = (this.route && this.route.heatCellSizeZ) || 0.12;
+        const heat  = this._liveHeat;
+        const heatTs = this._liveHeatTs;
+        const now   = Date.now();
+        if (!this._liveHeatStartTs) this._liveHeatStartTs = now;
+
+        const xyz = Array.isArray(d.xyz) ? d.xyz : null;
+        if (xyz) {
+            for (let i = 0; i + 2 < xyz.length; i += 3) {
+                const ix = Math.round(xyz[i]     / cell);
+                const iy = Math.round(xyz[i + 1] / cell);
+                const iz = Math.round(xyz[i + 2] / cellZ);
+                const k  = `${ix},${iy},${iz}`;
+                heat.set(k, Math.min(255, (heat.get(k) || 0) + 1));
+                heatTs.set(k, now);
+            }
+        } else if (Array.isArray(d.xy)) {
+            const xy = d.xy;
+            for (let i = 0; i + 1 < xy.length; i += 2) {
+                const ix = Math.round(xy[i]     / cell);
+                const iy = Math.round(xy[i + 1] / cell);
+                const k  = `${ix},${iy},0`;
+                heat.set(k, Math.min(255, (heat.get(k) || 0) + 1));
+                heatTs.set(k, now);
+            }
+        }
+
+        this._liveHeatCounter++;
+        if (this._liveHeatCounter >= this._liveHeatFlushEvery) {
+            this._liveHeatCounter = 0;
+            this._flushLiveHeat();
+        }
+    },
+
+    _flushLiveHeat() {
+        if (!this.route) return;
+        if (this._liveHeat.size === 0) return;
+        const now  = Date.now();
+        const span = Math.max(1, now - (this._liveHeatStartTs || now));
+        const newEntries = [];
+        for (const [k, v] of this._liveHeat) {
+            if (v < 2) continue;
+            const parts = k.split(',').map(Number);
+            const ts  = this._liveHeatTs.get(k) || now;
+            const age = Math.max(0, Math.min(1, 1 - (now - ts) / span));
+            newEntries.push([parts[0], parts[1], parts[2] || 0, v, age]);
+        }
+        if (!newEntries.length) return;
+
+        // Merge con heat existente por coordenada
+        const existing = new Map();
+        for (const h of this.route.heat) {
+            if (Array.isArray(h) && h.length >= 4) existing.set(`${h[0]},${h[1]},${h[2]}`, h);
+        }
+        for (const e of newEntries) {
+            const k = `${e[0]},${e[1]},${e[2]}`;
+            const old = existing.get(k);
+            if (old) { old[3] = Math.min(255, old[3] + e[3]); old[4] = e[4]; }
+            else existing.set(k, e);
+        }
+        this.route.heat = Array.from(existing.values());
+        this.invalidateHeatModel();
+        this.invalidateWorldBounds();
+        this.markDirty();
+    },
+
+    // ── Mic — instrucción por voz al agente IA ─────────────────────
+    initMic() {
+        const btn = this.el.btnMic;
+        if (!btn) return;
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) {
+            btn.title = 'Tu navegador no soporta reconocimiento de voz';
+            btn.disabled = true;
+            return;
+        }
+        const rec = new SR();
+        rec.lang = 'es-ES';
+        rec.interimResults = false;
+        rec.maxAlternatives = 1;
+
+        let listening = false;
+
+        const showToast = (text, status) => {
+            const t = this.el.voiceToast, vt = this.el.voiceText, vs = this.el.voiceStatus;
+            if (!t) return;
+            if (vt) vt.textContent = text;
+            if (vs) vs.textContent = status || '';
+            t.style.display = 'block';
+        };
+
+        rec.onstart = () => {
+            listening = true;
+            btn.textContent = '⏹ Escuchando…';
+            btn.style.borderColor = '#f75f5f';
+            showToast('🎤 Escuchando...', '');
+        };
+        rec.onend = () => {
+            listening = false;
+            btn.textContent = '🎤 Instrucción';
+            btn.style.borderColor = '';
+        };
+        rec.onerror = (e) => {
+            showToast('⚠ Error de micrófono: ' + e.error, '');
+        };
+        // Selección de voz masculina Google en español
+        const _pickVoice = () => {
+            const voices = window.speechSynthesis.getVoices();
+            const pref = [
+                v => v.name.toLowerCase().includes('google') && /es/i.test(v.lang) && v.name.toLowerCase().includes('male'),
+                v => v.name.toLowerCase().includes('google') && /es/i.test(v.lang),
+                v => /es/i.test(v.lang) && v.name.toLowerCase().includes('male'),
+                v => /es/i.test(v.lang),
+            ];
+            for (const fn of pref) { const v = voices.find(fn); if (v) return v; }
+            return null;
+        };
+        // Precarga de voces (Chrome las carga async)
+        if (window.speechSynthesis.onvoiceschanged !== undefined)
+            window.speechSynthesis.onvoiceschanged = () => {};
+
+        const _speak = (text) => {
+            if (!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang  = 'es-ES';
+            u.rate  = 0.95;
+            u.pitch = 0.8;   // tono más grave = más robótico/masculino
+            const v = _pickVoice();
+            if (v) u.voice = v;
+            window.speechSynthesis.speak(u);
+        };
+
+        rec.onresult = async (e) => {
+            const transcript = e.results[0][0].transcript.trim();
+            if (!transcript) return;
+            showToast(`💬 "${transcript}"`, '⟳ Analizando mapa...');
+
+            // Capturar canvas del mapa como imagen JPEG
+            let image_b64 = null;
+            try {
+                const canvas = document.getElementById('ar-route-canvas');
+                if (canvas) image_b64 = canvas.toDataURL('image/jpeg', 0.75);
+            } catch (_) { /* canvas puede estar vacío */ }
+
+            // Contexto textual del mapa
+            const wp  = this.route ? this.route.points.length : 0;
+            const hSz = this.route ? this.route.heat.length   : 0;
+            const px  = this.pose  ? this.pose.x.toFixed(2)   : '?';
+            const py  = this.pose  ? this.pose.y.toFixed(2)   : '?';
+            const ctx = `Eres el sistema de navegación del robot Go2. Analiza la imagen del mapa de calor adjunto. `
+                      + `Datos: ${hSz} voxels escaneados, ${wp} waypoints planificados, robot en (${px}, ${py}). `
+                      + `Instrucción del operador: "${transcript}". `
+                      + `Responde en 1-2 frases concisas sobre lo que ves en el mapa y qué harás.`;
+
+            try {
+                const body = { message: ctx, history: [] };
+                if (image_b64) body.image_b64 = image_b64;
+                const res = await fetch('/api/agente/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                }).then(r => r.json());
+                const reply = res?.reply || '🐾';
+                showToast(`💬 "${transcript}"\n\n🤖 ${reply}`, '');
+                _speak(reply);
+            } catch (err) {
+                showToast(`💬 "${transcript}"`, '⚠ Sin conexión con el agente');
+            }
+        };
+
+        btn.addEventListener('click', () => {
+            if (listening) { rec.stop(); return; }
+            try { rec.start(); } catch (_) { rec.stop(); setTimeout(() => rec.start(), 300); }
+        });
     },
 
     async toggleScan360() {

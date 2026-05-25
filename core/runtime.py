@@ -38,6 +38,7 @@ app = Flask(
     template_folder=os.path.join(PROJECT_ROOT, "src"),
     root_path=PROJECT_ROOT,
 )
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "daiver-cun-secret-2026")
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 

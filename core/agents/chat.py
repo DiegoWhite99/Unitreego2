@@ -120,7 +120,7 @@ def health() -> dict[str, Any]:
 # ────────────────────────────────────────────────────────────────────
 # Chat handler — devuelve el dict que el endpoint serializa
 # ────────────────────────────────────────────────────────────────────
-def chat(user_msg: str, history: list[dict]) -> dict[str, Any]:
+def chat(user_msg: str, history: list[dict], map_image_jpg: bytes | None = None) -> dict[str, Any]:
     use_openai = is_openai_model(GEMINI_MODEL)
 
     # Validaciones segun proveedor.
@@ -156,20 +156,27 @@ def chat(user_msg: str, history: list[dict]) -> dict[str, Any]:
         pass
     print(f"[AGENTE] historial turnos: {len(history)}")
 
-    # Visión multimodal: frame actual de YOLO si esta corriendo.
+    # Visión multimodal: imagen del mapa (canvas) si viene del frontend,
+    # si no, frame actual de YOLO.
     camera_image_part = None
-    camera_image_jpg: bytes | None = None
-    try:
-        if yolo_detector.is_running():
-            jpg = yolo_detector.get_current_frame_jpeg()
-            if jpg:
-                camera_image_jpg = jpg
-                camera_image_part = {
-                    "inline_data": {"mime_type": "image/jpeg", "data": jpg}
-                }
-    except Exception:
-        camera_image_part = None
-        camera_image_jpg = None
+    camera_image_jpg: bytes | None = map_image_jpg or None
+    if camera_image_jpg:
+        camera_image_part = {
+            "inline_data": {"mime_type": "image/jpeg", "data": camera_image_jpg}
+        }
+        print(f"[AGENTE] imagen del mapa recibida ({len(camera_image_jpg)} bytes)")
+    else:
+        try:
+            if yolo_detector.is_running():
+                jpg = yolo_detector.get_current_frame_jpeg()
+                if jpg:
+                    camera_image_jpg = jpg
+                    camera_image_part = {
+                        "inline_data": {"mime_type": "image/jpeg", "data": jpg}
+                    }
+        except Exception:
+            camera_image_part = None
+            camera_image_jpg = None
 
     # Pre-trigger de vision para preguntas obvias.
     auto_executed_pre: list[dict] = []

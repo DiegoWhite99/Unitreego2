@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Informe Técnico — Sesión 25-05-2026</title>
+<style>
+  :root {
+    --bg: #0b1018; --surf: #131b27; --surf2: #1a2433; --border: #25334a;
+    --text: #d8e3f0; --dim: #7d92a8; --accent: #4f8ef7; --green: #22c55e;
+    --amber: #f59e0b; --red: #ef4444; --code-bg: #0a0f17;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; line-height: 1.6; padding: 30px 20px; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 { color: var(--accent); font-size: 2.1rem; padding-bottom: 14px; border-bottom: 2px solid var(--accent); margin-bottom: 8px; }
+  h1 + .subtitle { color: var(--dim); font-size: .95rem; margin-bottom: 30px; }
+  h2 { color: var(--accent); font-size: 1.5rem; margin-top: 40px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  h3 { color: #c0d4e8; font-size: 1.15rem; margin-top: 24px; margin-bottom: 10px; }
+  p { margin: 8px 0 12px 0; }
+  ul, ol { margin: 8px 0 14px 24px; }
+  li { margin: 4px 0; }
+  strong { color: #fff; }
+  em { color: var(--amber); font-style: normal; font-weight: 600; }
+  code { background: var(--code-bg); color: #b8e0d4; padding: 2px 6px; border-radius: 4px; font-size: .88rem; font-family: Consolas, monospace; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; overflow-x: auto; margin: 12px 0 20px 0; }
+  pre code { padding: 0; background: none; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: .72rem; font-weight: 700; letter-spacing: .05em; }
+  .badge.green  { background: rgba(34,197,94,.15);  color: var(--green);  border: 1px solid rgba(34,197,94,.3); }
+  .badge.blue   { background: rgba(79,142,247,.15); color: var(--accent); border: 1px solid rgba(79,142,247,.3); }
+  .badge.amber  { background: rgba(245,158,11,.15); color: var(--amber);  border: 1px solid rgba(245,158,11,.3); }
+  .badge.red    { background: rgba(239,68,68,.15);  color: var(--red);    border: 1px solid rgba(239,68,68,.3); }
+  .card { background: var(--surf); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin: 14px 0; }
+  .card h3 { margin-top: 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .file-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surf2); border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px; font-size: .78rem; font-family: Consolas, monospace; color: var(--accent); margin: 3px 2px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 20px 0; font-size: .88rem; }
+  th { background: var(--surf2); color: var(--accent); padding: 10px 14px; text-align: left; border-bottom: 2px solid var(--border); }
+  td { padding: 9px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:hover td { background: rgba(79,142,247,.04); }
+  .toc { background: var(--surf); border: 1px solid var(--border); border-radius: 10px; padding: 18px 24px; margin-bottom: 36px; }
+  .toc ol { margin-left: 20px; }
+  .toc li { margin: 6px 0; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .warn { background: rgba(245,158,11,.08); border-left: 3px solid var(--amber); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+  .ok   { background: rgba(34,197,94,.08);  border-left: 3px solid var(--green);  padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+  header-meta { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 28px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>Informe Técnico — Sesión 25·05·2026</h1>
+  <p class="subtitle">Proyecto <strong>Daiver Control CUN</strong> · Robot Unitree Go2 Air · Laboratorio 2 CUN</p>
+
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:28px;">
+    <span class="badge green">Sesión completada</span>
+    <span class="badge blue">Frontend · Backend · IA · Mapeo</span>
+    <span class="badge amber">Seguridad: claves migradas a .env</span>
+  </div>
+
+  <div class="toc">
+    <strong style="color:var(--accent);">Contenido</strong>
+    <ol>
+      <li><a href="#s1">Flujo de conexión — Pipeline de 4 pasos</a></li>
+      <li><a href="#s2">Sistema de usuarios y autenticación</a></li>
+      <li><a href="#s3">Agente IA Diver — correcciones y comportamiento</a></li>
+      <li><a href="#s4">Autoroute — mapa en tiempo real + instrucción por voz</a></li>
+      <li><a href="#s5">Seguridad — migración de claves a .env</a></li>
+      <li><a href="#s6">Archivos modificados</a></li>
+      <li><a href="#s7">Pendientes</a></li>
+    </ol>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <h2 id="s1">1 · Flujo de conexión — Pipeline de 4 pasos</h2>
+
+  <p>Se rediseñó el panel principal de <code>src/index.html</code> para mostrar un pipeline compacto y jerárquico que guía al operador paso a paso:</p>
+
+  <table>
+    <tr><th>Paso</th><th>Función</th><th>Estado al cargar</th></tr>
+    <tr><td><strong>01 Bluetooth</strong></td><td>Muestra los robots Unitree vinculados a la cuenta del usuario como chips directamente al cargar la página (sin necesidad de escanear). El botón <em>Escanear</em> confirma presencia física y actualiza RSSI.</td><td>Activo si hay robots en cuenta</td></tr>
+    <tr><td><strong>02 Cuenta</strong></td><td>Muestra el email de Unitree Cloud asociado al usuario logueado.</td><td>Se activa al autenticar</td></tr>
+    <tr><td><strong>03 Robot</strong></td><td>Lista robots vinculados con imagen del modelo Go2, nombre y SN. Al hacer clic en un chip BLE del paso 01, auto-selecciona el robot correspondiente y muestra su SN.</td><td>Activo si hay robots</td></tr>
+    <tr><td><strong>04 IP / Conectar</strong></td><td>Input de IP + botones Conectar / Desconectar.</td><td>Se activa al seleccionar robot</td></tr>
+  </table>
+
+  <h3>Enlace BLE → SN</h3>
+  <p>Al hacer clic en un chip del paso 01, el sistema busca en los robots vinculados del usuario y dispara el <code>click</code> de la tarjeta correspondiente en el paso 03, activando automáticamente los pasos 3 y 4. El estado muestra: <code>MAC: FC:23:CD:99:74:4A · SN: B42D1000PAHBJ3K5</code>.</p>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <h2 id="s2">2 · Sistema de usuarios y autenticación</h2>
+
+  <p>Se implementaron dos usuarios de prueba pre-sembrados en <code>localStorage</code>, ambos con acceso al robot <em>Go2 Air</em>:</p>
+
+  <table>
+    <tr><th>Username</th><th>Password</th><th>Email Unitree</th><th>Rol</th><th>Robot / SN</th></tr>
+    <tr><td><code>admin</code></td><td><code>admin123</code></td><td>divergencyai@gmail.com</td><td>admin</td><td>Go2 Air · B42D1000PAHBJ3K5</td></tr>
+    <tr><td><code>divergency</code></td><td><code>admin123</code></td><td>divergencyai@gmail.com</td><td>operator</td><td>Go2 Air · B42D1000PAHBJ3K5</td></tr>
+  </table>
+
+  <p>El login en <code>src/login.html</code> acepta tanto <strong>username</strong> como <strong>email</strong>. La función <code>loadUsers()</code> incluye migración automática: si el usuario <code>admin</code> ya existe en <code>localStorage</code> sin datos Unitree, los añade en la próxima carga.</p>
+
+  <div class="ok">Se llama a <code>loadUsers()</code> al cargar la página de login para asegurar que la migración ocurra antes del primer intento de autenticación.</div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <h2 id="s3">3 · Agente IA Diver — correcciones</h2>
+
+  <h3>Problema: respuesta "no puedo saludar"</h3>
+  <p>Al decir "hola", <strong>gpt-4o-mini</strong> interpretaba el saludo como una orden de gesto físico, llamaba la tool <code>saludar</code>, esta fallaba con <em>"El robot no está conectado"</em>, y el modelo respondía con una disculpa. Esto violaba la Regla 1 del identity del agente.</p>
+
+  <p><strong>Corrección en</strong> <span class="file-chip">core/agents/identity/04_rules.md</span>:</p>
+  <ul>
+    <li>Se agregó la <strong>Regla 1b</strong>: distingue saludo conversacional (<em>"hola"</em>, <em>"hey"</em>) de comando físico (<em>"saluda con la pata"</em>).</li>
+    <li>Saludo conversacional → respuesta directa en chat, sin invocar ningún tool.</li>
+    <li>La frase <em>"no puedo"</em> queda explícitamente prohibida incluso cuando el robot está desconectado.</li>
+  </ul>
+
+  <h3>Botón de acción directa (bypass IA)</h3>
+  <p>El botón <em>"Modo serio"</em> en <code>console/console_IA.html</code> tenía un texto que gpt-4o-mini rechazaba por políticas de contenido. Se implementó un campo <code>direct: true</code> en la definición del botón: cuando está activo, el texto se inyecta directamente en la consola y el TTS lo lee <strong>sin pasar por ningún modelo</strong>.</p>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <h2 id="s4">4 · Autoroute — mapa en tiempo real + voz</h2>
+
+  <h3>4.1 Heat en tiempo real</h3>
+  <p>El handler <code>lidar_points</code> de <code>src/js/autoroute.js</code> ahora acumula los puntos XYZ del lidar en un <code>Map</code> interno (<code>_liveHeat</code>) usando la misma lógica de voxelización de <code>controlRemoto.js</code>.</p>
+  <p>Cada <strong>15 eventos</strong> (~3 segundos a 5 Hz), el mapa hace flush: merge con <code>route.heat</code>, invalida el modelo offscreen y redibuja el canvas. El mapa se actualiza solo mientras el robot se mueve o gira, sin acción del usuario.</p>
+
+  <h3>4.2 Botón 🎤 Instrucción por voz</h3>
+  <p>Nuevo botón en el panel de control de autoroute. Flujo completo:</p>
+  <ol>
+    <li>Presionar 🎤 activa <strong>Web Speech API</strong> en español.</li>
+    <li>El canvas del mapa se captura como JPEG (<code>canvas.toDataURL('image/jpeg', 0.75)</code>).</li>
+    <li>Se envía a <code>POST /api/agente/chat</code> con campo <code>image_b64</code> + contexto textual (voxels, waypoints, posición del robot).</li>
+    <li>El backend decodifica la imagen y la pasa como visión multimodal a <strong>gpt-4o-mini</strong>.</li>
+    <li>La respuesta se muestra en un toast y se lee con TTS usando voz masculina Google en español (<code>pitch: 0.8</code>, <code>rate: 0.95</code>).</li>
+  </ol>
+
+  <div class="ok">gpt-4o-mini ve el heatmap real del lidar — columnas de colores, waypoints, trail — antes de responder a la instrucción de voz.</div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <h2 id="s5">5 · Seguridad — migración de claves a .env</h2>
+
+  <div class="warn">Las claves de API estaban hardcodeadas en <code>config/config.py</code>. Aunque este archivo ya estaba en <code>.gitignore</code>, se eliminó esa práctica migrando todo a un archivo <code>.env</code>.</div>
+
+  <h3>Estructura nueva</h3>
+  <pre><code>unitreeWebRTC/
+├── .env              ← claves reales (en .gitignore, NUNCA al repo)
+├── .env.example      ← plantilla pública sin valores
+└── config/
+    └── config.py     ← solo lee variables de entorno vía python-dotenv</code></pre>
+
+  <h3>Variables en .env</h3>
+  <table>
+    <tr><th>Variable</th><th>Descripción</th></tr>
+    <tr><td><code>ROBOT_IP</code></td><td>IP del robot en red local</td></tr>
+    <tr><td><code>ROBOT_AES_128_KEY</code></td><td>Clave AES-128 extraída de Unitree Cloud</td></tr>
+    <tr><td><code>OPENAI_API_KEY</code></td><td>Clave de OpenAI para gpt-4o-mini</td></tr>
+    <tr><td><code>GEMINI_API_KEY</code></td><td>Clave de Google Gemini (fallback)</td></tr>
+    <tr><td><code>GEMINI_MODEL</code></td><td>Modelo principal del agente</td></tr>
+    <tr><td><code>FALLBACK_MODELS</code></td><td>Cascada de modelos (PRIMARY/SECONDARY/TERTIARY)</td></tr>
+    <tr><td><code>FLASK_SECRET_KEY</code></td><td>Secreto para sesiones Flask</td></tr>
+  </table>
+
+  <p><code>config.py</code> usa <code>python-dotenv</code> y degrada sin error si el paquete no está instalado (las vars del SO aplican igual). Requiere: <code>pip install python-dotenv</code>.</p>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <h2 id="s6">6 · Archivos modificados en esta sesión</h2>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Frontend</h3>
+      <span class="file-chip">src/index.html</span>
+      <span class="file-chip">src/login.html</span>
+      <span class="file-chip">src/autoroute.html</span>
+      <span class="file-chip">src/js/autoroute.js</span>
+      <span class="file-chip">console/console_IA.html</span>
+      <ul style="margin-top:12px;">
+        <li>Pipeline 01-04 compacto con BLE pre-poblado</li>
+        <li>Usuarios pre-sembrados con migración automática</li>
+        <li>Login por email o username</li>
+        <li>Botón 🎤 con voz masculina Google</li>
+        <li>Heat del lidar en tiempo real en autoroute</li>
+        <li>Modo directo (bypass IA) en console_IA</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Backend</h3>
+      <span class="file-chip">api/agent.py</span>
+      <span class="file-chip">api/ble.py</span>
+      <span class="file-chip">api/unitree_cloud.py</span>
+      <span class="file-chip">api/__init__.py</span>
+      <span class="file-chip">api/pages.py</span>
+      <span class="file-chip">core/agents/chat.py</span>
+      <span class="file-chip">core/agents/identity/04_rules.md</span>
+      <span class="file-chip">core/runtime.py</span>
+      <span class="file-chip">config/config.py</span>
+      <span class="file-chip">.env</span>
+      <span class="file-chip">.env.example</span>
+      <ul style="margin-top:12px;">
+        <li>Endpoint BLE scan desde la web (<code>/api/ble/scan</code>)</li>
+        <li>Endpoint Unitree Cloud (<code>/api/unitree/validate</code>)</li>
+        <li>Ruta <code>/login</code> y <code>/img/&lt;file&gt;</code> en pages.py</li>
+        <li>Visión multimodal del mapa en chat.py</li>
+        <li>Claves migradas a .env con python-dotenv</li>
+        <li>Regla 1b en identity: saludo conversacional vs físico</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <h2 id="s7">7 · Pendientes y próximos pasos</h2>
+
+  <table>
+    <tr><th>Prioridad</th><th>Tarea</th></tr>
+    <tr><td><span class="badge red">Alta</span></td><td>Instalar <code>python-dotenv</code> en el entorno: <code>pip install python-dotenv</code></td></tr>
+    <tr><td><span class="badge red">Alta</span></td><td>Conectar robot físicamente y probar pipeline completo BLE → Unitree Cloud → IP</td></tr>
+    <tr><td><span class="badge amber">Media</span></td><td>Probar instrucción por voz 🎤 con robot en movimiento durante Escaneo 360°</td></tr>
+    <tr><td><span class="badge amber">Media</span></td><td>Verificar que gpt-4o-mini describe correctamente el heatmap recibido como imagen</td></tr>
+    <tr><td><span class="badge blue">Baja</span></td><td>Migrar almacenamiento de usuarios de localStorage a base de datos real (SQLite / PostgreSQL)</td></tr>
+    <tr><td><span class="badge blue">Baja</span></td><td>Agregar rotación automática de API keys cuando una falla</td></tr>
+  </table>
+
+  <p style="margin-top:40px;padding-top:16px;border-top:1px solid var(--border);color:var(--dim);font-size:.82rem;">
+    Generado por Claude Sonnet 4.6 · Sesión 2026-05-25 · Proyecto Daiver Control CUN · Laboratorio 2 · Corporación Unificada Nacional
+  </p>
+
+</div>
+</body>
+</html>

@@ -6,7 +6,7 @@ from flask import Flask
 
 
 def register_blueprints(app: Flask) -> None:
-    from . import pages, connection, motion, vision, follow, sensor, autoroute, agent, gestures, faces, map_ai
+    from . import pages, connection, motion, vision, follow, sensor, autoroute, agent, gestures, faces, map_ai, unitree_cloud, ble
 
     app.register_blueprint(pages.bp)
     app.register_blueprint(connection.bp)
@@ -19,3 +19,5 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(gestures.bp)
     app.register_blueprint(faces.bp)
     app.register_blueprint(map_ai.bp)
+    app.register_blueprint(unitree_cloud.bp)
+    app.register_blueprint(ble.bp)
