@@ -21,6 +21,43 @@ from core.state import (
 
 bp = Blueprint("connection", __name__)
 
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
+_ENV_PATH = os.path.join(_PROJECT_ROOT, ".env")
+
+
+def _upsert_env_var(key: str, value: str) -> None:
+    """Inserta o actualiza `KEY=value` en el .env preservando TODO lo demas.
+
+    Antes esta config se escribia sobre config/config.py sobrescribiendolo
+    entero (perdiendo .env loader, clave AES, modelos y API keys). Ahora
+    persistimos solo la variable en el .env, que es de donde config.py la
+    lee al arrancar.
+    """
+    lines: list[str] = []
+    if os.path.exists(_ENV_PATH):
+        with open(_ENV_PATH, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+
+    new_lines: list[str] = []
+    found = False
+    for ln in lines:
+        stripped = ln.strip()
+        if stripped and not stripped.startswith("#") and "=" in stripped:
+            existing_key = stripped.split("=", 1)[0].strip()
+            if existing_key == key:
+                new_lines.append(f"{key}={value}\n")
+                found = True
+                continue
+        new_lines.append(ln)
+
+    if not found:
+        if new_lines and not new_lines[-1].endswith("\n"):
+            new_lines[-1] += "\n"
+        new_lines.append(f"{key}={value}\n")
+
+    with open(_ENV_PATH, "w", encoding="utf-8") as f:
+        f.writelines(new_lines)
+
 
 @bp.route("/api/status")
 def api_status():
@@ -69,21 +106,23 @@ def api_disconnect():
 
 @bp.route("/api/config/ip", methods=["POST"])
 def api_update_ip():
-    """Actualiza la IP del robot en config/config.py."""
+    """Actualiza la IP del robot persistiendola en el .env (no en config.py)."""
     data = request.get_json() or {}
     new_ip = data.get("ip", "").strip()
     if not new_ip:
         return jsonify({"status": "error", "message": "IP vacia"}), 400
 
-    config_path = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), "config", "config.py"
-    )
+    # Validacion basica: IPs, hostnames y opcional :puerto. Evita inyectar
+    # contenido raro en el .env.
+    if not re.match(r"^[A-Za-z0-9_.\-:]+$", new_ip):
+        return jsonify({"status": "error", "message": "IP/host invalido"}), 400
+
     try:
-        with open(config_path, "w") as f:
-            f.write(f'ROBOT_IP = "{new_ip}"\n')
+        _upsert_env_var("ROBOT_IP", new_ip)
+        os.environ["ROBOT_IP"] = new_ip  # refleja el cambio en runtime
         robot_state["ip"] = new_ip
         from core.logging_utils import emit_log
-        emit_log("info", f"IP actualizada en config.py: {new_ip}")
+        emit_log("info", f"IP del robot actualizada en .env: {new_ip}")
         return jsonify({"status": "ok", "ip": new_ip})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -91,18 +130,9 @@ def api_update_ip():
 
 @bp.route("/api/config", methods=["GET"])
 def api_config():
-    config_path = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), "config", "config.py"
-    )
-    current_ip = ROBOT_IP
-    try:
-        with open(config_path, "r") as f:
-            content = f.read()
-            match = re.search(r'ROBOT_IP\s*=\s*"([^"]+)"', content)
-            if match:
-                current_ip = match.group(1)
-    except Exception:
-        pass
+    # Valor vivo: el que se haya guardado en .env/runtime, con fallback al
+    # importado al arranque.
+    current_ip = os.environ.get("ROBOT_IP") or robot_state.get("ip") or ROBOT_IP
 
     return jsonify({
         "robot_ip": current_ip,

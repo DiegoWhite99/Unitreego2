@@ -106,8 +106,16 @@ def health() -> dict[str, Any]:
     if is_openai_model(GEMINI_MODEL):
         if not OPENAI_AVAILABLE:
             return {"ok": False, "message": "Falta el paquete: pip install openai"}
+        if not openai_client and not OPENAI_API_KEY:
+            return {"ok": False, "message": "Falta OPENAI_API_KEY en .env"}
         if not openai_client:
-            return {"ok": False, "message": "Falta OPENAI_API_KEY en config/config.py."}
+            # cliente no inicializado en arranque — crear ahora
+            from openai import OpenAI as _OAI
+            import core.agents.config as _cfg
+            try:
+                _cfg.openai_client = _OAI(api_key=OPENAI_API_KEY)
+            except Exception as _e:
+                return {"ok": False, "message": f"Error OpenAI: {_e}"}
         return {"ok": True, "model": GEMINI_MODEL, "provider": "openai"}
     if not GENAI_AVAILABLE:
         return {"ok": False,
@@ -129,8 +137,8 @@ def chat(user_msg: str, history: list[dict], map_image_jpg: bytes | None = None)
             return {"reply": "⚠ Modelo OpenAI elegido pero falta `openai`. "
                              "Instala con: pip install openai",
                     "actions": []}
-        if not openai_client:
-            return {"reply": "⚠ Falta configurar `OPENAI_API_KEY` en config/config.py.",
+        if not openai_client and not OPENAI_API_KEY:
+            return {"reply": "⚠ Falta configurar `OPENAI_API_KEY` en .env",
                     "actions": []}
     else:
         if not GENAI_AVAILABLE:

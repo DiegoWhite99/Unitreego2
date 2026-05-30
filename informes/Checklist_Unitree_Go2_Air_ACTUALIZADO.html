@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checklist Unitree Go2 Air — Actualizado Mayo 2026</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f9; color: #222; padding: 32px; }
+  .page { max-width: 900px; margin: 0 auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 20px rgba(0,0,0,.10); padding: 48px 56px; }
+  h1 { text-align: center; font-size: 2.2em; color: #1a237e; letter-spacing: .04em; margin-bottom: 4px; }
+  .subtitle { text-align: center; color: #1565c0; font-size: 1.15em; margin-bottom: 4px; font-weight: 600; }
+  .date { text-align: center; color: #888; font-size: .92em; margin-bottom: 36px; }
+
+  .phase { margin-bottom: 40px; }
+  .phase-title { font-size: 1.3em; font-weight: 700; margin-bottom: 6px; padding: 6px 0; border-bottom: 2px solid; }
+  .phase-desc { color: #555; font-size: .93em; margin-bottom: 14px; }
+
+  .green  { color: #2e7d32; border-color: #2e7d32; }
+  .orange { color: #e65100; border-color: #e65100; }
+  .gray   { color: #616161; border-color: #9e9e9e; }
+  .blue   { color: #1565c0; border-color: #1565c0; }
+  .purple { color: #6a1b9a; border-color: #6a1b9a; }
+  .teal   { color: #00695c; border-color: #00695c; }
+  .red    { color: #b71c1c; border-color: #b71c1c; }
+
+  table { width: 100%; border-collapse: collapse; font-size: .93em; }
+  th { background: #1a237e; color: #fff; padding: 8px 12px; text-align: left; }
+  td { padding: 7px 12px; border-bottom: 1px solid #e8e8e8; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f5f5f5; }
+
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: .82em; font-weight: 700; white-space: nowrap; }
+  .badge-done    { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+  .badge-partial { background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
+  .badge-pending { background: #fff8e1; color: #f57f17; border: 1px solid #ffe082; }
+  .badge-blocked { background: #f5f5f5; color: #757575; border: 1px solid #bdbdbd; }
+  .badge-new     { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
+
+  .progress-bar-wrap { margin-top: 10px; border-radius: 6px; overflow: hidden; background: #e0e0e0; height: 20px; }
+  .progress-bar { height: 20px; border-radius: 6px; display: flex; align-items: center; padding-left: 8px; font-size: .78em; font-weight: 700; color: #fff; transition: width .3s; }
+  .bar-green  { background: #2e7d32; }
+  .bar-orange { background: #e65100; }
+  .bar-gray   { background: #9e9e9e; }
+  .bar-blue   { background: #1565c0; }
+  .bar-purple { background: #6a1b9a; }
+  .bar-teal   { background: #00695c; }
+  .bar-red    { background: #c62828; }
+
+  .phase-summary { margin-top: 8px; text-align: center; font-size: .85em; font-weight: 700; padding: 5px; border-radius: 4px; }
+  .ps-green  { background: #e8f5e9; color: #2e7d32; }
+  .ps-orange { background: #fff3e0; color: #e65100; }
+  .ps-gray   { background: #f5f5f5; color: #616161; }
+  .ps-blue   { background: #e3f2fd; color: #1565c0; }
+  .ps-purple { background: #f3e5f5; color: #6a1b9a; }
+  .ps-teal   { background: #e0f2f1; color: #00695c; }
+  .ps-red    { background: #ffebee; color: #b71c1c; }
+
+  .global { display: flex; gap: 16px; margin: 32px 0 24px; }
+  .g-card { flex: 1; border-radius: 8px; padding: 16px; text-align: center; }
+  .g-card .g-label { font-size: .82em; font-weight: 600; margin-bottom: 4px; }
+  .g-card .g-pct { font-size: 1.8em; font-weight: 800; }
+  .gc-green  { background: #e8f5e9; color: #2e7d32; }
+  .gc-orange { background: #fff3e0; color: #e65100; }
+  .gc-blue   { background: #e3f2fd; color: #1565c0; }
+  .gc-purple { background: #f3e5f5; color: #6a1b9a; }
+  .gc-teal   { background: #e0f2f1; color: #00695c; }
+  .gc-red    { background: #ffebee; color: #c62828; }
+
+  .note { background: #e8f5e9; border-left: 5px solid #2e7d32; padding: 14px 18px; border-radius: 0 6px 6px 0; margin-top: 28px; font-size: .93em; color: #1b5e20; }
+  .note strong { display: block; margin-bottom: 4px; }
+
+  .new-tag { display: inline-block; background: #bbdefb; color: #1565c0; border-radius: 4px; font-size: .72em; font-weight: 700; padding: 1px 6px; margin-left: 6px; vertical-align: middle; }
+
+  @media print {
+    body { padding: 0; background: #fff; }
+    .page { box-shadow: none; padding: 24px 32px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>CHECKLIST DE PROGRESO</h1>
+  <p class="subtitle">Laboratorio #2 — Unitree Go2 Air</p>
+  <p class="date">Última actualización: 28 de Mayo de 2026 &nbsp;|&nbsp; Diego Castelblanco — CUN Lab 2</p>
+
+  <!-- ===== FASE 1 ===== -->
+  <div class="phase">
+    <div class="phase-title green">FASE 1: PREPARACIÓN DEL SISTEMA ✅</div>
+    <p class="phase-desc">Todo lo de esta fase se hizo sin el robot. PC 100% listo.</p>
+    <table>
+      <tr><th>#</th><th>Tarea</th><th>Estado</th><th>Requiere</th></tr>
+      <tr><td>1</td><td>Instalar Python 3.12 (entorno nativo Windows + WSL2)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Solo PC</td></tr>
+      <tr><td>2</td><td>Crear entorno virtual (unitree_env)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Solo PC</td></tr>
+      <tr><td>3</td><td>Instalar unitree_sdk2py / unitree_webrtc_connect</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Solo PC</td></tr>
+      <tr><td>4</td><td>Instalar CycloneDDS (protocolo DDS)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Solo PC</td></tr>
+      <tr><td>5</td><td>Configurar WSL2 en modo mirrored</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Solo PC</td></tr>
+      <tr><td>6</td><td>Verificar IP de red LAN (192.168.1.x visible)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Solo PC</td></tr>
+      <tr><td>7</td><td>Crear scripts de prueba (01 a 04)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Solo PC</td></tr>
+      <tr><td>8</td><td>Configurar VS Code con extensiones Python/WSL</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Solo PC</td></tr>
+      <tr><td>9</td><td>Instalar Flask, Flask-SocketIO, YOLOv8, OpenCV, face_recognition</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Solo PC</td></tr>
+    </table>
+    <div class="progress-bar-wrap"><div class="progress-bar bar-green" style="width:100%">9/9 — 100%</div></div>
+    <div class="phase-summary ps-green">FASE 1 — 9/9 completadas — 100%</div>
+  </div>
+
+  <!-- ===== FASE 2 ===== -->
+  <div class="phase">
+    <div class="phase-title green">FASE 2: CONEXIÓN CON EL ROBOT ✅</div>
+    <p class="phase-desc">Conexión WebRTC LAN funcional. Robot Go2 Air conectado y operativo.</p>
+    <table>
+      <tr><th>#</th><th>Tarea</th><th>Estado</th><th>Requiere</th></tr>
+      <tr><td>10</td><td>Encender el robot en el suelo (espacio 2x2m)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Robot</td></tr>
+      <tr><td>11</td><td>Conectar cable Ethernet PC ↔ Router ↔ Robot (LAN)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Robot</td></tr>
+      <tr><td>12</td><td>Verificar IP robot en red LAN (192.168.1.x)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Robot</td></tr>
+      <tr><td>13</td><td>Ping exitoso al robot desde PC</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Robot</td></tr>
+      <tr><td>14</td><td>Conexión WebRTC LocalSTA funcional (unitree_webrtc_connect)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Robot</td></tr>
+      <tr><td>15</td><td>Ejecutar 01_test_connection.py — handshake exitoso</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Robot</td></tr>
+      <tr><td>16</td><td>Ejecutar 02_basic_motion.py — movimiento básico confirmado</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Robot</td></tr>
+      <tr><td>17</td><td>Recibir stream de video (cámara frontal robot)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Robot</td></tr>
+      <tr><td>18</td><td>Suscripción a topics LiDAR / SPORT_MOD_STATE</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Robot</td></tr>
+    </table>
+    <div class="progress-bar-wrap"><div class="progress-bar bar-green" style="width:100%">9/9 — 100%</div></div>
+    <div class="phase-summary ps-green">FASE 2 — 9/9 completadas — 100%</div>
+  </div>
+
+  <!-- ===== FASE 3 ===== -->
+  <div class="phase">
+    <div class="phase-title green">FASE 3: RUTINAS DE MOVIMIENTO ✅</div>
+    <p class="phase-desc">Control de movimiento completo: velocidad, gestos, rutinas y paradas de emergencia.</p>
+    <table>
+      <tr><th>#</th><th>Tarea</th><th>Estado</th><th>Requiere</th></tr>
+      <tr><td>19</td><td>Scripts de rutinas: patrulla, salto, exploración</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Robot</td></tr>
+      <tr><td>20</td><td>Control por velocidad lineal (x, y) y angular (z) vía API</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Robot</td></tr>
+      <tr><td>21</td><td>Lectura de sensores (LiDAR L1, IMU implícito vía SPORT_MOD)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Robot</td></tr>
+      <tr><td>22</td><td>Registro de logs en tiempo real (Socket.IO + archivos /logs)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Robot</td></tr>
+      <tr><td>23</td><td>Gestos pre-programados: saludo, corazón, baile, sentarse, etc. (15+)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Robot</td></tr>
+      <tr><td>24</td><td>Parada de emergencia (tecla + API /emergency)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Robot</td></tr>
+      <tr><td>25</td><td>Límites de velocidad seguros (x±0.8, y±0.5, z±1.5 m/s)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Robot</td></tr>
+    </table>
+    <div class="progress-bar-wrap"><div class="progress-bar bar-green" style="width:100%">7/7 — 100%</div></div>
+    <div class="phase-summary ps-green">FASE 3 — 7/7 completadas — 100%</div>
+  </div>
+
+  <!-- ===== FASE 4 ===== -->
+  <div class="phase">
+    <div class="phase-title blue">FASE 4: VISIÓN COMPUTACIONAL <span class="new-tag">NUEVA</span> ✅</div>
+    <p class="phase-desc">YOLOv8 integrado sobre cámara del robot y webcam. Detección de objetos, poses y QR en tiempo real.</p>
+    <table>
+      <tr><th>#</th><th>Tarea</th><th>Estado</th><th>Requiere</th></tr>
+      <tr><td>26</td><td>Integrar YOLOv8 (detección objetos: yolov8n/s/m.pt)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC + Robot</td></tr>
+      <tr><td>27</td><td>YOLOv8 Pose (estimación de posturas humanas: yolov8n-pose.pt)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC + Robot</td></tr>
+      <tr><td>28</td><td>Detección de códigos QR (callback → estado global)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC + Robot</td></tr>
+      <tr><td>29</td><td>Stream MJPEG anotado en tiempo real (/api/yolo/stream)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC</td></tr>
+      <tr><td>30</td><td>Soporte múltiples fuentes: cámara robot, webcam, URL MJPEG</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC</td></tr>
+      <tr><td>31</td><td>Reconocimiento facial local (OpenCV LBPH + fallback LBP numpy)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC</td></tr>
+      <tr><td>32</td><td>Identificación individual por persona (dataset data/faces/&lt;nombre&gt;/, tests diagnóstico)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC</td></tr>
+    </table>
+    <div class="progress-bar-wrap"><div class="progress-bar bar-blue" style="width:100%">7/7 — 100%</div></div>
+    <div class="phase-summary ps-blue">FASE 4 — 7/7 completadas — 100%</div>
+  </div>
+
+  <!-- ===== FASE 5 ===== -->
+  <div class="phase">
+    <div class="phase-title purple">FASE 5: AGENTE IA (DIVER) <span class="new-tag">NUEVA</span> ✅</div>
+    <p class="phase-desc">Agente conversacional multimodal con herramientas de control del robot. Soporta OpenAI, Gemini, Gemma con failover automático.</p>
+    <table>
+      <tr><th>#</th><th>Tarea</th><th>Estado</th><th>Requiere</th></tr>
+      <tr><td>33</td><td>Agente Diver con OpenAI gpt-4o-mini (tools nativos)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>API Key</td></tr>
+      <tr><td>34</td><td>Soporte Gemini 2.0/2.5 Flash como modelo secundario</td><td><span class="badge badge-done">✅ LISTO</span></td><td>API Key</td></tr>
+      <tr><td>35</td><td>Soporte Gemma local (JSON protocol, sin tools nativos)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC</td></tr>
+      <tr><td>36</td><td>Failover automático OpenAI → Gemini → Gemma</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC</td></tr>
+      <tr><td>37</td><td>20+ herramientas de control: mover, saltar, sentarse, mirar, etc.</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC + Robot</td></tr>
+      <tr><td>38</td><td>Entrada multimodal: texto + imagen (frame YOLO o mapa)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC</td></tr>
+      <tr><td>39</td><td>Auto-visión: detecta preguntas visuales → activa YOLO automáticamente</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC</td></tr>
+      <tr><td>40</td><td>TTS (voz masculina) para respuestas del agente</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC</td></tr>
+      <tr><td>41</td><td>Análisis IA del mapa 2.5D (zonas, obstáculos, waypoints)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC</td></tr>
+    </table>
+    <div class="progress-bar-wrap"><div class="progress-bar bar-purple" style="width:100%">9/9 — 100%</div></div>
+    <div class="phase-summary ps-purple">FASE 5 — 9/9 completadas — 100%</div>
+  </div>
+
+  <!-- ===== FASE 6 ===== -->
+  <div class="phase">
+    <div class="phase-title teal">FASE 6: NAVEGACIÓN AUTÓNOMA <span class="new-tag">NUEVA</span> ✅</div>
+    <p class="phase-desc">Seguimiento de waypoints, seguimiento QR y detención por obstáculos con sensor LiDAR.</p>
+    <table>
+      <tr><th>#</th><th>Tarea</th><th>Estado</th><th>Requiere</th></tr>
+      <tr><td>42</td><td>Autoroute: seguimiento de lista de waypoints 2D</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Robot</td></tr>
+      <tr><td>43</td><td>Evitación de obstáculos con LiDAR (parada automática)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Robot</td></tr>
+      <tr><td>44</td><td>Override de fuerza (Shift) para ignorar sensor 0.8s</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Robot</td></tr>
+      <tr><td>45</td><td>Seguimiento de QR: detección → persecución en tiempo real</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Robot</td></tr>
+      <tr><td>46</td><td>Pausa-en-persona: detener ruta si se detecta humano</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Robot</td></tr>
+      <tr><td>47</td><td>Mapa dead-reckoning 2.5D (trayectoria trazada en tiempo real)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Robot</td></tr>
+      <tr><td>48</td><td>Pathfinding asistido por IA (A* + análisis de escena YOLO)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC</td></tr>
+    </table>
+    <div class="progress-bar-wrap"><div class="progress-bar bar-teal" style="width:100%">7/7 — 100%</div></div>
+    <div class="phase-summary ps-teal">FASE 6 — 7/7 completadas — 100%</div>
+  </div>
+
+  <!-- ===== FASE 7 ===== -->
+  <div class="phase">
+    <div class="phase-title blue">FASE 7: INTERFAZ WEB <span class="new-tag">NUEVA</span> ✅</div>
+    <p class="phase-desc">Panel de control completo HTML5/JS/CSS con Socket.IO para operadores y usuarios finales.</p>
+    <table>
+      <tr><th>#</th><th>Tarea</th><th>Estado</th><th>Requiere</th></tr>
+      <tr><td>49</td><td>Dashboard principal (login, conexión, gestión de usuarios)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC</td></tr>
+      <tr><td>50</td><td>Página Control Remoto (WASD + Gamepad + HUD de video)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC</td></tr>
+      <tr><td>51</td><td>Página Autoroute (editor de mapa 2.5D, waypoints, IA)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC</td></tr>
+      <tr><td>52</td><td>Página Agente Diver (chat + panel de visión + TTS)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC</td></tr>
+      <tr><td>53</td><td>Página Usuario Final (acciones rápidas + detecciones YOLO)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC</td></tr>
+      <tr><td>54</td><td>Página Ruta Guiada QR</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC</td></tr>
+      <tr><td>55</td><td>Página Help / Centro de ayuda</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC</td></tr>
+      <tr><td>56</td><td>Página Guardar Imágenes (captura de video/frames)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC</td></tr>
+      <tr><td>57</td><td>Tema oscuro unificado (CSS variables, componentes reutilizables)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC</td></tr>
+      <tr><td>58</td><td>Soporte Gamepad (API Web Gamepad, dead-zone, mapeo de botones)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC</td></tr>
+    </table>
+    <div class="progress-bar-wrap"><div class="progress-bar bar-blue" style="width:100%">10/10 — 100%</div></div>
+    <div class="phase-summary ps-blue">FASE 7 — 10/10 completadas — 100%</div>
+  </div>
+
+  <!-- ===== FASE 8 ===== -->
+  <div class="phase">
+    <div class="phase-title red">FASE 8: INTEGRACIÓN CLOUD / BLE <span class="new-tag">NUEVA</span> ⚠️</div>
+    <p class="phase-desc">Pipeline BLE → Cloud → IP para acceso remoto. Parcialmente funcional; clave AES aún bloqueada.</p>
+    <table>
+      <tr><th>#</th><th>Tarea</th><th>Estado</th><th>Requiere</th></tr>
+      <tr><td>59</td><td>Escaneo BLE del robot (scan de dispositivos Unitree)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>PC + Robot</td></tr>
+      <tr><td>60</td><td>Endpoint Cloud Unitree: listar robots (/api/unitree-cloud/robots)</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Cuenta Unitree</td></tr>
+      <tr><td>61</td><td>Pipeline completo BLE → Cloud → IP documentado</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Cuenta Unitree</td></tr>
+      <tr><td>62</td><td>Obtener clave AES-128 del robot desde Cloud API</td><td><span class="badge badge-done">✅ LISTO</span></td><td>Robot vinculado</td></tr>
+      <tr><td>63</td><td>Vincular robot SN B42D1000PAHBJ3K5 a cuenta divergencyai@gmail.com</td><td><span class="badge badge-done">✅ LISTO</span></td><td>App Unitree Go</td></tr>
+      <tr><td>64</td><td>Conexión WebRTC remota (fuera de LAN) vía Cloud</td><td><span class="badge badge-pending">⏳ PENDIENTE</span></td><td>Red externa</td></tr>
+    </table>
+    <div class="progress-bar-wrap"><div class="progress-bar bar-teal" style="width:83%">5/6 funcionales — 83%</div></div>
+    <div class="phase-summary ps-teal">FASE 8 — 5/6 completadas — pendiente: probar conexión fuera de LAN</div>
+  </div>
+
+  <!-- ===== PROGRESO GLOBAL ===== -->
+  <h2 style="color:#1a237e; margin-bottom:16px; margin-top:8px;">PROGRESO GLOBAL</h2>
+  <div class="global">
+    <div class="g-card gc-green"><div class="g-label">Fase 1 Preparación</div><div class="g-pct">100%</div></div>
+    <div class="g-card gc-green"><div class="g-label">Fase 2 Conexión</div><div class="g-pct">100%</div></div>
+    <div class="g-card gc-green"><div class="g-label">Fase 3 Movimiento</div><div class="g-pct">100%</div></div>
+    <div class="g-card gc-green"><div class="g-label">Fase 4 Visión</div><div class="g-pct">100%</div></div>
+    <div class="g-card gc-purple"><div class="g-label">Fase 5 Agente IA</div><div class="g-pct">100%</div></div>
+    <div class="g-card gc-teal"><div class="g-label">Fase 6 Nav. Autónoma</div><div class="g-pct">100%</div></div>
+    <div class="g-card gc-blue"><div class="g-label">Fase 7 Interfaz Web</div><div class="g-pct">100%</div></div>
+    <div class="g-card gc-teal"><div class="g-label">Fase 8 Cloud/BLE</div><div class="g-pct">83%</div></div>
+  </div>
+
+  <div style="background:#f3e5f5; border-radius:8px; padding:14px 18px; margin-bottom: 20px; color:#4a148c; font-size:.93em;">
+    <strong style="display:block; margin-bottom:6px;">Tareas totales: 64 &nbsp;|&nbsp; Completadas: 61 &nbsp;|&nbsp; Pendientes: 3 &nbsp;|&nbsp; Progreso global ≈ 95%</strong>
+    El proyecto ha superado ampliamente el alcance original del Lab #1. Sistema de control completo con IA, visión, navegación autónoma e interfaz web multiusuario. Robot vinculado y clave AES resuelta desde 2026-05-19.
+  </div>
+
+  <div class="note">
+    <strong>Próximos pasos prioritarios:</strong>
+    1. <strong>Conexión WebRTC remota</strong>: probar acceso fuera de la red LAN usando el tunnel Cloud Unitree (Fase 8, tarea 64).<br>
+    2. <strong>Pruebas de integración end-to-end</strong>: validar pipeline agente + visión + movimiento con sesión documentada completa.<br>
+    3. <strong>Poblar dataset facial</strong>: agregar fotos reales de personas conocidas en data/faces/ para activar saludos automáticos.
+  </div>
+
+</div>
+</body>
+</html>

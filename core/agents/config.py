@@ -132,5 +132,5 @@ else:
 AGENT_GENERATION_CONFIG = {
     "temperature":       0.7,
     "top_p":             0.9,
-    "max_output_tokens": 200,  # respuestas cortas = menor latencia en conversación
+    "max_output_tokens": 400,
 }

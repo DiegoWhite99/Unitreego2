@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Informe Técnico — Sesión 30-05-2026 · Estabilidad y reorganización</title>
+<style>
+  :root {
+    --bg: #0b1018; --surf: #131b27; --surf2: #1a2433; --border: #25334a;
+    --text: #d8e3f0; --dim: #7d92a8; --accent: #4f8ef7; --green: #22c55e;
+    --amber: #f59e0b; --red: #ef4444; --code-bg: #0a0f17;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; line-height: 1.6; padding: 30px 20px; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 { color: var(--accent); font-size: 2.1rem; padding-bottom: 14px; border-bottom: 2px solid var(--accent); margin-bottom: 8px; }
+  h1 + .subtitle { color: var(--dim); font-size: .95rem; margin-bottom: 30px; }
+  h2 { color: var(--accent); font-size: 1.5rem; margin-top: 40px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  h3 { color: #c0d4e8; font-size: 1.15rem; margin-top: 24px; margin-bottom: 10px; }
+  p { margin: 8px 0 12px 0; }
+  ul, ol { margin: 8px 0 14px 24px; }
+  li { margin: 5px 0; }
+  strong { color: #fff; }
+  em { color: var(--amber); font-style: normal; font-weight: 600; }
+  code { background: var(--code-bg); color: #b8e0d4; padding: 2px 6px; border-radius: 4px; font-size: .88rem; font-family: Consolas, monospace; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; overflow-x: auto; margin: 12px 0 20px 0; }
+  pre code { padding: 0; background: none; color: #c8d6e8; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: .72rem; font-weight: 700; letter-spacing: .05em; }
+  .badge.green  { background: rgba(34,197,94,.15);  color: var(--green);  border: 1px solid rgba(34,197,94,.3); }
+  .badge.blue   { background: rgba(79,142,247,.15); color: var(--accent); border: 1px solid rgba(79,142,247,.3); }
+  .badge.amber  { background: rgba(245,158,11,.15); color: var(--amber);  border: 1px solid rgba(245,158,11,.3); }
+  .badge.red    { background: rgba(239,68,68,.15);  color: var(--red);    border: 1px solid rgba(239,68,68,.3); }
+  .card { background: var(--surf); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin: 14px 0; }
+  .card h3 { margin-top: 0; }
+  .file-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surf2); border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px; font-size: .78rem; font-family: Consolas, monospace; color: var(--accent); margin: 3px 2px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 20px 0; font-size: .88rem; }
+  th { background: var(--surf2); color: var(--accent); padding: 10px 14px; text-align: left; border-bottom: 2px solid var(--border); }
+  td { padding: 9px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:hover td { background: rgba(79,142,247,.04); }
+  .toc { background: var(--surf); border: 1px solid var(--border); border-radius: 10px; padding: 18px 24px; margin-bottom: 36px; }
+  .toc ol { margin-left: 20px; }
+  .toc li { margin: 6px 0; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .warn { background: rgba(245,158,11,.08); border-left: 3px solid var(--amber); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+  .ok   { background: rgba(34,197,94,.08);  border-left: 3px solid var(--green);  padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+  .bad  { background: rgba(239,68,68,.08);  border-left: 3px solid var(--red);    padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+  .ba { display:grid; grid-template-columns:1fr 1fr; gap:0; border:1px solid var(--border); border-radius:8px; overflow:hidden; margin:14px 0; }
+  .ba > div { padding:14px 16px; }
+  .ba .before { background: rgba(239,68,68,.06); border-right:1px solid var(--border); }
+  .ba .after  { background: rgba(34,197,94,.06); }
+  .ba h4 { margin:0 0 8px 0; font-size:.8rem; letter-spacing:.05em; text-transform:uppercase; }
+  .ba .before h4 { color: var(--red); }
+  .ba .after h4 { color: var(--green); }
+
+  /* Checklist interactivo */
+  .progress-wrap { background: var(--surf); border:1px solid var(--border); border-radius:10px; padding:16px 22px; margin:18px 0 26px; position:sticky; top:10px; z-index:5; }
+  .progress-bar { height:10px; background: var(--surf2); border-radius:6px; overflow:hidden; margin-top:8px; }
+  .progress-fill { height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--green)); transition:width .3s; }
+  .chk { background: var(--surf); border:1px solid var(--border); border-radius:8px; padding:10px 14px; margin:8px 0; display:flex; gap:12px; align-items:flex-start; cursor:pointer; transition:background .15s; }
+  .chk:hover { background: var(--surf2); }
+  .chk input { margin-top:5px; width:18px; height:18px; accent-color: var(--green); cursor:pointer; flex-shrink:0; }
+  .chk .body { flex:1; }
+  .chk .body .t { color:#fff; font-weight:600; }
+  .chk .body .d { color: var(--dim); font-size:.86rem; }
+  .chk.done .body .t { color: var(--dim); text-decoration: line-through; }
+  .phase { margin-top:30px; }
+  .phase-h { display:flex; align-items:center; gap:10px; }
+  .pill { font-size:.7rem; font-weight:700; padding:2px 9px; border-radius:20px; }
+  .pill.p0 { background:rgba(239,68,68,.18); color:var(--red); }
+  .pill.p1 { background:rgba(245,158,11,.18); color:var(--amber); }
+  .pill.p2 { background:rgba(79,142,247,.18); color:var(--accent); }
+  .pill.p3 { background:rgba(125,146,168,.18); color:var(--dim); }
+  .footer { margin-top:50px; padding-top:20px; border-top:1px solid var(--border); color:var(--dim); font-size:.82rem; }
+  a.back { color:var(--dim); text-decoration:none; font-size:.85rem; }
+  a.back:hover { color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <a class="back" href="/informes/">← Índice de informes</a>
+  <h1 style="margin-top:12px;">Informe Técnico — Sesión 30·05·2026</h1>
+  <p class="subtitle">Proyecto <strong>Daiver Control CUN</strong> · Unitree Go2 Air · Laboratorio 2 CUN · <em>Estabilidad, anti-cuelgues y reorganización</em></p>
+
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:28px;">
+    <span class="badge green">5 arreglos aplicados y verificados</span>
+    <span class="badge blue">Reorganización del proyecto</span>
+    <span class="badge amber">Sin tocar la lógica de control del robot</span>
+    <span class="badge red">Pruebas con robot pendientes (lunes)</span>
+  </div>
+
+  <div class="warn">
+    <strong>Contexto:</strong> esta sesión se hizo <strong>sin el robot presente</strong>. Todo se validó con
+    simulaciones, arranque real del servidor y pruebas de los endpoints. Las pruebas físicas con el Go2
+    quedan para el lunes — el <a href="#checklist" style="color:var(--accent);">checklist final</a> es la guía de qué verificar.
+  </div>
+
+  <div class="toc">
+    <strong style="color:var(--accent);">Contenido</strong>
+    <ol>
+      <li><a href="#s0">Resumen ejecutivo</a></li>
+      <li><a href="#s1">Diagnóstico — por qué la app se colgaba</a></li>
+      <li><a href="#s2">Arreglo 1 · Cambiar la IP destruía la configuración</a></li>
+      <li><a href="#s3">Arreglo 2 · El cuelgue principal: IA bloqueando el event loop</a></li>
+      <li><a href="#s4">Arreglo 3 · Lag al conducir (move/stop)</a></li>
+      <li><a href="#s5">Arreglo 4 · Arranque frágil del servidor</a></li>
+      <li><a href="#s6">Arreglo 5 · Dependencias faltantes</a></li>
+      <li><a href="#s7">Reorganización del proyecto</a></li>
+      <li><a href="#s8">Verificaciones realizadas</a></li>
+      <li><a href="#s9">Archivos modificados</a></li>
+      <li><a href="#checklist">✅ Checklist para el lunes con el robot</a></li>
+    </ol>
+  </div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <h2 id="s0">1 · Resumen ejecutivo</h2>
+  <p>El objetivo de la sesión fue atacar la queja principal: <em>"a veces la app se queda colgada o no funciona"</em>.
+  Tras mapear todo el backend (Flask + Socket.IO + event loop asyncio + WebRTC) y el frontend, se identificaron
+  <strong>5 problemas</strong> y se corrigieron todos. El más importante explica directamente los cuelgues durante
+  patrullaje e IA. También se reorganizó la estructura de archivos del proyecto.</p>
+
+  <table>
+    <tr><th>#</th><th>Problema</th><th>Impacto</th><th>Estado</th></tr>
+    <tr><td>1</td><td>Cambiar la IP desde la UI <strong>borraba</strong> <code>config.py</code> entero</td><td>Pérdida de claves, agente y conexión caídos</td><td><span class="badge green">Resuelto</span></td></tr>
+    <tr><td>2</td><td>Llamada de IA <strong>síncrona dentro del event loop</strong> (autoroute)</td><td><strong>Cuelgue del video y comandos en patrullaje</strong></td><td><span class="badge green">Resuelto</span></td></tr>
+    <tr><td>3</td><td><code>move</code>/<code>stop</code> bloqueaban el hilo del socket</td><td>Lag al conducir; el STOP podía quedar atascado</td><td><span class="badge green">Resuelto</span></td></tr>
+    <tr><td>4</td><td>Arranque frágil (reloader + crash sin terminal)</td><td>Reinicios a mitad de operación; no arranca en algunos lanzamientos</td><td><span class="badge green">Resuelto</span></td></tr>
+    <tr><td>5</td><td><code>requirements.txt</code> incompleto</td><td>Fallos silenciosos al instalar en otro equipo</td><td><span class="badge green">Resuelto</span></td></tr>
+  </table>
+
+  <!-- ════════════════════════════════════════════ -->
+  <h2 id="s1">2 · Diagnóstico — por qué la app se colgaba</h2>
+  <p>El backend tiene un <strong>único event loop de asyncio</strong> corriendo en un hilo dedicado
+  (<span class="file-chip">core/runtime.py</span>). Ese loop es el que hace <em>todo</em> lo asíncrono:</p>
+  <ul>
+    <li>Recibe el <strong>video WebRTC</strong> del Go2 (cada frame que va a YOLO).</li>
+    <li>Envía <strong>todos los comandos</strong> al robot (<code>Move</code>, poses, SPORT_CMD).</li>
+    <li>Procesa las suscripciones del <strong>lidar</strong> (pose + nube de puntos).</li>
+    <li>Corre los <strong>loops de Auto-Ruta y Follow-QR</strong>.</li>
+  </ul>
+  <div class="bad">
+    <strong>La regla de oro:</strong> si <em>cualquier</em> cosa bloquea ese hilo (una llamada de red lenta, un cálculo
+    pesado), se congela <strong>simultáneamente</strong> el video, los comandos y los sensores → la app "se cuelga".
+    El problema #2 violaba exactamente esta regla.
+  </div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <h2 id="s2">3 · Arreglo 1 · Cambiar la IP destruía la configuración</h2>
+  <p>El endpoint <code>POST /api/config/ip</code> guardaba la IP nueva <strong>sobrescribiendo todo el archivo</strong>
+  <code>config/config.py</code>, dejándolo con una sola línea.</p>
+  <div class="ba">
+    <div class="before">
+      <h4>Antes</h4>
+      <pre><code>with open(config_path, "w") as f:
+    f.write(f'ROBOT_IP = "{new_ip}"\n')</code></pre>
+      <p style="font-size:.85rem;color:var(--dim);">Esto borraba: carga del <code>.env</code>, la clave AES,
+      los modelos del agente y las API keys. Tras un solo cambio de IP, el agente y la conexión dejaban de funcionar.</p>
+    </div>
+    <div class="after">
+      <h4>Después</h4>
+      <pre><code>_upsert_env_var("ROBOT_IP", new_ip)
+os.environ["ROBOT_IP"] = new_ip
+robot_state["ip"] = new_ip</code></pre>
+      <p style="font-size:.85rem;color:var(--dim);">Ahora la IP se persiste en el <code>.env</code> (de donde
+      <code>config.py</code> ya la lee) con un <em>upsert</em> que preserva el resto del archivo. <code>config.py</code>
+      no se toca nunca.</p>
+    </div>
+  </div>
+  <p>Archivo: <span class="file-chip">api/connection.py</span>. Se añadió la función <code>_upsert_env_var()</code>
+  con validación básica del formato de IP/host.</p>
+
+  <!-- ════════════════════════════════════════════ -->
+  <h2 id="s3">4 · Arreglo 2 · El cuelgue principal — IA bloqueando el event loop</h2>
+  <p>Durante la <strong>Auto-Ruta</strong>, cuando el "asistente IA de trayectoria" está activo, el robot consulta a
+  un modelo (OpenAI/Gemini) para corregir el desvío lateral. El problema: esa consulta de red se hacía
+  <strong>de forma síncrona dentro del loop de control</strong>, en
+  <span class="file-chip">core/autoroute.py · _follow_segment()</span>.</p>
+
+  <div class="bad">
+    Cada corrección (hasta una vez por segundo cuando hay desvío) <strong>congelaba el event loop 1–3 segundos</strong>
+    esperando la respuesta del modelo. Durante esos segundos: el video se traba, los comandos <code>Move</code> no
+    salen y el robot "se cuelga". <strong>Esta era casi con seguridad la causa que percibías en las pruebas de
+    patrullaje e IA.</strong>
+  </div>
+
+  <div class="ba">
+    <div class="before">
+      <h4>Antes — bloqueante</h4>
+      <pre><code>adj = _ai_path_adjustment(payload)  # ← espera
+                                    #   la red AQUÍ,
+                                    #   congela TODO
+ai_cached = clamp(adj)</code></pre>
+    </div>
+    <div class="after">
+      <h4>Después — fire-and-forget en thread</h4>
+      <pre><code># lanza en un hilo aparte, NO espera
+ai_future = loop.run_in_executor(
+    None, _ai_path_adjustment, payload)
+# en otra iteración, cuando ya está listo:
+if ai_future.done():
+    ai_cached = _apply_ai_adjustment(
+        ai_future.result(), ai_cached)</code></pre>
+    </div>
+  </div>
+
+  <p>La consulta a la IA ahora corre en un <strong>hilo del executor</strong>, en paralelo. El loop de control sigue
+  enviando comandos a su ritmo de ~7 Hz <strong>sin pausarse jamás</strong>, y aplica la corrección de la IA cuando
+  esta llega (un par de iteraciones después). Si la IA falla o tarda, el control sigue con el último valor cacheado
+  (<em>degradación suave</em>). Se añadió el helper <code>_apply_ai_adjustment()</code> que acota los valores
+  recibidos a rangos seguros.</p>
+
+  <div class="ok"><strong>Nota:</strong> las llamadas de IA del <em>chat del agente Diver</em> (<code>core/agents/chat.py</code>)
+  <strong>no</strong> tenían este problema: corren en el hilo de la petición HTTP, no en el event loop. Por eso no se tocaron.</div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <h2 id="s4">5 · Arreglo 3 · Lag al conducir (move/stop)</h2>
+  <p>Los comandos del joystick por Socket.IO (<code>move_command</code>) usaban <code>run_async()</code>, que
+  <strong>bloquea el hilo</strong> hasta que el comando se envía (con timeout de 30 s). Con el joystick a alta
+  frecuencia, esto añadía latencia y —peor— un <code>stop</code> podía quedar atascado <em>detrás</em> de un
+  <code>move</code> en cola, retrasando el frenado.</p>
+  <div class="ba">
+    <div class="before"><h4>Antes</h4><pre><code>run_async(robot_send_command("Move", …))
+# espera el envío → bloquea el hilo</code></pre></div>
+    <div class="after"><h4>Después</h4><pre><code>run_async_no_wait(robot_send_command(…))
+# encola y sigue → hilo libre al instante</code></pre></div>
+  </div>
+  <p>Archivo: <span class="file-chip">api/sockets.py</span>. Ahora <code>move</code> y <code>stop</code> se encolan sin
+  esperar; se ejecutan en orden y el <code>stop</code> ya no queda atrapado.</p>
+
+  <!-- ════════════════════════════════════════════ -->
+  <h2 id="s5">6 · Arreglo 4 · Arranque frágil del servidor</h2>
+  <p>El arranque (<span class="file-chip">app.py</span>) usaba <code>debug=True</code>, lo que activaba el
+  <strong>reloader</strong> de Flask. Dos consecuencias malas para un robot:</p>
+  <ul>
+    <li>Al <strong>guardar cualquier archivo</strong>, el servidor se reiniciaba → se perdía la conexión al robot a mitad de operación.</li>
+    <li>El reloader <strong>duplica</strong> el proceso: doble event loop asyncio y doble carga del modelo YOLO.</li>
+    <li>Si se lanzaba <strong>sin terminal</strong> (doble-clic / <code>pythonw</code> / servicio), Flask-SocketIO lanzaba un
+    <code>RuntimeError</code> y <strong>no arrancaba</strong>.</li>
+  </ul>
+  <pre><code>debug = os.environ.get("FLASK_DEBUG", "0") in ("1","true","yes","on")
+socketio.run(app, host="0.0.0.0", port=5000,
+             debug=debug,
+             use_reloader=False,          # sin reinicios a mitad de operación
+             allow_unsafe_werkzeug=True)  # arranca aunque no haya terminal</code></pre>
+  <p>Ahora <code>debug</code> está <strong>apagado por defecto</strong> (se activa con la variable de entorno
+  <code>FLASK_DEBUG=1</code> solo si hace falta depurar).</p>
+
+  <!-- ════════════════════════════════════════════ -->
+  <h2 id="s6">7 · Arreglo 5 · Dependencias faltantes</h2>
+  <p>El código usaba paquetes que no estaban declarados en <span class="file-chip">requirements.txt</span>. En otro
+  equipo, instalar con <code>pip install -r requirements.txt</code> dejaba el agente o el arranque a medias.</p>
+  <p>Añadidos: <code>google-generativeai</code> (fallback Gemini del agente), <code>python-dotenv</code> (carga del
+  <code>.env</code>), <code>simple-websocket</code> (transporte WebSocket de Socket.IO) y <code>python-socketio</code>.</p>
+
+  <!-- ════════════════════════════════════════════ -->
+  <h2 id="s7">8 · Reorganización del proyecto</h2>
+  <p>La raíz tenía muchos archivos sueltos. Se ordenaron <strong>preservando el historial de git</strong> (renames):</p>
+  <table>
+    <tr><th>Desde la raíz</th><th>A</th></tr>
+    <tr><td>7 scripts de recuperación de clave AES (<code>fetch_aes_key.py</code>, <code>get_key*.py</code>, <code>try_*.py</code>…)</td><td><code>scripts/aes/</code></td></tr>
+    <tr><td>4 scripts de setup del robot (<code>ble_scan_robot.py</code>, <code>configurar_wifi_robot.py</code>, <code>habilitar_ssh_robot.py</code>, <code>test_con_notify.py</code>)</td><td><code>scripts/setup/</code></td></tr>
+    <tr><td>Guías técnicas (<code>AES_128_SETUP.md</code>, <code>CONTEXTO_AES_KEY.md</code>, <code>INSTRUCCIONES_SSH_ROBOT.md</code>)</td><td><code>docs/</code></td></tr>
+    <tr><td>3 reportes <code>INFORME_*.md</code></td><td><code>informes/</code></td></tr>
+  </table>
+  <ul>
+    <li><strong>Eliminada</strong> la carpeta <code>backend/</code>: era un scaffold obsoleto (solo <code>desktop.ini</code> + caché <code>.pyc</code>, ningún archivo fuente).</li>
+    <li><strong>26 archivos <code>desktop.ini</code></strong> (basura de Windows) sacados del control de versiones y añadidos a <code>.gitignore</code> (siguen en disco).</li>
+    <li><code>try_default_keys.py</code> era el único script con <code>from config.config import</code>: se corrigió su <code>sys.path</code> para que resuelva desde la nueva carpeta. <strong>Verificado.</strong></li>
+    <li><strong>README</strong> actualizado: el árbol ahora refleja la arquitectura real (<code>api/</code> + <code>core/</code>) y las instrucciones de IP apuntan al <code>.env</code>.</li>
+  </ul>
+  <div class="ok">La raíz quedó solo con <code>app.py</code> y <code>yolo_detector.py</code> (los dos que deben estar ahí), más config y carpetas.</div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <h2 id="s8">9 · Verificaciones realizadas (sin robot)</h2>
+  <ul>
+    <li>✅ Los archivos modificados compilan y la app entera importa (13 blueprints).</li>
+    <li>✅ El servidor <strong>arranca limpio</strong> (Debug: False, sin reloader) y responde <code>/api/ping</code>, <code>/api/status</code>, <code>/api/config</code>, <code>/api/sensor/status</code>, <code>/api/yolo/status</code>.</li>
+    <li>✅ El <em>upsert</em> del <code>.env</code> preserva comentarios, líneas en blanco y todas las claves (test unitario + end-to-end con la IP real).</li>
+    <li>✅ <code>POST /api/config/ip</code> deja el <code>.env</code> íntegro y <code>config.py</code> sin tocar.</li>
+    <li>✅ <code>_apply_ai_adjustment</code> maneja vacío / None / clamping / basura; el patrón no bloqueante con <code>run_in_executor</code> no congela el loop.</li>
+    <li>✅ Tras reorganizar, la app sigue importando y <code>try_default_keys.py</code> resuelve <code>config</code> desde su nueva ubicación.</li>
+  </ul>
+
+  <!-- ════════════════════════════════════════════ -->
+  <h2 id="s9">10 · Archivos modificados</h2>
+  <p>
+    <span class="file-chip">app.py</span>
+    <span class="file-chip">api/connection.py</span>
+    <span class="file-chip">api/sockets.py</span>
+    <span class="file-chip">core/autoroute.py</span>
+    <span class="file-chip">requirements.txt</span>
+    <span class="file-chip">README.md</span>
+    <span class="file-chip">.gitignore</span>
+  </p>
+  <p style="color:var(--dim);font-size:.85rem;">+ movimientos de archivos (scripts, docs, informes) y limpieza de <code>backend/</code> y <code>desktop.ini</code>.
+  No se tocó ninguna lógica de control, percepción ni protocolos del robot — comportamiento idéntico, sin los bloqueos.</p>
+
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!--                       CHECKLIST                           -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <h2 id="checklist">✅ Checklist para el lunes con el robot</h2>
+  <p>Pasos en orden de prioridad. Marca cada casilla al completarla — el progreso se guarda en este navegador.
+  El objetivo es <strong>validar los 5 arreglos con el robot real</strong> y dejar una base estable para seguir
+  investigando patrullaje + IA.</p>
+
+  <div class="progress-wrap">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <strong>Progreso de verificación</strong>
+      <span id="progress-text" style="color:var(--accent);font-weight:700;">0 / 0</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+  </div>
+
+  <!-- FASE 0 -->
+  <div class="phase">
+    <div class="phase-h"><h3 style="margin:0;">Fase 0 · Arranque y conexión base</h3><span class="pill p0">BLOQUEANTE</span></div>
+    <p style="color:var(--dim);font-size:.86rem;">Sin esto no se prueba nada más.</p>
+
+    <label class="chk"><input type="checkbox"><div class="body"><div class="t">Actualizar dependencias</div><div class="d">Con el entorno activado: <code>pip install -r requirements.txt</code> — ahora incluye los paquetes que faltaban.</div></div></label>
+    <label class="chk"><input type="checkbox"><div class="body"><div class="t">Revisar el <code>.env</code></div><div class="d"><code>ROBOT_IP</code> = la IP real del Go2, <code>ROBOT_AES_128_KEY</code>, <code>OPENAI_API_KEY</code> / <code>GEMINI_API_KEY</code> presentes.</div></div></label>
+    <label class="chk"><input type="checkbox"><div class="body"><div class="t">PC y robot en la <strong>misma red WiFi</strong></div><div class="d">Hacer <code>ping IP_DEL_ROBOT</code> y confirmar respuesta antes de conectar.</div></div></label>
+    <label class="chk"><input type="checkbox"><div class="body"><div class="t">Arrancar el servidor</div><div class="d"><code>python app.py</code> → debe mostrar <em>"Debug: False"</em>, arrancar sin reloader y <strong>sin errores</strong>.</div></div></label>
+    <label class="chk"><input type="checkbox"><div class="body"><div class="t">Login en la web</div><div class="d">Abrir <code>http://localhost:5000</code>, entrar con <code>admin / admin123</code>.</div></div></label>
+    <label class="chk"><input type="checkbox"><div class="body"><div class="t">Conectar al robot (paso 04 de la UI)</div><div class="d">Debe llegar el log <em>"Conexión establecida"</em> y el robot hacer <code>BalanceStand</code> inicial.</div></div></label>
+  </div>
+
+  <!-- FASE 1 -->
+  <div class="phase">
+    <div class="phase-h"><h3 style="margin:0;">Fase 1 · Validar los 5 arreglos</h3><span class="pill p1">PRIORIDAD ALTA</span></div>
+    <p style="color:var(--dim);font-size:.86rem;">Confirmar con el robot real que los cuelgues se fueron.</p>
+
+    <label class="chk"><input type="checkbox"><div class="body"><div class="t">FIX 1 · Cambiar la IP desde la UI no rompe nada</div><div class="d">Cambiar la IP a una de prueba y volver a la real. Verificar que <code>config/config.py</code> sigue intacto (con sus API keys) y que el <code>.env</code> actualizó <code>ROBOT_IP</code>. El agente debe seguir respondiendo.</div></div></label>
+    <label class="chk"><input type="checkbox"><div class="body"><div class="t">FIX 3 · Conducir sin lag + STOP inmediato</div><div class="d">En Control Remoto, mover el joystick rápido y soltar → el robot frena al instante. Probar el botón de <strong>parada de emergencia</strong> durante el movimiento → debe frenar de inmediato (ya no queda atascado tras un move).</div></div></label>
+    <label class="chk"><input type="checkbox"><div class="body"><div class="t">FIX 2 · Auto-Ruta con asistente IA <strong>sin congelarse</strong> ⭐</div><div class="d">Es la prueba clave. Activar visión YOLO (cámara del robot), trazar una ruta de 3–4 waypoints, dejar el <em>asistente IA de trayectoria activado</em> y correr 1–2 ciclos. <strong>Observar:</strong> el video NO debe congelarse, la app responde fluida y los comandos no se acumulan durante toda la ruta. Comparar con la sensación previa de "colgado".</div></div></label>
+    <label class="chk"><input type="checkbox"><div class="body"><div class="t">FIX 2-bis · Auto-Ruta con IA <strong>apagada</strong> (control)</div><div class="d">Repetir la ruta con el asistente IA desactivado para comparar trayectoria. Sirve para medir cuánto aporta realmente la IA al seguimiento.</div></div></label>
+    <label class="chk"><input type="checkbox"><div class="body"><div class="t">FIX 4 · El servidor no se reinicia solo</div><div class="d">Con el server corriendo, guardar un archivo del proyecto y confirmar que <strong>NO</strong> se reinicia (reloader apagado) — antes esto tumbaba la conexión.</div></div></label>
+  </div>
+
+  <!-- FASE 2 -->
+  <div class="phase">
+    <div class="phase-h"><h3 style="margin:0;">Fase 2 · Funcionalidad general (investigación)</h3><span class="pill p2">PRIORIDAD MEDIA</span></div>
+    <p style="color:var(--dim);font-size:.86rem;">Confirmar que todo lo demás sigue funcionando y tomar métricas.</p>
+
+    <label class="chk"><input type="checkbox"><div class="body"><div class="t">Video WebRTC + YOLO</div><div class="d">Detecciones correctas; anotar <code>fps</code> e <code>inference_ms</code> de <code>/api/yolo/status</code>. Ver si activa el "load shed" adaptativo.</div></div></label>
+    <label class="chk"><input type="checkbox"><div class="body"><div class="t">Sensor de proximidad (lidar L1)</div><div class="d">Activarlo, acercar un obstáculo a &lt;30 cm de frente con el robot avanzando → debe alertar y frenar. Verificar que el anillo del lidar gire.</div></div></label>
+    <label class="chk"><input type="checkbox"><div class="body"><div class="t">Acciones / poses estabilizadas</div><div class="d">sit, rise, recovery, lie, hello, heart, wiggle, scrape — verificar transiciones suaves.</div></div></label>
+    <label class="chk"><input type="checkbox"><div class="body"><div class="t">Rutinas pre-grabadas</div><div class="d">patrol, jump, explore — y que el botón de detener rutina las aborte limpio.</div></div></label>
+    <label class="chk"><input type="checkbox"><div class="body"><div class="t">Follow-QR</div><div class="d">El robot persigue un QR; al perderlo &gt;1.5 s se detiene; el sensor lo frena ante obstáculo.</div></div></label>
+    <label class="chk"><input type="checkbox"><div class="body"><div class="t">Agente Diver (chat + visión)</div><div class="d">Conversación con gpt-4o-mini, preguntas de visión ("¿qué ves?"), y comandos por voz/texto. Probar el <strong>fallback</strong> a Gemini si OpenAI falla.</div></div></label>
+    <label class="chk"><input type="checkbox"><div class="body"><div class="t">Gestos por pose</div><div class="d">Con <code>yolov8n-pose.pt</code>: manos arriba, manos en cadera (sentarse), etc. Usar <code>/api/gestures/debug</code> ante dudas.</div></div></label>
+    <label class="chk"><input type="checkbox"><div class="body"><div class="t">Reconocimiento facial</div><div class="d">Detección de rostros y reconocimiento de las personas registradas en <code>data/faces/</code>.</div></div></label>
+  </div>
+
+  <!-- FASE 3 -->
+  <div class="phase">
+    <div class="phase-h"><h3 style="margin:0;">Fase 3 · A vigilar / pendientes (no resuelto esta sesión)</h3><span class="pill p3">SEGUIMIENTO</span></div>
+    <p style="color:var(--dim);font-size:.86rem;">Posibles fuentes de problemas a observar y candidatos para la próxima sesión.</p>
+
+    <label class="chk"><input type="checkbox"><div class="body"><div class="t">Frontend: fetches sin timeout</div><div class="d">Si el backend tarda (ej. al conectar), algunos botones quedan "colgados" sin feedback porque <code>apiCall()</code> no tiene timeout. <em>Pendiente de auditar</em> — anotar si pasa.</div></div></label>
+    <label class="chk"><input type="checkbox"><div class="body"><div class="t">Reconexión tras pérdida de señal</div><div class="d">Con Starlink, observar qué pasa si se cae el WebRTC a mitad de ruta: ¿reconecta?, ¿el robot se detiene solo? Comportamiento aún no validado.</div></div></label>
+    <label class="chk"><input type="checkbox"><div class="body"><div class="t">Latencia real de la IA en Auto-Ruta</div><div class="d">Ahora que ya no bloquea, medir cuánto tarda la corrección de la IA en llegar y si el factor cacheado es suficientemente fresco para el control.</div></div></label>
+    <label class="chk"><input type="checkbox"><div class="body"><div class="t">Estado de la clave AES</div><div class="d">Recordatorio: robot no vinculado a la cuenta — ver <code>docs/CONTEXTO_AES_KEY.md</code>. Verificar si la clave en <code>.env</code> sigue siendo válida para conectar.</div></div></label>
+  </div>
+
+  <div class="footer">
+    Daiver Control CUN · Informe generado el 30·05·2026 · Sesión de estabilidad y reorganización ·
+    Proyecto de investigación Unitree Go2 Air — Laboratorio 2 CUN.
+  </div>
+
+</div>
+
+<script>
+  // Persistencia del checklist en localStorage + barra de progreso.
+  (function () {
+    var KEY = 'checklist_30_05_2026';
+    var boxes = Array.prototype.slice.call(document.querySelectorAll('.chk input[type=checkbox]'));
+    var saved = {};
+    try { saved = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { saved = {}; }
+
+    function refresh() {
+      var done = 0;
+      boxes.forEach(function (b, i) {
+        var row = b.closest('.chk');
+        if (b.checked) { done++; row.classList.add('done'); }
+        else { row.classList.remove('done'); }
+      });
+      var pct = boxes.length ? Math.round(done / boxes.length * 100) : 0;
+      document.getElementById('progress-fill').style.width = pct + '%';
+      document.getElementById('progress-text').textContent = done + ' / ' + boxes.length + '  (' + pct + '%)';
+    }
+
+    boxes.forEach(function (b, i) {
+      if (saved['c' + i]) b.checked = true;
+      b.addEventListener('change', function () {
+        saved['c' + i] = b.checked;
+        try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {}
+        refresh();
+      });
+    });
+    refresh();
+  })();
+</script>
+</body>
+</html>

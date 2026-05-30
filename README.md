@@ -13,14 +13,30 @@ Sistema de control web para el robot cuadrúpedo **Unitree Go2 Air** desarrollad
 
 ```
 unitreeWebRTC/
-├── app.py                   # Servidor Flask principal (rutas, WebRTC, Socket.IO)
-├── yolo_detector.py         # Detector YOLOv8 (webcam + cámara del robot)
+├── app.py                   # Bootstrap: arma app+socketio, registra blueprints y handlers
+├── yolo_detector.py         # Detector YOLOv8 (cámara del robot / webcam / URL)
 ├── requirements.txt         # Dependencias Python
 │
-├── config/                  # Configuración (IP del robot, parámetros)
-├── scripts/                 # Rutinas estáticas del robot
-│   ├── saludo.py, corazon.py, pata.py, pie.py, sentarse.py …
-│   └── 01_test_connection.py, 02_basic_motion.py …
+├── config/                  # Configuración (lee del .env: IP, claves, modelos)
+│
+├── api/                     # Blueprints Flask (capa HTTP / Socket.IO)
+│   ├── connection.py, motion.py, vision.py, sensor.py, autoroute.py
+│   ├── follow.py, agent.py, gestures.py, faces.py, map_ai.py
+│   └── sockets.py, pages.py, unitree_cloud.py, ble.py
+│
+├── core/                    # Lógica de dominio (sin Flask)
+│   ├── runtime.py           # App/Socket.IO + event loop asyncio compartido
+│   ├── connection.py        # Conexión WebRTC al Go2 + video → YOLO
+│   ├── primitives.py        # Envío de SPORT_CMD / Move
+│   ├── poses.py, routines.py, autoroute.py, follow.py, state.py
+│   ├── agents/              # Agente Diver (chat, tools, prompts, identidad)
+│   └── perception/          # lidar, qr, faces
+│
+├── scripts/                 # Scripts sueltos (no los usa el backend)
+│   ├── saludo.py, corazon.py … 01_test_connection.py …  # rutinas/demos
+│   ├── aes/                 # Recuperación de la clave AES del robot
+│   └── setup/               # Setup del robot (BLE, WiFi, SSH, con_notify)
+│
 ├── tests/                   # Tests de integración
 │
 ├── src/                     # Frontend servido por Flask
@@ -34,7 +50,10 @@ unitreeWebRTC/
 │   ├── js/                  # Lógica cliente
 │   └── assets/, img/        # Imágenes
 │
-├── informes/                # Informes técnicos (HTML imprimibles)
+├── console/                 # Consola IA (panel de diagnóstico)
+├── data/faces/              # Dataset local de rostros (reconocimiento)
+├── docs/                    # Guías técnicas (AES, SSH)
+├── informes/                # Informes técnicos (HTML/MD)
 ├── models/                  # Pesos YOLO (.pt) — auto-descargados
 ├── logs/                    # Logs del sistema
 └── unitree_env/             # Virtualenv (no en git)
@@ -53,8 +72,11 @@ unitree_env\Scripts\activate          # Windows
 # 2. Instalar dependencias
 pip install -r requirements.txt
 
-# 3. Configurar la IP del robot
-# Editar config/config.py: ROBOT_IP = "10.3.16.11"
+# 3. Configurar credenciales y la IP del robot
+#    Copiar .env.example a .env y rellenar: ROBOT_IP, ROBOT_AES_128_KEY,
+#    OPENAI_API_KEY / GEMINI_API_KEY. La IP también se puede cambiar desde
+#    la UI (se guarda en .env, no en config.py).
+copy .env.example .env                 # Windows  (cp en Linux/macOS)
 ```
 
 ---

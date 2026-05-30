@@ -20,18 +20,19 @@ __pycache__/
 *.swp
 .DS_Store
 Thumbs.db
+desktop.ini
 
+# Secrets y config local (cada equipo tiene la suya)
+.env
+/config/config.py
 
-# paginas pruebas
+# Claude Code (local)
+.claude/
+
+# logs
+logs/
+
+# paginas de prueba
 src/demo_jarvis.html
 src/error_503.html
-
-# logs y mas
-/config/config.py
-.claude/
 /src/lading
-__pycache__/
-*.pyc
-logs/
-.env
-.vscode/

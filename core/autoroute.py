@@ -132,6 +132,21 @@ def _ai_path_adjustment(payload: dict) -> dict:
     return {}
 
 
+def _apply_ai_adjustment(adj: dict, current: dict) -> dict:
+    """Convierte la respuesta IA en factores acotados. Si algo falla o el
+    dict viene vacio, conserva los valores actuales (degradacion segura)."""
+    if not adj:
+        return current
+    try:
+        return {
+            "z_gain":          _clamp(float(adj.get("z_gain", current["z_gain"])), 0.7, 1.8),
+            "speed_scale":     _clamp(float(adj.get("speed_scale", current["speed_scale"])), 0.25, 1.0),
+            "lookahead_scale": _clamp(float(adj.get("lookahead_scale", current["lookahead_scale"])), 0.55, 1.25),
+        }
+    except Exception:
+        return current
+
+
 async def _wait_for_pose(timeout_s: float = 5.0) -> bool:
     """Espera a que el lidar reporte pose valida."""
     deadline = asyncio.get_running_loop().time() + timeout_s
@@ -213,6 +228,8 @@ async def _follow_segment(a: dict, b: dict,
     ai_trigger = max(0.10, float(state.get("ai_cte_trigger_m", 0.22) or 0.22))
     ai_last_ts = 0.0
     ai_cached = {"z_gain": 1.0, "speed_scale": 1.0, "lookahead_scale": 1.0}
+    ai_future = None  # tarea IA en vuelo (executor), o None si no hay ninguna
+    loop = asyncio.get_running_loop()
 
     ax = float(a.get("x", 0.0))
     ay = float(a.get("y", 0.0))
@@ -265,9 +282,21 @@ async def _follow_segment(a: dict, b: dict,
         target_heading = math.atan2(ty - py, tx - px)
         heading_err = _normalize_angle(target_heading - yaw)
 
-        # Ajuste IA online (cada ~1.2 s y solo cuando hay desvio relevante).
+        # Ajuste IA online NO BLOQUEANTE. La llamada de red (OpenAI/Gemini)
+        # corre en un thread del executor para NO congelar el event loop:
+        # antes se llamaba en linea y bloqueaba el video WebRTC y los Move
+        # mientras esperaba la respuesta (1-3 s), colgando la app.
+        # Aplicamos el resultado cuando llega; mientras tanto el control
+        # sigue con el ultimo factor cacheado (degradacion suave).
         now = time.time()
-        if ai_on and cte >= ai_trigger and (now - ai_last_ts) >= ai_interval:
+        if ai_future is not None and ai_future.done():
+            try:
+                ai_cached = _apply_ai_adjustment(ai_future.result() or {}, ai_cached)
+            except Exception:
+                pass
+            ai_future = None
+        if (ai_on and ai_future is None and cte >= ai_trigger
+                and (now - ai_last_ts) >= ai_interval):
             ai_payload = {
                 "segment_len_m": round(seg_len, 3),
                 "progress": round(t, 3),
@@ -278,19 +307,8 @@ async def _follow_segment(a: dict, b: dict,
                 "returning": bool(returning),
                 "smooth_mode": bool(smooth),
             }
-            adj = _ai_path_adjustment(ai_payload)
-            try:
-                zg = float(adj.get("z_gain", 1.0))
-                ss = float(adj.get("speed_scale", 1.0))
-                ls = float(adj.get("lookahead_scale", 1.0))
-                ai_cached = {
-                    "z_gain": _clamp(zg, 0.7, 1.8),
-                    "speed_scale": _clamp(ss, 0.25, 1.0),
-                    "lookahead_scale": _clamp(ls, 0.55, 1.25),
-                }
-                ai_last_ts = now
-            except Exception:
-                pass
+            ai_future = loop.run_in_executor(None, _ai_path_adjustment, ai_payload)
+            ai_last_ts = now
 
         k_head = (1.7 if smooth else 1.55) * ai_cached["z_gain"]
         k_cte = (1.10 if smooth else 1.30) * ai_cached["z_gain"]

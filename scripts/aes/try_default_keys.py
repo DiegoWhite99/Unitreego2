@@ -5,7 +5,9 @@ import asyncio
 import sys
 import os
 
-sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+# Raiz del proyecto (dos niveles arriba: scripts/aes/ -> raiz) para resolver
+# `config.config` aunque el script viva en una subcarpeta.
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from config.config import ROBOT_IP
 

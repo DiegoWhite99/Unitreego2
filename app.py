@@ -35,9 +35,28 @@ qr_module.register()  # callback YOLO -> qr_state + socket.emit('qr_detected')
 # Main
 # ────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
+    # debug por entorno (FLASK_DEBUG=1 para activarlo). Por defecto OFF:
+    # evita exponer el debugger interactivo en la red del laboratorio.
+    debug = os.environ.get("FLASK_DEBUG", "0").strip().lower() in ("1", "true", "yes", "on")
+
     print("=" * 50)
     print("  Daiver Control CUN — Flask Backend")
     print(f"  Robot IP: {ROBOT_IP}")
     print(f"  Server:   http://localhost:5000")
+    print(f"  Debug:    {debug}")
     print("=" * 50)
-    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
+
+    # use_reloader=False: el reloader reinicia el proceso al guardar archivos
+    #   (perderia la conexion al robot a mitad de operacion) y duplicaria el
+    #   event loop asyncio y la carga del modelo YOLO.
+    # allow_unsafe_werkzeug=True: permite arrancar el server de desarrollo
+    #   aunque se lance sin terminal (doble-clic / pythonw / servicio), donde
+    #   Flask-SocketIO lanzaria un RuntimeError de lo contrario.
+    socketio.run(
+        app,
+        host="0.0.0.0",
+        port=5000,
+        debug=debug,
+        use_reloader=False,
+        allow_unsafe_werkzeug=True,
+    )

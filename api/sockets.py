@@ -8,7 +8,7 @@ import time
 from flask_socketio import SocketIO, emit
 
 from core.primitives import robot_send_command
-from core.runtime import run_async
+from core.runtime import run_async_no_wait
 from core.state import proximity_sensor, robot_state
 
 
@@ -45,7 +45,7 @@ def register_socket_handlers(socketio: SocketIO) -> None:
                 and proximity_sensor["enabled"]
                 and proximity_sensor["_alert_active"]
                 and x > 0):
-            run_async(robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": z}))
+            run_async_no_wait(robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": z}))
             return
 
         # Con force: limpia alerta + abre ventana de gracia (0.8 s) que
@@ -60,8 +60,11 @@ def register_socket_handlers(socketio: SocketIO) -> None:
             # vuelve a actuar normal desde ya, no dentro de 0.8 s.
             proximity_sensor["_force_until"] = 0.0
 
+        # Fire-and-forget: no esperamos el envio para no bloquear el hilo del
+        # socket (joystick a alta frecuencia). El comando se encola en el
+        # event loop y se ejecuta en orden.
         try:
-            run_async(robot_send_command("Move", {"x": x, "y": y, "z": z}))
+            run_async_no_wait(robot_send_command("Move", {"x": x, "y": y, "z": z}))
         except Exception as e:
             emit("log", {"type": "error", "message": str(e)})
 
@@ -73,6 +76,6 @@ def register_socket_handlers(socketio: SocketIO) -> None:
         if not robot_state["connected"]:
             return
         try:
-            run_async(robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": 0.0}))
+            run_async_no_wait(robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": 0.0}))
         except Exception as e:
             emit("log", {"type": "error", "message": str(e)})
