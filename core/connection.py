@@ -13,7 +13,6 @@ import asyncio
 
 from yolo_detector import detector as yolo_detector
 
-from config.config import ROBOT_AES_128_KEY
 from .logging_utils import emit_log, emit_state_update
 from .runtime import (
     clear_connection,
@@ -73,19 +72,42 @@ async def robot_connect(ip: str) -> None:
     )
     from unitree_webrtc_connect.constants import RTC_TOPIC, SPORT_CMD
 
+    # Habilita el handshake con_notify v3 (firmware nuevo del Go2). Sin esto, el
+    # SDK 2.x no descifra el data1 cifrado y la conexion LocalSTA falla con
+    # "RSA key format is not supported". Idempotente. Ver core/unitree_v3_patch.
+    from .unitree_v3_patch import apply_v3_patch
+    apply_v3_patch()
+
     emit_log("info", f"Conectando a {ip}...")
 
-    # Construir kwargs para la conexión
-    conn_kwargs = {
-        "ip": ip,
-    }
-    
-    # Agregar clave AES-128 si está disponible
-    if ROBOT_AES_128_KEY:
-        conn_kwargs["aes_128_key"] = ROBOT_AES_128_KEY
-        emit_log("info", "Usando clave AES-128 para autenticación")
-    
-    conn = UnitreeWebRTCConnection(WebRTCConnectionMethod.LocalSTA, **conn_kwargs)
+    # Pre-chequeo de alcance: si el robot no responde en el puerto del handshake
+    # (9991), fallamos rapido con un mensaje claro en vez de colgarnos ~30s en
+    # ICE / recibir un error criptico. Causa #1 de "no conecta": robot apagado,
+    # en otra red WiFi, o con una IP distinta a la configurada.
+    try:
+        _, writer = await asyncio.wait_for(
+            asyncio.open_connection(ip, 9991), timeout=3.0
+        )
+        writer.close()
+        try:
+            await writer.wait_closed()
+        except Exception:
+            pass
+    except (asyncio.TimeoutError, OSError) as exc:
+        msg = (
+            f"El robot no responde en {ip}:9991. Verifica que este encendido y "
+            f"conectado a la misma red WiFi. Si cambio de IP, actualizala en "
+            f"Configuracion."
+        )
+        emit_log("error", msg)
+        raise ConnectionError(msg) from exc
+
+    # OJO: el SDK instalado (unitree_webrtc_connect 2.x) NO acepta el kwarg
+    # `aes_128_key` — negocia su propia clave AES por sesion en el handshake
+    # local con_notify (puerto 9991). Pasarlo lanzaba TypeError y rompia la
+    # conexion antes de empezar (regresion del commit 1065ec11). La clave AES
+    # de la cuenta solo aplica al metodo Remote/cloud o a un SDK con v3.
+    conn = UnitreeWebRTCConnection(WebRTCConnectionMethod.LocalSTA, ip=ip)
     await conn.connect()
     pub_sub = conn.datachannel.pub_sub
     set_connection(conn, pub_sub)

@@ -2067,6 +2067,7 @@
                         <div class="cp-label">IP / Conectar</div>
                         <div class="cp-content">
                             <input type="text" id="ip-input" class="dv-input" placeholder="10.3.16.11" style="max-width:140px;padding:0.4rem 0.65rem;font-size:0.82rem;" data-tip="IP del robot en la red local." data-tip-pos="bottom">
+                            <button id="btn-scan" class="dv-btn" style="padding:0.4rem 0.9rem;font-size:0.78rem;" data-tip="Escanea la red y detecta la IP del robot automaticamente." data-tip-pos="bottom">🔍 Buscar</button>
                             <button id="btn-connect" class="dv-btn primary" style="padding:0.4rem 0.9rem;font-size:0.78rem;" data-i18n="conn.connect">Conectar</button>
                             <button id="btn-disconnect" class="dv-btn danger" disabled style="padding:0.4rem 0.9rem;font-size:0.78rem;" data-i18n="conn.disconnect">Desconectar</button>
                         </div>
@@ -2612,7 +2613,7 @@
 
             // Si observador: desactivar botones de acción del robot
             const readOnly = user.role === 'observador';
-            ['btn-connect', 'btn-disconnect', 'btn-emergency'].forEach(id => {
+            ['btn-scan', 'btn-connect', 'btn-disconnect', 'btn-emergency'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el && readOnly) { el.disabled = true; el.title = 'Solo lectura'; }
             });

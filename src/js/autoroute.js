@@ -133,6 +133,8 @@ const AutoRoute = {
         this.setupControls();
         this.setupEditor();
         this.initCanvas();
+        this.initMap2D();
+        this.setupCockpit();
         this.render();
         this.refreshStatus();
         this.startRenderLoop();
@@ -161,6 +163,7 @@ const AutoRoute = {
             }
             if (this._needsRedraw) {
                 this.drawRoute();
+                this.drawMap2D();
                 this._needsRedraw = false;
             }
             this._rafHandle = requestAnimationFrame(tick);
@@ -220,6 +223,24 @@ const AutoRoute = {
             btnCoordAdd:  document.getElementById('ar-coord-add'),
             wpRegistryList:  document.getElementById('ar-wp-registry-list'),
             wpRegistryCount: document.getElementById('ar-wp-registry-count'),
+            // Misiones (rutas con nombre, persistidas en el servidor) + Ir-a-punto
+            missionSaveAs:   document.getElementById('ar-mission-save-as'),
+            missionsRefresh: document.getElementById('ar-missions-refresh'),
+            missionsList:    document.getElementById('ar-missions-list'),
+            coordGoto:       document.getElementById('ar-coord-goto'),
+            // ── Cockpit (nuevos) ──────────────────────────────────────
+            speedValue:   document.getElementById('ar-speed-value'),
+            infoMode:     document.getElementById('ar-info-mode'),
+            map2dCanvas:  document.getElementById('ar-map2d-canvas'),
+            detPane:      document.getElementById('ar-detections-pane'),
+            btnEstop:     document.getElementById('ar-btn-estop'),
+            btnGetup:     document.getElementById('ar-btn-getup'),
+            btnStanddown: document.getElementById('ar-btn-standdown'),
+            btnLock:      document.getElementById('ar-btn-lock'),
+            btnUnlock:    document.getElementById('ar-btn-unlock'),
+            chatLog:      document.getElementById('ar-chat-log'),
+            chatInput:    document.getElementById('ar-chat-input'),
+            chatSend:     document.getElementById('ar-chat-send'),
         };
     },
 
@@ -537,6 +558,7 @@ const AutoRoute = {
             const prev = this.pose;
             this.pose = d.pose;
             this.updateRobotBadge();
+            this._updateSpeed(prev, d.pose);
             // Acumular trail (downsample) para ver el camino real.
             const last = this.poseTrail[this.poseTrail.length - 1];
             const newPoint = !last
@@ -645,6 +667,12 @@ const AutoRoute = {
             window.location.href = '/save_img';
         });
 
+        // Misiones + Ir-a-punto
+        this.el.missionSaveAs?.addEventListener('click', () => this.saveAsMission());
+        this.el.missionsRefresh?.addEventListener('click', () => this.fetchMissions());
+        this.el.coordGoto?.addEventListener('click', () => this.gotoPoint());
+        this.fetchMissions();
+
         window.addEventListener('beforeunload', () => {
             if (this.scan360.active) this.stopScan360(false);
         });
@@ -742,6 +770,161 @@ const AutoRoute = {
     async stopRoute() {
         await this.api('/api/autoroute/stop', 'POST');
         this.setRun(false);
+    },
+
+    /* -------------------- Misiones (rutas con nombre) -------------------- */
+    _esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, (c) =>
+            ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    },
+
+    _currentFlags() {
+        return {
+            translate_to_pose: !!(this.el.chkTranslate && this.el.chkTranslate.checked),
+            smooth_mode:       !!(this.el.chkSmooth && this.el.chkSmooth.checked),
+            pause_on_person:   true,
+            strict_path_mode:  true,
+            ai_path_assist:    true,
+        };
+    },
+
+    async fetchMissions() {
+        const res = await this.api('/api/autoroute/missions', 'GET');
+        const list = (res && res.status === 'ok' && Array.isArray(res.missions)) ? res.missions : [];
+        this._missions = list;
+        this.renderMissions(list);
+    },
+
+    renderMissions(list) {
+        const box = this.el.missionsList;
+        if (!box) return;
+        if (!list.length) {
+            box.innerHTML = '<div class="ar-missions-empty">Sin misiones guardadas.</div>';
+            return;
+        }
+        box.innerHTML = '';
+        list.forEach((m) => {
+            const n = Array.isArray(m.waypoints) ? m.waypoints.length : 0;
+            const row = document.createElement('div');
+            row.className = 'ar-mission-item';
+            row.innerHTML =
+                `<span class="ar-mission-name" title="${this._esc(m.name)}">${this._esc(m.name)}</span>` +
+                `<span class="ar-mission-meta">${n} wp${m.cycles > 1 ? ' · x' + m.cycles : ''}</span>` +
+                `<span class="ar-mission-btns">` +
+                  `<button class="cr-btn ghost ar-mi-run" title="Ejecutar esta misión">&#9654;</button>` +
+                  `<button class="cr-btn ghost ar-mi-load" title="Cargar en el editor para verla/editarla">&#x270E;</button>` +
+                  `<button class="cr-btn ghost ar-mi-del" title="Borrar misión">&#x1F5D1;</button>` +
+                `</span>`;
+            row.querySelector('.ar-mi-run').addEventListener('click', () => this.runMission(m.id));
+            row.querySelector('.ar-mi-load').addEventListener('click', () => this.loadMission(m.id, true));
+            row.querySelector('.ar-mi-del').addEventListener('click', () => this.deleteMission(m.id, m.name));
+            box.appendChild(row);
+        });
+    },
+
+    async saveAsMission() {
+        if (!this.route || !Array.isArray(this.route.points) || this.route.points.length < 2) {
+            alert('Necesitas al menos 2 waypoints para guardar una misión.');
+            return;
+        }
+        const name = (prompt('Nombre de la misión:', '') || '').trim();
+        if (!name) return;
+        const cycles = Math.max(1, parseInt(this.el.cyclesInput.value, 10) || 1);
+        const payload = {
+            name,
+            cycles,
+            flags: this._currentFlags(),
+            labels: this.route.labels || [],
+            waypoints: this.route.points.map((p) => {
+                const wp = { x: p.x, y: p.y };
+                if (p.theta != null) wp.theta = p.theta;
+                return wp;
+            }),
+        };
+        const res = await this.api('/api/autoroute/missions', 'POST', payload);
+        if (res && res.status === 'ok') {
+            await this.fetchMissions();
+        } else {
+            alert('No se pudo guardar: ' + ((res && res.message) || 'error'));
+        }
+    },
+
+    async loadMission(mid, intoEditor = true) {
+        const res = await this.api('/api/autoroute/missions/' + encodeURIComponent(mid), 'GET');
+        if (!res || res.status !== 'ok' || !res.mission) {
+            alert('No se pudo cargar la misión.');
+            return null;
+        }
+        const m = res.mission;
+        if (intoEditor && this.route) {
+            if (this.pushHistory) this.pushHistory();
+            this.route.points = (m.waypoints || []).map((w) => {
+                const p = { x: w.x, y: w.y, ts: Date.now(), source: 'mission' };
+                if (w.theta != null) p.theta = w.theta;
+                return p;
+            });
+            this.route.labels = Array.isArray(m.labels) ? m.labels.slice() : (this.route.labels || []);
+            this.route.totalMeters = this.computeRouteLength(this.route.points);
+            if (this.el.cyclesInput) this.el.cyclesInput.value = m.cycles || 1;
+            const f = m.flags || {};
+            if (this.el.chkTranslate && 'translate_to_pose' in f) this.el.chkTranslate.checked = !!f.translate_to_pose;
+            if (this.el.chkSmooth && 'smooth_mode' in f) this.el.chkSmooth.checked = !!f.smooth_mode;
+            this.invalidateWorldBounds();
+            this.render();
+            if (this.el.btnStart) this.el.btnStart.disabled = !this.hasRoute();
+        }
+        return m;
+    },
+
+    async runMission(mid) {
+        if (!this.state.robotConnected) {
+            alert('El robot no esta conectado. Conéctalo desde el Control Remoto.');
+            return;
+        }
+        await this.loadMission(mid, true);   // mostrar la ruta en el mapa
+        const cycles = Math.max(1, parseInt(this.el.cyclesInput.value, 10) || 1);
+        this.poseTrail = [];
+        this.markDirty();
+        const res = await this.api(
+            '/api/autoroute/missions/' + encodeURIComponent(mid) + '/start', 'POST', { cycles });
+        if (res && res.status === 'ok') {
+            this.state.cycleTotal = cycles;
+            this.setRun(true);
+        } else {
+            alert('No se pudo iniciar la misión: ' + ((res && res.message) || 'error'));
+        }
+    },
+
+    async deleteMission(mid, name) {
+        if (!confirm('¿Borrar la misión "' + (name || mid) + '"?')) return;
+        const res = await this.api('/api/autoroute/missions/' + encodeURIComponent(mid), 'DELETE');
+        if (res && res.status === 'ok') {
+            await this.fetchMissions();
+        } else {
+            alert('No se pudo borrar: ' + ((res && res.message) || 'error'));
+        }
+    },
+
+    async gotoPoint() {
+        if (!this.state.robotConnected) {
+            alert('El robot no esta conectado. Conéctalo desde el Control Remoto.');
+            return;
+        }
+        const x = parseFloat(this.el.inX && this.el.inX.value);
+        const y = parseFloat(this.el.inY && this.el.inY.value);
+        if (!isFinite(x) || !isFinite(y)) {
+            alert('Escribe coordenadas x e y (en metros) en los campos de arriba para ir a un punto.');
+            return;
+        }
+        if (!confirm(`Ir al punto (${x.toFixed(2)}, ${y.toFixed(2)})? El robot navegará directo hacia ahí (un solo punto, sin retorno).`)) return;
+        const res = await this.api('/api/autoroute/goto', 'POST', { x, y });
+        if (res && res.status === 'ok') {
+            this.poseTrail = [];
+            this.markDirty();
+            this.setRun(true);
+        } else {
+            alert('No se pudo ir al punto: ' + ((res && res.message) || 'error'));
+        }
     },
 
     // ── Live heat accumulation ──────────────────────────────────────
@@ -2417,6 +2600,273 @@ const AutoRoute = {
         while (a >  Math.PI) a -= 2 * Math.PI;
         while (a < -Math.PI) a += 2 * Math.PI;
         return a;
+    },
+
+    /* ============================================================
+       COCKPIT: velocidad (derivada de la pose), mapa 2D top-down,
+       botonera de poses, chat de texto y detecciones. Todo aditivo:
+       no altera el seguimiento de ruta, el render 3D ni la conexión.
+       ============================================================ */
+
+    // Velocidad real = Δdistancia / Δtiempo entre poses del lidar (m/s), con EMA.
+    _updateSpeed(prevPose, pose) {
+        const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        const lastT = this._lastPoseT || 0;
+        this._lastPoseT = now;
+        this._lastSpeedTs = now;
+        if (!prevPose || !lastT) return;
+        const dt = (now - lastT) / 1000;
+        if (dt <= 0.001 || dt > 2) return;          // descarta saltos/huecos raros
+        const inst = Math.hypot(pose.x - prevPose.x, pose.y - prevPose.y) / dt;
+        const a = 0.35;                             // suavizado
+        this._speedEMA = (this._speedEMA == null) ? inst : (a * inst + (1 - a) * this._speedEMA);
+        this._renderSpeed();
+    },
+
+    _renderSpeed() {
+        if (this.el.speedValue) {
+            this.el.speedValue.textContent = Math.max(0, this._speedEMA || 0).toFixed(2);
+        }
+        if (this.el.infoMode) {
+            this.el.infoMode.textContent = !this.state.robotConnected ? 'Sin robot'
+                : (this.state.running ? (this.state.returning ? 'Volviendo' : 'Navegando') : 'Listo');
+        }
+    },
+
+    // Si dejan de llegar poses, la velocidad decae a 0 (robot quieto).
+    _speedWatchdog() {
+        const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        if (this._lastSpeedTs && (now - this._lastSpeedTs) > 700) {
+            this._speedEMA = (this._speedEMA || 0) * 0.5;
+            if (this._speedEMA < 0.02) this._speedEMA = 0;
+            this._renderSpeed();
+        }
+    },
+
+    /* -------------------- Mapa 2D top-down -------------------- */
+    initMap2D() {
+        const c = this.el.map2dCanvas;
+        if (!c) return;
+        this.map2d = c;
+        const resize = () => {
+            const r = c.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            c.width = Math.max(1, Math.round(r.width * dpr));
+            c.height = Math.max(1, Math.round(r.height * dpr));
+            this.map2dCtx = c.getContext('2d');
+            this.markDirty();
+        };
+        resize();
+        window.addEventListener('resize', resize);
+    },
+
+    drawMap2D() {
+        const c = this.map2d, ctx = this.map2dCtx;
+        if (!c || !ctx) return;
+        const W = c.width, H = c.height;
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = '#05080e';
+        ctx.fillRect(0, 0, W, H);
+
+        const route = this.route || { points: [], heat: [] };
+        const cell = route.heatCellSize || 0.08;
+        const heat = Array.isArray(route.heat) ? route.heat : [];
+        const pts = route.points || [];
+        const trail = this.poseTrail || [];
+
+        // Bounds del mundo (m), muestreando el heat para no recorrerlo entero.
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        const acc = (x, y) => { if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; };
+        const cap = 6000;
+        const step = heat.length > cap ? Math.ceil(heat.length / cap) : 1;
+        for (let i = 0; i < heat.length; i += step) { const h = heat[i]; if (h) acc(h[0] * cell, h[1] * cell); }
+        for (const p of pts) acc(p.x, p.y);
+        for (const t of trail) acc(t.x, t.y);
+        if (this.pose) acc(this.pose.x, this.pose.y);
+        if (!isFinite(minX)) { minX = -2; maxX = 2; minY = -2; maxY = 2; }
+        const padW = Math.max(0.5, (maxX - minX) * 0.08);
+        const padH = Math.max(0.5, (maxY - minY) * 0.08);
+        minX -= padW; maxX += padW; minY -= padH; maxY += padH;
+
+        const worldW = Math.max(0.1, maxX - minX), worldH = Math.max(0.1, maxY - minY);
+        const margin = 10;
+        const scale = Math.min((W - 2 * margin) / worldW, (H - 2 * margin) / worldH);
+        const offX = (W - worldW * scale) / 2, offY = (H - worldH * scale) / 2;
+        const sx = (wx) => offX + (wx - minX) * scale;       // world -> pantalla
+        const sy = (wy) => H - (offY + (wy - minY) * scale); // y hacia arriba
+
+        // Grid de 1 m
+        ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+        ctx.lineWidth = 1;
+        for (let gx = Math.ceil(minX); gx <= maxX; gx++) { ctx.beginPath(); ctx.moveTo(sx(gx), 0); ctx.lineTo(sx(gx), H); ctx.stroke(); }
+        for (let gy = Math.ceil(minY); gy <= maxY; gy++) { ctx.beginPath(); ctx.moveTo(0, sy(gy)); ctx.lineTo(W, sy(gy)); ctx.stroke(); }
+
+        // Heatmap de obstáculos (top-down)
+        const cellPx = Math.max(2, cell * scale);
+        for (let i = 0; i < heat.length; i += step) {
+            const h = heat[i]; if (!h) continue;
+            const v = Math.max(0, Math.min(255, h.length >= 4 ? h[3] : h[2]));
+            if (v <= 0) continue;
+            const t = v / 255, a = Math.min(0.9, 0.25 + t * 0.7);
+            ctx.fillStyle = `rgba(255,${Math.round(183 - t * 100)},${Math.max(0, Math.round(77 - t * 60))},${a})`;
+            ctx.fillRect(sx(h[0] * cell) - cellPx / 2, sy(h[1] * cell) - cellPx / 2, cellPx, cellPx);
+        }
+
+        // Camino real (trail)
+        if (trail.length > 1) {
+            ctx.strokeStyle = 'rgba(255,196,0,0.8)'; ctx.lineWidth = 2;
+            ctx.beginPath();
+            trail.forEach((t, i) => { const X = sx(t.x), Y = sy(t.y); i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
+            ctx.stroke();
+        }
+
+        // Ruta planificada + waypoints
+        if (pts.length > 1) {
+            ctx.strokeStyle = 'rgba(0,200,83,0.9)'; ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            pts.forEach((p, i) => { const X = sx(p.x), Y = sy(p.y); i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
+            ctx.stroke();
+        }
+        pts.forEach((p, i) => {
+            ctx.beginPath();
+            ctx.arc(sx(p.x), sy(p.y), i === 0 ? 5 : 4, 0, Math.PI * 2);
+            ctx.fillStyle = i === 0 ? '#00c853' : '#5aa8ff';
+            ctx.fill();
+        });
+
+        // Robot (triángulo orientado por yaw)
+        if (this.pose) {
+            ctx.save();
+            ctx.translate(sx(this.pose.x), sy(this.pose.y));
+            ctx.rotate(-(this.pose.yaw || 0));   // y invertida en pantalla
+            ctx.beginPath();
+            ctx.moveTo(9, 0); ctx.lineTo(-6, -6); ctx.lineTo(-6, 6); ctx.closePath();
+            ctx.fillStyle = '#1a73e8';
+            ctx.shadowColor = 'rgba(90,168,255,0.9)'; ctx.shadowBlur = 8;
+            ctx.fill();
+            ctx.restore();
+        } else {
+            ctx.fillStyle = 'rgba(160,170,185,0.5)';
+            ctx.font = '11px Consolas, monospace';
+            ctx.fillText('sin pose del lidar', 10, H - 10);
+        }
+    },
+
+    /* -------------------- Botonera + chat + detecciones -------------------- */
+    setupCockpit() {
+        const bind = (el, fn) => el && el.addEventListener('click', fn);
+        bind(this.el.btnEstop,     () => this._cmd('/api/emergency', null,                 '⛔ E-STOP (Damp)'));
+        bind(this.el.btnGetup,     () => this._cmd('/api/action',  { action: 'recovery' }, '🏃 Get Up'));
+        bind(this.el.btnStanddown, () => this._cmd('/api/action',  { action: 'lie' },      '💤 Stand down'));
+        bind(this.el.btnLock,      () => this._cmd('/api/command', { command: 'Damp' },    '🔒 Lock'));
+        bind(this.el.btnUnlock,    () => this._cmd('/api/action',  { action: 'stand' },    '🔓 Unlock'));
+
+        bind(this.el.chatSend, () => this.sendChat());
+        this.el.chatInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.sendChat(); });
+
+        this._speedTimer = setInterval(() => this._speedWatchdog(), 400);
+        this._detTimer = setInterval(() => this._refreshDetections(), 1200);
+        this._renderSpeed();
+    },
+
+    async _cmd(endpoint, body, label) {
+        if (!this.state.robotConnected && endpoint !== '/api/emergency') {
+            this._toast(label, '⚠ robot no conectado');
+            return;
+        }
+        this._toast(label, '…');
+        const res = await this.api(endpoint, 'POST', body);
+        const ok = res && (res.status === 'ok' || res.status === undefined);
+        this._toast(label, ok ? '✓ ok' : ('⚠ ' + ((res && res.message) || 'error')));
+    },
+
+    _toast(text, status) {
+        const t = this.el.voiceToast, vt = this.el.voiceText, vs = this.el.voiceStatus;
+        if (!t) return;
+        if (vt) vt.textContent = text;
+        if (vs) vs.textContent = status || '';
+        t.style.display = 'block';
+        clearTimeout(this._toastTimer);
+        this._toastTimer = setTimeout(() => { t.style.display = 'none'; }, 3500);
+    },
+
+    async _refreshDetections() {
+        const pane = this.el.detPane;
+        if (!pane) return;
+        if (!this.el.video || this.el.video.style.display === 'none') return;  // YOLO apagado
+        const res = await this.api('/api/yolo/detections?compact=1&limit=12', 'GET');
+        const dets = (res && res.detections) || [];
+        if (!dets.length) { pane.innerHTML = '<div class="ar-det-empty">Sin detecciones.</div>'; return; }
+        const counts = {};
+        dets.forEach((d) => {
+            const l = String(d.label || d.cls || '—');
+            const c = Number(d.confidence || d.conf || 0);
+            if (!counts[l]) counts[l] = { n: 1, conf: c };
+            else { counts[l].n++; counts[l].conf = Math.max(counts[l].conf, c); }
+        });
+        pane.innerHTML = Object.entries(counts).map(([l, o]) =>
+            `<div class="ar-det-chip"><span class="lbl">${this._esc(l)}${o.n > 1 ? ' ×' + o.n : ''}</span>`
+            + `<span class="conf">${(o.conf * 100).toFixed(0)}%</span></div>`).join('');
+    },
+
+    async sendChat() {
+        const inp = this.el.chatInput, log = this.el.chatLog;
+        if (!inp || !log) return;
+        const msg = inp.value.trim();
+        if (!msg) return;
+        inp.value = '';
+        const empty = log.querySelector('.ar-chat-empty');
+        if (empty) empty.remove();
+        this._appendChat('user', msg);
+
+        let image_b64 = null;
+        try {
+            const canvas = document.getElementById('ar-route-canvas');
+            if (canvas) image_b64 = canvas.toDataURL('image/jpeg', 0.6);
+        } catch (_) { /* canvas puede estar vacío */ }
+        const wp = this.route ? this.route.points.length : 0;
+        const px = this.pose ? this.pose.x.toFixed(2) : '?';
+        const py = this.pose ? this.pose.y.toFixed(2) : '?';
+        const ctx = `Eres el sistema de navegación del robot Go2. ${wp} waypoints planificados, `
+                  + `robot en (${px}, ${py}). Instrucción/pregunta del operador: "${msg}". `
+                  + `Responde en 1-2 frases concisas.`;
+
+        const thinking = this._appendChat('bot', '…');
+        try {
+            const body = { message: ctx, history: [] };
+            if (image_b64) body.image_b64 = image_b64;
+            const res = await this.api('/api/agente/chat', 'POST', body);
+            const reply = (res && res.reply) || '🐾';
+            thinking.textContent = reply;
+            this._speakText(reply);
+        } catch (e) {
+            thinking.textContent = '⚠ Sin conexión con el agente';
+        }
+        log.scrollTop = log.scrollHeight;
+    },
+
+    _appendChat(who, text) {
+        const log = this.el.chatLog;
+        const div = document.createElement('div');
+        div.className = 'ar-chat-msg ' + (who === 'user' ? 'user' : 'bot');
+        div.textContent = text;
+        log.appendChild(div);
+        log.scrollTop = log.scrollHeight;
+        return div;
+    },
+
+    _speakText(text) {
+        try {
+            if (!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'es-ES'; u.rate = 0.95; u.pitch = 0.8;
+            const voices = window.speechSynthesis.getVoices();
+            const v = voices.find((vv) => /es/i.test(vv.lang) && /male|google/i.test(vv.name.toLowerCase()))
+                   || voices.find((vv) => /es/i.test(vv.lang));
+            if (v) u.voice = v;
+            window.speechSynthesis.speak(u);
+        } catch (_) { /* sin TTS */ }
     },
 
     /* -------------------- API helper -------------------- */

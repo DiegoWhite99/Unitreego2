@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import base64
+import json
 import os
 import re
+import socket
 import time
 
 from flask import Blueprint, jsonify, request
@@ -57,6 +60,122 @@ def _upsert_env_var(key: str, value: str) -> None:
 
     with open(_ENV_PATH, "w", encoding="utf-8") as f:
         f.writelines(new_lines)
+
+
+# ────────────────────────────────────────────────────────────────────
+# Autodescubrimiento del robot en la LAN.
+#
+# Motivacion: el Go2 recibe una IP distinta cada vez que se une al WiFi
+# (DHCP). En vez de perseguir la IP a mano en el .env, escaneamos la(s)
+# subred(es) locales buscando quien responde el handshake del Go2 en el
+# puerto 9991, y confirmamos que es el robot con /con_notify (data2).
+# ────────────────────────────────────────────────────────────────────
+_HANDSHAKE_PORT = 9991
+
+
+def _local_subnet_prefixes() -> set[str]:
+    """Prefijos /24 (p.ej. '192.168.2.') donde tiene sentido buscar: la
+    subred de la IP local del PC + la de la IP del robot configurada."""
+    prefixes: set[str] = set()
+
+    def _add(ip: str) -> None:
+        host = ip.split(":", 1)[0]          # descarta :puerto si lo hubiera
+        parts = host.split(".")
+        if len(parts) == 4 and all(p.isdigit() for p in parts):
+            prefixes.add(".".join(parts[:3]) + ".")
+
+    # IP con la que el PC sale a la red (sin enviar nada; solo fija la ruta).
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        _add(s.getsockname()[0])
+        s.close()
+    except Exception:
+        pass
+
+    # IP del robot que hay configurada ahora mismo.
+    _add(os.environ.get("ROBOT_IP") or ROBOT_IP or "")
+    return prefixes
+
+
+def _con_notify_handshake(ip: str) -> int | None:
+    """Devuelve el 'data2' de /con_notify (1/2/3) si responde; None si no.
+    Confirma que el host es realmente un Go2 y no otro cacharro en 9991."""
+    try:
+        import requests
+        r = requests.post(f"http://{ip}:{_HANDSHAKE_PORT}/con_notify", timeout=3)
+        j = json.loads(base64.b64decode(r.text).decode("utf-8"))
+        return j.get("data2")
+    except Exception:
+        return None
+
+
+def _scan_for_robot() -> list[dict]:
+    """Escanea las subredes locales y devuelve los Go2 encontrados.
+    Cada item: {'ip': str, 'handshake': int|None, 'verified': bool}."""
+    import concurrent.futures as cf
+
+    candidates = [
+        f"{prefix}{host}"
+        for prefix in _local_subnet_prefixes()
+        for host in range(1, 255)
+    ]
+
+    def _port_open(ip: str) -> str | None:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(0.4)
+        try:
+            return ip if s.connect_ex((ip, _HANDSHAKE_PORT)) == 0 else None
+        finally:
+            s.close()
+
+    open_hosts: list[str] = []
+    with cf.ThreadPoolExecutor(max_workers=128) as ex:
+        for res in ex.map(_port_open, candidates):
+            if res:
+                open_hosts.append(res)
+
+    found: list[dict] = []
+    for ip in open_hosts:
+        data2 = _con_notify_handshake(ip)
+        found.append({"ip": ip, "handshake": data2, "verified": data2 is not None})
+
+    # Orden de preferencia: (1) confirmados por con_notify primero; (2) si
+    # varios responden, la IP ya configurada gana (es la conocida-buena, no
+    # pisamos una conexion que ya funciona); (3) el resto ascendente.
+    current = (os.environ.get("ROBOT_IP") or ROBOT_IP or "").split(":", 1)[0]
+    found.sort(key=lambda f: (not f["verified"], f["ip"] != current, f["ip"]))
+    return found
+
+
+@bp.route("/api/scan", methods=["POST"])
+def api_scan():
+    """Busca el robot en la red y (si lo halla) persiste su IP en el .env."""
+    from core.logging_utils import emit_log
+
+    emit_log("info", "Buscando robot en la red...")
+    try:
+        found = _scan_for_robot()
+    except Exception as e:
+        emit_log("error", f"Fallo el escaneo de red: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+    if not found:
+        msg = "No se encontro ningun robot en la red. Verifica que este encendido y en la misma WiFi."
+        emit_log("warning", msg)
+        return jsonify({"status": "ok", "found": [], "message": msg})
+
+    best = found[0]
+    # Persistimos la IP hallada para que sobreviva a reinicios de la app.
+    try:
+        _upsert_env_var("ROBOT_IP", best["ip"])
+        os.environ["ROBOT_IP"] = best["ip"]
+        robot_state["ip"] = best["ip"]
+    except Exception:
+        pass
+
+    emit_log("success", f"Robot encontrado en {best['ip']} (handshake v{best['handshake']}).")
+    return jsonify({"status": "ok", "found": found})
 
 
 @bp.route("/api/status")

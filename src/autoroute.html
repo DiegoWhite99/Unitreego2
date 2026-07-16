@@ -7,13 +7,27 @@
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/controlRemoto.css">
     <link rel="stylesheet" href="css/autoroute.css">
+    <style>
+      /* Panel de Misiones (rutas con nombre) */
+      .ar-missions-actions { display:flex; gap:6px; margin-bottom:8px; }
+      .ar-missions-actions #ar-mission-save-as { flex:1; }
+      .ar-missions-list { display:flex; flex-direction:column; gap:4px; max-height:180px; overflow-y:auto; }
+      .ar-missions-empty { color:#4a6278; font-size:.78rem; padding:6px 2px; }
+      .ar-mission-item { display:flex; align-items:center; gap:6px; padding:5px 7px;
+        border:1px solid rgba(79,142,247,.18); border-radius:8px; background:rgba(12,21,32,.5); }
+      .ar-mission-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis;
+        white-space:nowrap; font-size:.82rem; color:#c8d8ec; }
+      .ar-mission-meta { font-size:.7rem; color:#4a6278; flex-shrink:0; }
+      .ar-mission-btns { display:flex; gap:3px; flex-shrink:0; }
+      .ar-mission-btns .cr-btn { padding:2px 7px; font-size:.8rem; line-height:1; }
+    </style>
 </head>
-<body class="ar-body">
+<body class="ar-body ar-cockpit">
     <header class="ar-topbar">
         <div class="ar-brand">
             <a class="cr-back" href="/controlRemoto">&larr;</a>
             <h1>Daiver Auto-Ruta</h1>
-            <span class="badge">Autonomo</span>
+            <span class="badge">Cockpit</span>
         </div>
         <div class="ar-status-group">
             <span id="ar-status-server" class="cr-pill disconnected">
@@ -29,13 +43,94 @@
     </header>
 
     <main class="ar-stage">
-        <!-- Mapa 2.5D: heatmap del lidar + waypoints editables -->
-        <section class="ar-map-section">
-            <div class="ar-map-wrap">
-                <canvas id="ar-route-canvas"></canvas>
+        <!-- ══════════ COLUMNA IZQUIERDA ══════════ -->
+        <aside class="ar-left">
+            <!-- Información: gauges -->
+            <section class="cr-panel ar-info-panel">
+                <h4>Información</h4>
+                <div class="ar-gauges">
+                    <div class="ar-gauge">
+                        <div class="ar-gauge-ring">
+                            <span class="ar-gauge-num" id="ar-speed-value">0.0</span>
+                            <span class="ar-gauge-unit">m/s</span>
+                        </div>
+                        <div class="ar-gauge-label">Velocidad</div>
+                    </div>
+                    <div class="ar-info-tiles">
+                        <div class="ar-info-tile">
+                            <span class="lbl">Modo</span>
+                            <span class="val" id="ar-info-mode">--</span>
+                        </div>
+                        <div class="ar-info-tile">
+                            <span class="lbl">Waypoints</span>
+                            <span class="val"><strong id="ar-wp-now">0</strong>/<strong id="ar-wp-total">0</strong></span>
+                        </div>
+                        <div class="ar-info-tile">
+                            <span class="lbl">Ciclo</span>
+                            <span class="val"><strong id="ar-cycle-now">0</strong>/<strong id="ar-cycle-total">0</strong></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-                <!-- Toolbar flotante superior-izquierda -->
-                <div class="ar-map-toolbar" role="toolbar" aria-label="Edicion de ruta">
+            <!-- Misiones -->
+            <section class="cr-panel ar-missions-panel">
+                <h4>Misiones</h4>
+                <div class="ar-missions-actions">
+                    <button id="ar-mission-save-as" class="cr-btn ghost" title="Guardar la ruta actual como una misión con nombre (se guarda en el servidor)">&#x1F4BE; Guardar como misión</button>
+                    <button id="ar-missions-refresh" class="cr-btn ghost" title="Recargar la lista de misiones">&#x21BB;</button>
+                </div>
+                <div id="ar-missions-list" class="ar-missions-list">
+                    <div class="ar-missions-empty">Sin misiones guardadas.</div>
+                </div>
+            </section>
+
+            <!-- Ruta / Ir-a-punto -->
+            <section class="cr-panel">
+                <h4>Ruta</h4>
+                <div class="ar-route-meta">
+                    <span id="ar-route-points">Sin ruta guardada</span>
+                    <span id="ar-route-length"></span>
+                </div>
+                <div class="ar-coord-input">
+                    <input type="number" step="0.01" id="ar-coord-x" placeholder="x (m)">
+                    <input type="number" step="0.01" id="ar-coord-y" placeholder="y (m)">
+                    <button id="ar-coord-add" class="cr-btn ghost" title="Agregar waypoint con coordenadas exactas">+</button>
+                    <button id="ar-coord-goto" class="cr-btn ghost" title="Ir-a-punto: el robot navega a estas coordenadas (un solo punto, sin retorno)">&#9654; Ir</button>
+                </div>
+                <details class="ar-wp-registry" open>
+                    <summary>Registro de ubicaciones <span id="ar-wp-registry-count">(0)</span></summary>
+                    <div id="ar-wp-registry-list" class="ar-wp-registry-list">
+                        <div class="ar-wp-registry-empty">Sin waypoints registrados.</div>
+                    </div>
+                </details>
+            </section>
+
+            <!-- Ciclos + flags de ruta -->
+            <section class="cr-panel">
+                <h4>Ciclos</h4>
+                <div class="ar-cycles">
+                    <label for="ar-cycles-input">Cuantas veces repetir la ruta:</label>
+                    <div class="ar-cycles-row">
+                        <button id="ar-cyc-minus" class="cr-btn ghost">&minus;</button>
+                        <input id="ar-cycles-input" type="number" min="1" max="99" value="1">
+                        <button id="ar-cyc-plus" class="cr-btn ghost">+</button>
+                    </div>
+                </div>
+                <label class="ar-translate-opt">
+                    <input type="checkbox" id="ar-translate-to-pose" checked>
+                    <span>Anclar ruta a la posicion y orientacion actual del robot</span>
+                </label>
+                <label class="ar-translate-opt ar-smooth-opt">
+                    <input type="checkbox" id="ar-smooth-mode">
+                    <span>&#x1F30A; Modo fluido &mdash; sin paradas entre waypoints</span>
+                </label>
+            </section>
+
+            <!-- Editor de ruta (toolbar reubicada aquí para no tapar el mapa) -->
+            <section class="cr-panel">
+                <h4>Editor de ruta</h4>
+                <div class="ar-editor-tools" role="toolbar" aria-label="Edicion de ruta">
                     <button id="ar-edit-toggle" class="cr-btn ghost" aria-pressed="false">
                         <span class="ico">&#x270E;</span> Editar
                     </button>
@@ -43,7 +138,7 @@
                         &#x2728; Nueva ruta vacia
                     </button>
                     <button id="ar-edit-undo" class="cr-btn ghost" disabled>&#x21A9; Deshacer</button>
-                    <button id="ar-edit-linear" class="cr-btn ghost" title="Reemplaza la ruta con una linea recta entre origen y final (util cuando el SLAM la curvo por drift)">
+                    <button id="ar-edit-linear" class="cr-btn ghost" title="Reemplaza la ruta con una linea recta entre origen y final">
                         &#x2500; Recta origen-final
                     </button>
                     <button id="ar-edit-clear" class="cr-btn ghost" disabled>&#x1F5D1; Limpiar</button>
@@ -52,7 +147,7 @@
                         &#x1F3F7; Etiquetas
                     </button>
                     <button id="ar-save-scan" class="cr-btn ghost" title="Descargar el mapa de calor escaneado como JSON">
-                        &#x1F4E6; Guardar datos escaneados
+                        &#x1F4E6; Guardar escaneo
                     </button>
                     <button id="ar-import-scan" class="cr-btn ghost" title="Cargar un JSON de escaneo para reconstruir el mapa">
                         &#x1F4C2; Cargar JSON
@@ -65,115 +160,103 @@
                         &#x21BB; Vista
                     </button>
                 </div>
+            </section>
 
-                <!-- Instrucciones contextuales, esquina superior derecha -->
-                <div class="ar-map-hint">
-                    <button id="ar-hint-close" class="ar-hint-close" type="button" aria-label="Cerrar instrucciones">&times;</button>
-                    <div><strong>Modo edicion:</strong> <span id="ar-edit-mode-label">OFF</span></div>
-                    <div class="ar-map-hint-body">
-                        <p>Activa <em>Editar</em> y haz click para poner el <strong>origen</strong> (verde) y los siguientes waypoints.</p>
-                        <p>Activa <em>Etiquetas</em> para escribir nombres como <strong>Oficina 1</strong> y marcarlos en el mapa.</p>
-                        <p>Arrastra un waypoint para moverlo. Shift+click para borrar uno.</p>
-                        <p><strong>Rueda del mouse</strong>: zoom de profundidad en el mapa.</p>
-                        <p><strong>Click derecho + arrastrar</strong>: rota la vista 360&deg; para inspeccionar el lidar 4D desde otro angulo.</p>
+            <!-- Chat con el agente IA -->
+            <section class="cr-panel ar-chat-panel">
+                <h4>Chat IA</h4>
+                <div id="ar-chat-log" class="ar-chat-log">
+                    <div class="ar-chat-empty">Pregúntale al agente sobre el mapa o dale una instrucción.</div>
+                </div>
+                <div class="ar-chat-input-row">
+                    <input type="text" id="ar-chat-input" placeholder="Escribe un mensaje…" autocomplete="off">
+                    <button id="ar-chat-send" class="cr-btn" title="Enviar al agente">&#9654;</button>
+                    <button id="ar-mic" class="cr-btn ghost" title="Dar instrucción por voz">&#x1F3A4;</button>
+                </div>
+            </section>
+        </aside>
+
+        <!-- ══════════ CENTRO — LIVE 2×2 ══════════ -->
+        <section class="ar-center">
+            <div class="ar-live-grid">
+                <!-- Cámara -->
+                <div class="ar-cell">
+                    <div class="ar-cell-head"><span>&#x1F4F7; Cámara</span></div>
+                    <div class="ar-cell-body ar-video-wrap">
+                        <img id="ar-video" class="ar-video" alt="Camara del robot" style="display:none;">
+                        <div id="ar-video-placeholder" class="ar-video-placeholder">
+                            <h3>Sin cámara</h3>
+                            <p>Pulsa "Cámara ON" para ver el stream.</p>
+                        </div>
+                        <div class="cr-crosshair" aria-hidden="true">
+                            <span class="ch-v"></span><span class="ch-h"></span><span class="ch-dot"></span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Leyenda inferior -->
-                <div class="ar-map-legend">
-                    <span class="lg lg-route"></span>Ruta planificada
-                    <span class="lg lg-origin"></span>Origen
-                    <span class="lg lg-wp"></span>Waypoint
-                    <span class="lg" style="background:#ffc400;box-shadow:0 0 4px rgba(255,196,0,.8)"></span>Camino real (testigo)
-                    <span class="lg" style="background:#66ccff;box-shadow:0 0 4px rgba(102,204,255,.8)"></span>Simulacion test
-                    <span class="lg lg-heat"></span>Obstaculos
+                <!-- Detecciones YOLO -->
+                <div class="ar-cell">
+                    <div class="ar-cell-head"><span>&#x1F3AF; Detecciones (YOLO)</span></div>
+                    <div class="ar-cell-body" id="ar-detections-pane">
+                        <div class="ar-det-empty">Sin detecciones. Activa la cámara.</div>
+                    </div>
                 </div>
 
-                <!-- Tooltip flotante de coordenadas (world frame) -->
-                <div id="ar-coord-tip" class="ar-coord-tip" aria-hidden="true"></div>
+                <!-- Vista 3D (canvas existente + overlays flotantes) -->
+                <div class="ar-cell ar-cell-3d">
+                    <div class="ar-cell-head"><span>&#x1F9CA; Vista 3D (lidar)</span></div>
+                    <div class="ar-cell-body ar-map-wrap">
+                        <canvas id="ar-route-canvas"></canvas>
+                        <div class="ar-map-hint">
+                            <button id="ar-hint-close" class="ar-hint-close" type="button" aria-label="Cerrar instrucciones">&times;</button>
+                            <div><strong>Edición:</strong> <span id="ar-edit-mode-label">OFF</span></div>
+                            <div class="ar-map-hint-body">
+                                <p>Activa <em>Editar</em> (panel izquierdo) y haz click para poner waypoints.</p>
+                                <p>Arrastra para mover · Shift+click borra · Rueda = zoom · Click derecho = rotar 360°.</p>
+                            </div>
+                        </div>
+                        <div class="ar-map-legend">
+                            <span class="lg lg-route"></span>Ruta
+                            <span class="lg lg-origin"></span>Origen
+                            <span class="lg lg-wp"></span>Waypoint
+                            <span class="lg" style="background:#ffc400;box-shadow:0 0 4px rgba(255,196,0,.8)"></span>Camino real
+                            <span class="lg lg-heat"></span>Obstáculos
+                        </div>
+                        <div id="ar-coord-tip" class="ar-coord-tip" aria-hidden="true"></div>
+                        <div id="ar-robot-badge" class="ar-robot-badge stale">
+                            <span class="dot"></span>
+                            <span>x=<strong id="ar-robot-x">--</strong> y=<strong id="ar-robot-y">--</strong> yaw=<strong id="ar-robot-yaw">--</strong></span>
+                        </div>
+                    </div>
+                </div>
 
-                <!-- Badge con la pose del robot en vivo -->
-                <div id="ar-robot-badge" class="ar-robot-badge stale">
-                    <span class="dot"></span>
-                    <span>Robot x=<strong id="ar-robot-x">--</strong> &nbsp; y=<strong id="ar-robot-y">--</strong> &nbsp; yaw=<strong id="ar-robot-yaw">--</strong></span>
+                <!-- Mapa 2D top-down (canvas nuevo) -->
+                <div class="ar-cell">
+                    <div class="ar-cell-head"><span>&#x1F5FA; Mapa 2D</span></div>
+                    <div class="ar-cell-body ar-map2d-wrap">
+                        <canvas id="ar-map2d-canvas"></canvas>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- Panel lateral: video + metadatos + ciclos + control -->
-        <aside class="ar-side">
-            <section class="cr-panel ar-video-panel">
-                <h4>Camara</h4>
-                <div class="ar-video-wrap">
-                    <img id="ar-video" class="ar-video" alt="Camara del robot" style="display:none;">
-                    <div id="ar-video-placeholder" class="ar-video-placeholder">
-                        <h3>Sin camara</h3>
-                        <p>Inicia YOLO para ver el stream.</p>
-                    </div>
-                    <div class="cr-crosshair" aria-hidden="true">
-                        <span class="ch-v"></span>
-                        <span class="ch-h"></span>
-                        <span class="ch-dot"></span>
-                    </div>
-                </div>
-            </section>
-
-            <section class="cr-panel">
-                <h4>Ruta</h4>
-                <div class="ar-route-meta">
-                    <span id="ar-route-points">Sin ruta guardada</span>
-                    <span id="ar-route-length"></span>
-                </div>
-                <!-- Input numerico para agregar waypoints con coords exactas -->
-                <div class="ar-coord-input">
-                    <input type="number" step="0.01" id="ar-coord-x" placeholder="x (m)">
-                    <input type="number" step="0.01" id="ar-coord-y" placeholder="y (m)">
-                    <button id="ar-coord-add" class="cr-btn ghost" title="Agregar waypoint con coordenadas exactas">+</button>
-                </div>
-                <details class="ar-wp-registry" open>
-                    <summary>Registro de ubicaciones <span id="ar-wp-registry-count">(0)</span></summary>
-                    <div id="ar-wp-registry-list" class="ar-wp-registry-list">
-                        <div class="ar-wp-registry-empty">Sin waypoints registrados.</div>
-                    </div>
-                </details>
-            </section>
-
-            <section class="cr-panel">
-                <h4>Ciclos</h4>
-                <div class="ar-cycles">
-                    <label for="ar-cycles-input">Cuantas veces repetir la ruta:</label>
-                    <div class="ar-cycles-row">
-                        <button id="ar-cyc-minus" class="cr-btn ghost">&minus;</button>
-                        <input id="ar-cycles-input" type="number" min="1" max="99" value="1">
-                        <button id="ar-cyc-plus" class="cr-btn ghost">+</button>
-                    </div>
-                </div>
-                <div class="ar-progress">
-                    Ciclo <strong id="ar-cycle-now">0</strong>/<strong id="ar-cycle-total">0</strong>
-                    &nbsp;&middot;&nbsp; Waypoint <strong id="ar-wp-now">0</strong>/<strong id="ar-wp-total">0</strong>
-                </div>
-            </section>
-
-            <section class="cr-panel">
-                <h4>Control</h4>
-                <div class="ar-controls">
-                    <button id="ar-start" class="cr-btn">&#9654; Iniciar ruta</button>
-                    <button id="ar-stop" class="cr-btn danger" disabled>&#9632; Detener</button>
-                    <button id="ar-scan-360" class="cr-btn ghost" title="Gira en sitio para mapear alrededor con lidar">&#x21BB; Escaneo 360&deg;</button>
-                    <button id="ar-sim" class="cr-btn ghost" title="Simula la ruta sin mover el robot, para verificar antes de ejecutar">&#x1F9EA; Probar ruta (sin robot)</button>
-                    <button id="ar-yolo-toggle" class="cr-btn ghost">Camara ON/OFF</button>
-                    <button id="ar-mic" class="cr-btn ghost" title="Dar instrucción por voz al agente IA">&#x1F3A4; Instrucción</button>
-                </div>
-                <label class="ar-translate-opt">
-                    <input type="checkbox" id="ar-translate-to-pose" checked>
-                    <span>Anclar ruta a la posicion y orientacion actual del robot</span>
-                </label>
-                <label class="ar-translate-opt ar-smooth-opt">
-                    <input type="checkbox" id="ar-smooth-mode">
-                    <span>&#x1F30A; Modo fluido &mdash; recorrido sin paradas entre waypoints</span>
-                </label>
-                <p class="ar-hint">Para mapear mejor, usa <strong>Escaneo 360°</strong> y/o mueve el robot manualmente mientras el lidar actualiza el heatmap. Los waypoints ahora se crean solo de forma manual.</p>
-            </section>
+        <!-- ══════════ COLUMNA DERECHA — BOTONERA ══════════ -->
+        <aside class="ar-right">
+            <div class="ar-btn-group">
+                <button id="ar-btn-estop" class="ar-bigbtn estop" title="Parada de emergencia (Damp)">E-STOP</button>
+                <button id="ar-btn-getup" class="ar-bigbtn" title="Levantarse / recuperación">&#x1F3C3; Get Up</button>
+                <button id="ar-btn-standdown" class="ar-bigbtn" title="Echarse / Stand down">&#x1F4A4; Stand down</button>
+                <button id="ar-btn-lock" class="ar-bigbtn" title="Bloquear motores (Damp)">&#x1F512; Lock</button>
+                <button id="ar-btn-unlock" class="ar-bigbtn" title="Desbloquear (BalanceStand)">&#x1F513; Unlock</button>
+            </div>
+            <div class="ar-btn-group ar-nav-group">
+                <div class="ar-group-title">Navegación</div>
+                <button id="ar-start" class="cr-btn">&#9654; Iniciar ruta</button>
+                <button id="ar-stop" class="cr-btn danger" disabled>&#9632; Detener</button>
+                <button id="ar-scan-360" class="cr-btn ghost" title="Gira en sitio para mapear alrededor con lidar">&#x21BB; Escaneo 360&deg;</button>
+                <button id="ar-sim" class="cr-btn ghost" title="Simula la ruta sin mover el robot">&#x1F9EA; Probar ruta</button>
+                <button id="ar-yolo-toggle" class="cr-btn ghost">&#x1F4F9; Cámara ON/OFF</button>
+            </div>
         </aside>
     </main>
 

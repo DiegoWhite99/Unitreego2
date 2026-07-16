@@ -4,6 +4,7 @@
 
 const Connection = {
     init() {
+        document.getElementById('btn-scan')?.addEventListener('click', () => this.scan());
         document.getElementById('btn-connect')?.addEventListener('click', () => this.connect());
         document.getElementById('btn-disconnect')?.addEventListener('click', () => this.disconnect());
         document.getElementById('btn-emergency')?.addEventListener('click', () => this.emergencyStop());
@@ -19,6 +20,33 @@ const Connection = {
         document.querySelectorAll('[data-routine]').forEach(btn => {
             btn.addEventListener('click', () => this.executeRoutine(btn.dataset.routine));
         });
+    },
+
+    async scan() {
+        const btn = document.getElementById('btn-scan');
+        const originalText = btn ? btn.textContent : '';
+        if (btn) { btn.disabled = true; btn.textContent = 'Buscando...'; }
+        App.addLog('info', 'Buscando robot en la red (puede tardar unos segundos)...');
+
+        const result = await App.apiCall('/api/scan', 'POST');
+
+        if (btn) { btn.disabled = false; btn.textContent = originalText; }
+
+        if (!result || result.status !== 'ok') return;
+
+        if (!result.found || result.found.length === 0) {
+            App.addLog('warning', result.message || 'No se encontro ningun robot en la red.');
+            return;
+        }
+
+        const best = result.found[0];
+        const ipInput = document.getElementById('ip-input');
+        if (ipInput) ipInput.value = best.ip;
+
+        const others = result.found.length > 1
+            ? ` (tambien respondieron: ${result.found.slice(1).map(f => f.ip).join(', ')})`
+            : '';
+        App.addLog('success', `Robot encontrado en ${best.ip}. IP rellenada y guardada.${others}`);
     },
 
     async connect() {

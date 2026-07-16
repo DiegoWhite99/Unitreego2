@@ -364,6 +364,40 @@ async def _follow_segment(a: dict, b: dict,
     return True
 
 
+async def _orient_to_heading(theta: float, timeout_s: float = 6.0) -> None:
+    """Rota en sitio hasta encarar `theta` (rad, frame del lidar).
+
+    Best-effort: si no hay pose, se cancela la ruta o se agota el tiempo,
+    simplemente para. Solo se invoca para waypoints que traen `theta`
+    (p. ej. el objetivo de Ir-a-punto), asi que no cambia el comportamiento
+    de las rutas que no la usan.
+    """
+    state = autoroute_state
+    align = 0.10  # ~6 grados de tolerancia
+    deadline = asyncio.get_running_loop().time() + timeout_s
+    while not state["_cancel"]:
+        if asyncio.get_running_loop().time() > deadline:
+            break
+        if not proximity_sensor["_pose_valid"]:
+            await asyncio.sleep(0.12)
+            continue
+        err = _normalize_angle(theta - proximity_sensor["_pose_yaw"])
+        if abs(err) <= align:
+            break
+        z = _clamp(err * 1.5, -state["angular_speed"], state["angular_speed"])
+        if 0.0 < abs(z) < 0.15:        # piso minimo para vencer friccion
+            z = math.copysign(0.15, z)
+        try:
+            await robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": z})
+        except Exception:
+            break
+        await asyncio.sleep(0.12)
+    try:
+        await robot_send_command("Move", {"x": 0.0, "y": 0.0, "z": 0.0})
+    except Exception:
+        pass
+
+
 async def _go_to(wp: dict) -> None:
     """Conduce hasta entrar en el radio de alcance o agotar el timeout.
     En `smooth_mode` no frena entre waypoints (transicion fluida)."""
@@ -496,6 +530,14 @@ async def _go_to(wp: dict) -> None:
             pass
     state["person_pause_active"] = False
 
+    # Orientacion final opcional: si el waypoint trae theta, encara ese rumbo.
+    theta = wp.get("theta")
+    if theta is not None and not state["_cancel"]:
+        try:
+            await _orient_to_heading(float(theta))
+        except Exception:
+            pass
+
 
 async def autoroute_follow_loop() -> None:
     state = autoroute_state
@@ -539,7 +581,11 @@ async def autoroute_follow_loop() -> None:
                     dy = float(w["y"]) - wp0y
                     nx = pose_x + dx * cos_d - dy * sin_d
                     ny = pose_y + dx * sin_d + dy * cos_d
-                    rotated.append({"x": nx, "y": ny})
+                    nw = {"x": nx, "y": ny}
+                    if w.get("theta") is not None:
+                        # el rumbo guardado tambien rota con la ruta
+                        nw["theta"] = _normalize_angle(float(w["theta"]) + delta_yaw)
+                    rotated.append(nw)
                 state["waypoints"] = rotated
                 emit_log(
                     "info",
@@ -550,10 +596,13 @@ async def autoroute_follow_loop() -> None:
             elif waypoints:
                 ox = float(waypoints[0]["x"]) - pose_x
                 oy = float(waypoints[0]["y"]) - pose_y
-                state["waypoints"] = [
-                    {"x": float(w["x"]) - ox, "y": float(w["y"]) - oy}
-                    for w in waypoints
-                ]
+                shifted = []
+                for w in waypoints:
+                    nw = {"x": float(w["x"]) - ox, "y": float(w["y"]) - oy}
+                    if w.get("theta") is not None:
+                        nw["theta"] = float(w["theta"])  # solo traslada, no rota
+                    shifted.append(nw)
+                state["waypoints"] = shifted
                 emit_log(
                     "info",
                     f"Auto-Ruta: ruta trasladada al origen del robot "

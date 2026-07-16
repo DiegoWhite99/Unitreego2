@@ -14,6 +14,15 @@ import os
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
+# El SDK de Unitree imprime estados con emojis (🕒, 🟢...). En consola Windows
+# (cp1252) eso lanza UnicodeEncodeError y aborta el connect() a mitad de
+# handshake. Forzamos UTF-8 con reemplazo para que nunca rompa por el log.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 from config.config import ROBOT_IP
 
 from api import register_blueprints

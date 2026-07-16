@@ -1,0 +1,33 @@
+{
+  "id": "ruta-32-a72374",
+  "name": "ruta 32",
+  "created": "2026-06-05T12:45:23",
+  "updated": "2026-06-05T12:45:23",
+  "waypoints": [
+    {
+      "x": 2.24,
+      "y": 3.44
+    },
+    {
+      "x": 3.12,
+      "y": 8.72
+    },
+    {
+      "x": 4.88,
+      "y": 11.36
+    },
+    {
+      "x": 5.76,
+      "y": 11.2
+    }
+  ],
+  "cycles": 1,
+  "flags": {
+    "translate_to_pose": true,
+    "smooth_mode": false,
+    "pause_on_person": true,
+    "strict_path_mode": true,
+    "ai_path_assist": true
+  },
+  "labels": []
+}
