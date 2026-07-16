@@ -181,7 +181,7 @@
         <section class="ar-center">
             <div class="ar-live-grid">
                 <!-- Cámara -->
-                <div class="ar-cell">
+                <div class="ar-cell" style="grid-column:2;grid-row:1;">
                     <div class="ar-cell-head"><span>&#x1F4F7; Cámara</span></div>
                     <div class="ar-cell-body ar-video-wrap">
                         <img id="ar-video" class="ar-video" alt="Camara del robot" style="display:none;">
@@ -196,16 +196,16 @@
                 </div>
 
                 <!-- Detecciones YOLO -->
-                <div class="ar-cell">
+                <div class="ar-cell" style="grid-column:2;grid-row:2;">
                     <div class="ar-cell-head"><span>&#x1F3AF; Detecciones (YOLO)</span></div>
                     <div class="ar-cell-body" id="ar-detections-pane">
                         <div class="ar-det-empty">Sin detecciones. Activa la cámara.</div>
                     </div>
                 </div>
 
-                <!-- Vista 3D (canvas existente + overlays flotantes) -->
-                <div class="ar-cell ar-cell-3d">
-                    <div class="ar-cell-head"><span>&#x1F9CA; Vista 3D (lidar)</span></div>
+                <!-- Mapa 2D top-down (canvas interactivo + overlays flotantes) -->
+                <div class="ar-cell ar-cell-3d" style="grid-row:1/-1;grid-column:1;">
+                    <div class="ar-cell-head"><span>&#x1F5FA; Mapa 2D (lidar)</span></div>
                     <div class="ar-cell-body ar-map-wrap">
                         <canvas id="ar-route-canvas"></canvas>
                         <div class="ar-map-hint">
@@ -213,7 +213,7 @@
                             <div><strong>Edición:</strong> <span id="ar-edit-mode-label">OFF</span></div>
                             <div class="ar-map-hint-body">
                                 <p>Activa <em>Editar</em> (panel izquierdo) y haz click para poner waypoints.</p>
-                                <p>Arrastra para mover · Shift+click borra · Rueda = zoom · Click derecho = rotar 360°.</p>
+                                <p>Arrastra un punto para moverlo · Shift+click borra · Rueda = zoom · Arrastra con botón derecho para desplazar.</p>
                             </div>
                         </div>
                         <div class="ar-map-legend">
@@ -231,13 +231,6 @@
                     </div>
                 </div>
 
-                <!-- Mapa 2D top-down (canvas nuevo) -->
-                <div class="ar-cell">
-                    <div class="ar-cell-head"><span>&#x1F5FA; Mapa 2D</span></div>
-                    <div class="ar-cell-body ar-map2d-wrap">
-                        <canvas id="ar-map2d-canvas"></canvas>
-                    </div>
-                </div>
             </div>
         </section>
 

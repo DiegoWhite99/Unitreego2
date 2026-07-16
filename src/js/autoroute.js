@@ -10,7 +10,7 @@ const API = window.location.origin;
 /* Proyeccion 2.5D: el plano XY del mundo se "inclina" hacia adelante
    (foreshortening en Y) y cada voxel 3D se dibuja como un cubito en su
    altura real. La misma transformacion XY se usa para clicks inversos. */
-const TILT_KY = 0.62;
+const TILT_KY = 1.0;   // vista top-down (2D): sin foreshortening (antes 0.62)
 const VOXEL_Z_PX_PER_M = 70;      // 1 m de Z real = 70 px en pantalla
 const VOXEL_ALPHA_BASE = 0.55;    // opacidad base de voxels
 
@@ -48,7 +48,9 @@ const AutoRoute = {
         originY: 0,
         scale: 40,        // px por metro
         zoom: 1,          // zoom manual (rueda del mouse)
-        yaw: 0,           // rotacion alrededor de (centerX, centerY) — vista 4D orbitable
+        panX: 0,          // desplazamiento manual del mapa (arrastre con boton derecho), px
+        panY: 0,
+        yaw: 0,           // (sin uso en vista 2D top-down; se conserva por compatibilidad)
         centerX: 0,
         centerY: 0,
         minWorldX: -4, maxWorldX: 4,
@@ -148,22 +150,12 @@ const AutoRoute = {
 
     startRenderLoop() {
         const tick = (now) => {
-            if (this.orbit.active && this.orbit.hasPending) {
-                const dx = this.orbit.pendingX - this.orbit.startX;
-                const nextYaw = this.orbit.startYaw + dx * (Math.PI / 360);
-                if (Math.abs(nextYaw - this.view.yaw) > 0.0005) {
-                    this.view.yaw = nextYaw;
-                    this._needsRedraw = true;
-                }
-                this.orbit.hasPending = false;
-            }
             if (this.sim.active) {
                 this.advanceSim(now);
                 this._needsRedraw = true;
             }
             if (this._needsRedraw) {
                 this.drawRoute();
-                this.drawMap2D();
                 this._needsRedraw = false;
             }
             this._rafHandle = requestAnimationFrame(tick);
@@ -1552,15 +1544,14 @@ const AutoRoute = {
     onPointerDown(e) {
         const { x, y } = this.clientToCanvas(e);
 
-        // Boton derecho (button=2) o medio (button=1): orbit (rotar vista).
+        // Boton derecho (button=2) o medio (button=1): desplazar el mapa (pan).
         // Funciona en cualquier modo — no interfiere con la edicion.
         if (e.button === 2 || e.button === 1) {
             this.orbit.active = true;
             this.orbit.startX = x;
             this.orbit.startY = y;
-            this.orbit.startYaw = this.view.yaw;
-            this.orbit.pendingX = x;
-            this.orbit.hasPending = true;
+            this.orbit.startPanX = this.view.panX || 0;
+            this.orbit.startPanY = this.view.panY || 0;
             try { this.canvas.setPointerCapture(e.pointerId); } catch {}
             this.canvas.classList.add('ar-orbiting');
             e.preventDefault();
@@ -1607,9 +1598,9 @@ const AutoRoute = {
     onPointerMove(e) {
         if (this.orbit.active) {
             const { x, y } = this.clientToCanvas(e);
-            this.orbit.pendingX = x;
-            this.orbit.startY = y;
-            this.orbit.hasPending = true;
+            this.view.panX = this.orbit.startPanX + (x - this.orbit.startX);
+            this.view.panY = this.orbit.startPanY + (y - this.orbit.startY);
+            this.markDirty();
             return;
         }
         if (this.edit.draggingIdx < 0) return;
@@ -1620,11 +1611,6 @@ const AutoRoute = {
 
     onPointerUp(e) {
         if (this.orbit.active) {
-            if (this.orbit.hasPending) {
-                const dx = this.orbit.pendingX - this.orbit.startX;
-                this.view.yaw = this.orbit.startYaw + dx * (Math.PI / 360);
-                this.orbit.hasPending = false;
-            }
             this.orbit.active = false;
             try { this.canvas.releasePointerCapture(e.pointerId); } catch {}
             this.canvas.classList.remove('ar-orbiting');
@@ -1696,75 +1682,45 @@ const AutoRoute = {
         const cx = (minX + maxX) / 2;
         const cy = (minY + maxY) / 2;
 
-        // Si la vista esta rotada, las bounds rotadas crecen — recalculamos
-        // los extremos sobre las 4 esquinas rotadas para que la escena
-        // entera siga cabiendo en la pantalla en cualquier yaw.
-        let fitMinX = minX, fitMaxX = maxX, fitMinY = minY, fitMaxY = maxY;
-        const yaw = this.view.yaw || 0;
-        if (yaw) {
-            const c = Math.cos(yaw), s = Math.sin(yaw);
-            fitMinX = Infinity; fitMaxX = -Infinity;
-            fitMinY = Infinity; fitMaxY = -Infinity;
-            const corners = [[minX, minY], [minX, maxY], [maxX, minY], [maxX, maxY]];
-            for (const [x, y] of corners) {
-                const dx = x - cx, dy = y - cy;
-                const rx = cx + dx * c - dy * s;
-                const ry = cy + dx * s + dy * c;
-                if (rx < fitMinX) fitMinX = rx; if (rx > fitMaxX) fitMaxX = rx;
-                if (ry < fitMinY) fitMinY = ry; if (ry > fitMaxY) fitMaxY = ry;
-            }
-        }
-
+        // Vista top-down ortográfica: ajusta el mundo al canvas y aplica
+        // zoom (rueda) + pan (arrastre con botón derecho). Sin rotación.
         const W = this.canvas.width / this.dpr;
         const H = this.canvas.height / this.dpr;
-        const worldW = fitMaxX - fitMinX;
-        const worldH = fitMaxY - fitMinY;
-        const sx = (W * 0.9) / worldW;
-        const sy = (H * 0.82) / (worldH * TILT_KY);
-        const fitScale = Math.min(sx, sy);
+        const worldW = Math.max(0.1, maxX - minX);
+        const worldH = Math.max(0.1, maxY - minY);
+        const margin = 10;
+        const fitScale = Math.min((W - 2 * margin) / worldW, (H - 2 * margin) / worldH);
         const scale = fitScale * (this.view.zoom || 1);
 
         this.view.scale = scale;
         this.view.centerX = cx;
         this.view.centerY = cy;
-        this.view.originX = W / 2 - cx * scale;
-        this.view.originY = H * 0.58 + cy * scale * TILT_KY;
+        this.view.originX = W / 2 + (this.view.panX || 0);
+        this.view.originY = H / 2 + (this.view.panY || 0);
         this.view.minWorldX = minX; this.view.maxWorldX = maxX;
         this.view.minWorldY = minY; this.view.maxWorldY = maxY;
     },
 
     worldToScreen(x, y) {
         const v = this.view;
-        if (v.yaw) {
-            const dx = x - v.centerX;
-            const dy = y - v.centerY;
-            const c = Math.cos(v.yaw), s = Math.sin(v.yaw);
-            x = v.centerX + dx * c - dy * s;
-            y = v.centerY + dx * s + dy * c;
-        }
         return [
-            v.originX + x * v.scale,
-            v.originY - y * v.scale * TILT_KY,
+            v.originX + (x - v.centerX) * v.scale,
+            v.originY - (y - v.centerY) * v.scale,   // y hacia arriba
         ];
     },
 
     screenToWorld(sx, sy) {
         const v = this.view;
-        let x = (sx - v.originX) / v.scale;
-        let y = (v.originY - sy) / (v.scale * TILT_KY);
-        if (v.yaw) {
-            const dx = x - v.centerX;
-            const dy = y - v.centerY;
-            const c = Math.cos(-v.yaw), s = Math.sin(-v.yaw);
-            x = v.centerX + dx * c - dy * s;
-            y = v.centerY + dx * s + dy * c;
-        }
-        return [x, y];
+        return [
+            v.centerX + (sx - v.originX) / v.scale,
+            v.centerY - (sy - v.originY) / v.scale,
+        ];
     },
 
     resetView() {
-        this.view.yaw = 0;
         this.view.zoom = 1;
+        this.view.panX = 0;
+        this.view.panY = 0;
         this._heatCache = null;
         this._heatCacheKey = '';
         this.markDirty();
@@ -1783,15 +1739,41 @@ const AutoRoute = {
         ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
         ctx.clearRect(0, 0, W, H);
 
-        this.drawSkyAndFloor(ctx, W, H);
+        // Fondo plano (vista 2D top-down; antes había cielo/suelo en 3D).
+        ctx.fillStyle = '#05080e';
+        ctx.fillRect(0, 0, W, H);
         this.drawGrid(ctx, W, H);
-        this.drawHeatColumnsCached(ctx, W, H);
+        this.drawHeatFlat(ctx);
         this.drawTrail(ctx);
         this.drawRouteLine(ctx);
         this.drawWaypoints(ctx);
         this.drawLabels(ctx);
         this.drawRobot(ctx);
         if (this.sim.active) this.drawSimRobot(ctx);
+    },
+
+    /* Heatmap de obstáculos en vista top-down (celdas planas). Reemplaza a
+       las columnas 3D (drawHeatColumns), que ya no se usan. */
+    drawHeatFlat(ctx) {
+        const route = this.route;
+        if (!route) return;
+        const heat = Array.isArray(route.heat) ? route.heat : [];
+        if (!heat.length) return;
+        const cell = route.heatCellSize || 0.08;
+        const cellPx = Math.max(2, cell * this.view.scale);
+        const cap = 8000;
+        const stepN = heat.length > cap ? Math.ceil(heat.length / cap) : 1;
+        for (let i = 0; i < heat.length; i += stepN) {
+            const h = heat[i];
+            if (!h) continue;
+            const val = Math.max(0, Math.min(255, h.length >= 4 ? h[3] : h[2]));
+            if (val <= 0) continue;
+            const t = val / 255;
+            const a = Math.min(0.9, 0.22 + t * 0.7);
+            const [sx, sy] = this.worldToScreen(h[0] * cell, h[1] * cell);
+            ctx.fillStyle = `rgba(255,${Math.round(183 - t * 100)},${Math.max(0, Math.round(77 - t * 60))},${a})`;
+            ctx.fillRect(sx - cellPx / 2, sy - cellPx / 2, cellPx, cellPx);
+        }
     },
 
     drawLabels(ctx) {

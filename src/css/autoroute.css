@@ -519,7 +519,7 @@
 .ar-live-grid {
     flex: 1;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1.7fr 1fr;
     grid-template-rows: 1fr 1fr;
     gap: 8px;
     min-height: 0;
