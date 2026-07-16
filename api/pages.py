@@ -19,17 +19,6 @@ def index():
     return send_from_directory("src", "index.html")
 
 
-@bp.route("/login")
-@bp.route("/login.html")
-def login_page():
-    return send_from_directory("src", "login.html")
-
-
-@bp.route("/landing")
-def landing():
-    return send_from_directory("src", "landing.html")
-
-
 @bp.route("/user-end")
 @bp.route("/user_end.hmtl")  # typo conservado por compatibilidad con bookmarks
 def user_end():

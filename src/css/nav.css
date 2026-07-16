@@ -1,0 +1,69 @@
+/* ============================================================
+   Menú de navegación unificado (inyectado por /js/nav.js).
+   Paleta oscura fija para verse coherente en todas las páginas.
+   ============================================================ */
+.dvnav-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+    opacity: 0; visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    z-index: 9998;
+}
+.dvnav-backdrop.open { opacity: 1; visibility: visible; }
+
+.dvnav-drawer {
+    position: fixed; top: 0; right: 0; height: 100%;
+    width: 280px; max-width: 82vw;
+    background: #0a0f14;
+    border-left: 1px solid rgba(45, 212, 191, 0.25);
+    box-shadow: -8px 0 30px rgba(0, 0, 0, 0.5);
+    transform: translateX(100%);
+    transition: transform 0.22s ease;
+    z-index: 9999;
+    display: flex; flex-direction: column;
+    font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+}
+.dvnav-drawer.open { transform: translateX(0); }
+
+.dvnav-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 1.1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.dvnav-brand {
+    font-size: 0.72rem; letter-spacing: 2px; text-transform: uppercase;
+    color: #2dd4bf; font-weight: 700;
+}
+.dvnav-close {
+    background: transparent; border: none; color: #8b98a5;
+    font-size: 1.1rem; cursor: pointer; line-height: 1; padding: 0.2rem 0.4rem;
+}
+.dvnav-close:hover { color: #fff; }
+
+.dvnav-links { display: flex; flex-direction: column; padding: 0.6rem 0; overflow-y: auto; }
+.dvnav-link {
+    display: flex; align-items: center; gap: 0.7rem;
+    padding: 0.7rem 1.2rem;
+    color: #c7d0d9; text-decoration: none; font-size: 0.9rem;
+    border-left: 3px solid transparent;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.dvnav-link:hover { background: rgba(45, 212, 191, 0.08); color: #fff; }
+.dvnav-link.active {
+    color: #2dd4bf; border-left-color: #2dd4bf;
+    background: rgba(45, 212, 191, 0.1); font-weight: 600;
+}
+.dvnav-ic { width: 1.2rem; text-align: center; font-size: 0.95rem; }
+
+.dvnav-fab {
+    position: fixed; top: 14px; right: 14px; z-index: 9997;
+    background: rgba(10, 15, 20, 0.85); color: #2dd4bf;
+    border: 1px solid rgba(45, 212, 191, 0.35); border-radius: 8px;
+    width: 42px; height: 42px; font-size: 1.1rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+}
+.dvnav-fab:hover { background: rgba(45, 212, 191, 0.15); }
+
+@media (max-width: 600px) { .dvnav-drawer { width: 250px; } }

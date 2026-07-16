@@ -949,6 +949,7 @@
             .status-indicator { font-size: 0.7rem; padding: 0.3rem 0.6rem; }
         }
     </style>
+    <link rel="stylesheet" href="/css/nav.css">
 </head>
 <body>
 
@@ -1020,32 +1021,6 @@
             </a>
         </div>
     </nav>
-
-    <!-- Menú drawer lateral: SOLO navegación entre páginas -->
-    <div class="menu-backdrop" id="menu-backdrop"></div>
-    <aside class="dv-menu" id="dv-menu" aria-hidden="true">
-        <div class="dv-menu-label">Ir a</div>
-        <a href="/control-remoto" class="nav-link nav-link-featured">
-            <span class="icon">🎮</span> Control Remoto
-        </a>
-        <a href="/agente" class="nav-link nav-link-featured">
-            <span class="icon">✦</span> IA
-        </a>
-        <a href="/console-ia" class="nav-link nav-link-featured">
-            <span class="icon">🎙</span> Console IA
-        </a>
-        <a href="/" class="nav-link">
-            <span class="icon">◀</span> Configuraciones
-        </a>
-        <a href="/help" class="nav-link">
-            <span class="icon">?</span> Ayuda
-        </a>
-
-        <div class="dv-menu-label" style="margin-top: 1rem;">Registro</div>
-        <a href="#system-logs" class="nav-link">
-            <span class="icon">≡</span> Comunicación del sistema
-        </a>
-    </aside>
 
     <main class="container">
 
@@ -1383,28 +1358,6 @@
             if (container) container.innerHTML = '';
         });
 
-        // Menú drawer
-        const menuToggle = document.getElementById('menu-toggle');
-        const dvMenu = document.getElementById('dv-menu');
-        const menuBackdrop = document.getElementById('menu-backdrop');
-
-        function openMenu() {
-            dvMenu.classList.add('open');
-            menuBackdrop.classList.add('open');
-            dvMenu.setAttribute('aria-hidden', 'false');
-        }
-        function closeMenu() {
-            dvMenu.classList.remove('open');
-            menuBackdrop.classList.remove('open');
-            dvMenu.setAttribute('aria-hidden', 'true');
-        }
-
-        menuToggle?.addEventListener('click', openMenu);
-        menuBackdrop?.addEventListener('click', closeMenu);
-        dvMenu?.querySelectorAll('a.nav-link').forEach(link => {
-            link.addEventListener('click', () => setTimeout(closeMenu, 150));
-        });
-
         // ---------- Mobile pill nav: scrollspy + scroll suave ----------
         (function () {
             const nav = document.getElementById('mobile-pill-nav');
@@ -1452,5 +1405,6 @@
             });
         })();
     </script>
+    <script src="/js/nav.js"></script>
 </body>
 </html>
